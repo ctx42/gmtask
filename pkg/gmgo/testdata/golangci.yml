@@ -1,0 +1,187 @@
+# golangci-lint configuration (schema v2).
+version: "2"
+
+# Execution behavior.
+run:
+  concurrency: 4              # Max linters running in parallel.
+  issues-exit-code: 1        # Non-zero exit when issues are found.
+  tests: true                # Also lint _test.go files.
+  allow-parallel-runners: false  # Fail rather than queue a second run.
+
+# Report formatting.
+output:
+  formats:
+    text:
+      path: stdout
+      print-linter-name: true    # Show which linter raised each issue.
+      print-issued-lines: true   # Show the offending source line.
+      colors: false
+
+linters:
+  default: none  # Opt-in only: nothing runs unless listed below.
+  enable:
+    - asasalint                 # Slice passed to variadic ...any.
+    - asciicheck               # Non-ASCII identifiers.
+    - bidichk                  # Dangerous Unicode bidi sequences.
+    - bodyclose                # Unclosed HTTP response bodies.
+    - contextcheck             # Non-inherited context usage.
+    - cyclop                   # Cyclomatic complexity.
+    - durationcheck            # Suspicious time.Duration multiplication.
+    - errcheck                 # Unchecked errors.
+    - errchkjson               # Unsupported/unchecked json.Marshal types.
+    - errorlint                # Error wrapping/comparison correctness.
+    - exhaustive               # Missing enum cases in switches.
+    - forbidigo                # Forbidden identifiers (see settings).
+    - forcetypeassert          # Unchecked type assertions.
+    - gocheckcompilerdirectives  # Malformed //go: directives.
+    - gochecksumtype           # Exhaustiveness of sum types.
+    - gocognit                 # Cognitive complexity.
+    - gocritic                 # Broad opinionated checks.
+    - godox                    # Flags TODO-style keywords (see settings).
+    - gosec                    # Security issues.
+    - gosmopolitan             # i18n/portability pitfalls.
+    - govet                    # Standard go vet checks.
+    - importas                 # Enforced import aliases.
+    - ineffassign              # Ineffectual assignments.
+    - loggercheck              # Even key/value pairs in structured logs.
+    - makezero                 # make() slices used with append.
+    - musttag                  # Missing struct tags for (un)marshaling.
+    - nilerr                   # Returning nil after a non-nil error.
+    - nilnesserr               # nil-error return inconsistencies.
+    - noctx                    # HTTP requests sent without a context.
+    - protogetter              # Use protobuf getters over field access.
+    - reassign                 # Reassigning package variables.
+    - recvcheck                # Mixed value/pointer receivers.
+    - rowserrcheck             # Unchecked sql.Rows.Err (see settings).
+    - spancheck                # Unended/unrecorded OpenTelemetry spans.
+    - sqlclosecheck            # Unclosed sql.Rows/Stmt.
+    - staticcheck              # staticcheck suite (see settings).
+    - testifylint              # testify usage correctness.
+    - unparam                  # Unused function parameters.
+    - unused                   # Unused code.
+    - zerologlint              # Missing zerolog .Send()/.Msg().
+
+  settings:
+    cyclop:
+      max-complexity: 13       # Per-function ceiling.
+      package-average: 10.0    # Per-package average ceiling.
+
+    errcheck:
+      check-type-assertions: false
+      check-blank: false
+      exclude-functions:       # Calls whose errors may go unchecked.
+        - io.Copy(*bytes.Buffer)
+        - io.Copy(os.Stdout)
+
+    errorlint:
+      errorf: true             # Require %w for wrapping.
+      asserts: true            # Flag type assertions on errors.
+      comparison: true         # Flag == comparisons on errors.
+
+    exhaustive:
+      default-signifies-exhaustive: true  # A default case satisfies the check.
+
+    forbidigo:
+      exclude-godoc-examples: true
+      forbid:                  # No stray debug printing.
+        - pattern: ^print.*$
+        - pattern: fmt\.Print.*
+
+    gocognit:
+      min-complexity: 30       # Report functions above this score.
+
+    gocritic:
+      enable-all: true         # Then opt out of the checks below.
+      disabled-checks:
+        - captLocal
+        - octalLiteral
+        - sloppyReassign
+        - hugeParam
+        - whyNoLint
+        - unnamedResult
+        - rangeValCopy
+        - filepathJoin
+      settings:
+        elseif:
+          skipBalanced: true
+        hugeParam:
+          sizeThreshold: 80
+        nestingReduce:
+          bodyWidth: 5
+        rangeExprCopy:
+          sizeThreshold: 512
+          skipTestFuncs: true
+        rangeValCopy:
+          sizeThreshold: 32
+          skipTestFuncs: true
+        underef:
+          skipRecvDeref: true
+        unnamedResult:
+          checkExported: true
+
+    godox:
+      keywords:                # Only these are flagged (TODO is allowed).
+        - OPTIMIZE
+        - HACK
+        - FIXME
+
+    gosec:
+      excludes:                # Rules intentionally tolerated.
+        - G401 # Detect the usage of DES, RC4, MD5 or SHA1.
+        - G404 # Insecure random number source (rand).
+        - G501 # Import blocklist: crypto/md5.
+        - G505 # Import blocklist: crypto/sha1.
+        - G204 # Audit use of command execution.
+
+    govet:
+      enable-all: true         # Then opt out of the checks below.
+      disable:
+        - fieldalignment       # Struct field ordering isn't enforced.
+        - printf               # Handled well enough by other tooling.
+
+    importas:
+      no-unaliased: true       # Listed packages must use their alias.
+      alias:
+        - pkg: github.com/rzajac/testkit
+          alias: kit
+
+    rowserrcheck:
+      packages:                # Extra SQL packages to check.
+        - github.com/jmoiron/sqlx
+
+    staticcheck:
+      # SAxxxx checks: https://staticcheck.io/docs/configuration/options/#checks
+      checks: ["all", "-SA1012", "-ST1006"]
+
+  # Per-path linter exemptions.
+  exclusions:
+    rules:
+      # Godoc examples legitimately print to stdout.
+      - path: examples_test\.go
+        linters:
+          - forbidigo
+
+      # Relaxed rules for tests; cyclop here preserves the former
+      # cyclop.skip-tests behavior removed in golangci-lint v2.
+      - path: _test\.go$
+        linters:
+          - contextcheck
+          - cyclop
+          - errname
+          - forcetypeassert
+          - gocognit
+          - gosec
+          - noctx
+
+      # Generated mock files (from pkg/mocker) routinely trigger
+      # false positives on type assertions, security, and more.
+      - path: _mock\.go$
+        linters:
+          - errcheck
+          - forcetypeassert
+          - gocritic
+          - gosec
+          - staticcheck
+
+issues:
+  max-same-issues: 10  # Cap repeats of the same issue (0 = unlimited).

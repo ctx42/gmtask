@@ -1,0 +1,16 @@
+github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=
+github.com/Masterminds/semver/v3 v3.5.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
+github.com/ctx42/gitaid v0.3.0 h1:CV57G904Jfc3WMvEAFnKr4PujhYq7/V3jmH13h+5P8U=
+github.com/ctx42/gitaid v0.3.0/go.mod h1:KoUxIPXANEDun1u/650lJz3j40uBaVPXCHoqkVpGGz4=
+github.com/ctx42/gomake v0.20.0 h1:xYp4yk8mRz737bf+zEmHEZeyiDsf3EGYdBDE24wSe8U=
+github.com/ctx42/gomake v0.20.0/go.mod h1:kAy0l4YS9/3g10Xxkswm/e8JbxOaYO2rNbMQKKYZ9pE=
+github.com/ctx42/ring v0.7.1 h1:qN6SR9OrXq0Yj8Sf1ilEY/m6kHFbyRJb6VmlO0bQe9E=
+github.com/ctx42/ring v0.7.1/go.mod h1:ko72cbRboriU8jTgDUEZHacrfwPKPjy8edtJ2doccHQ=
+github.com/ctx42/testing v0.55.0 h1:xzYg+zW6xx2BDemveLhIztU6BdY9O6KCCR1FeYEt+mk=
+github.com/ctx42/testing v0.55.0/go.mod h1:wRBqNRtlxDZnXIjgCX3zr05Acl6JC1D6cSBN2IpaMIs=
+github.com/ctx42/testkit v0.8.0 h1:JLFkGqDgglRQ/jm43XNb5OBo4KxOZJQXIV90d/sT4UY=
+github.com/ctx42/testkit v0.8.0/go.mod h1:TuyXl4VM5PLj9VKMFQxVFyJH84fotgVMuxdwXDSEo7M=
+github.com/ctx42/xdef v0.3.0 h1:MNLpVcUYFjKdRgLauRZ7Qq92rlVcZaRlh3fGo0oic0k=
+github.com/ctx42/xdef v0.3.0/go.mod h1:KY52keTViC/5i/nI25eRNBtYifhRqqyLs7gvIVbbaZ8=
+github.com/ctx42/xflag v0.10.0 h1:QaaOz0JRkJQtumPWnbMQ04dYDURgWKgsIco53Dder5M=
+github.com/ctx42/xflag v0.10.0/go.mod h1:8VeKeOfwpoA2uPLPnbYPxOatFpBvfmuHz7O7Wii2nGc=

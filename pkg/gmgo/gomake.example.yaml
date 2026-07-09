@@ -1,0 +1,74 @@
+# Example gomake.yaml for the gmgo targets.
+#
+# Every setting gmgo reads is shown below, set to a non-default value and
+# documented. Copy the blocks you need into your own user- or project-level
+# gomake.yaml; delete the rest. Nothing here is required — a target with no
+# matching entry falls back to the documented default.
+#
+# The `targets:` section is a nested tree that mirrors the target names you see
+# when listing targets — lower-case, kebab-cased, nested by namespace:
+#
+#   import path  →  namespace…  →  target
+#
+# e.g. `gomake :go:lint:install` lives at <import>.go.lint.install, and
+# `gomake :go:test-v` at <import>.go.test-v. A setting placed on a namespace
+# node is shared by that namespace's targets, so it is declared once rather than
+# repeated per target.
+#
+# Settings offered both here and as an environment variable are overridden by
+# the environment variable at run time (noted per setting below).
+
+version: 1
+
+targets:
+  github.com/ctx42/gmtask/pkg/gmgo:
+    go:
+      # Shared by :go:test, :go:test-v, and :go:check. Value passed to
+      # `go test -timeout`, verbatim (e.g. "60s", "5m", "1h"). Overridden per run
+      # by the GOMAKE_GO_TEST_TIMEOUT env var. Default: the go tool's own default.
+      timeout: 5m
+
+      lint:
+        # Shared by :go:lint, :go:lint:install, and :go:lint:config.
+
+        # golangci-lint version to install when it is missing or older than the
+        # minimum gmgo requires. Used verbatim as the "go install" module query,
+        # so any valid query works (e.g. "v2.13.0", "latest"). Default: latest.
+        version: v2.13.0
+
+        # Name of the shared golangci-lint config file to fetch and write.
+        # Applied to both the downloaded and the local file. Default: .golangci.yml.
+        file: .golangci.yml
+
+      build:
+        # :go:build injects build metadata via "-ldflags -X" for a module listed
+        # here. `modules` maps a module import path (as reported by "go list -m")
+        # to where, and under what variable names, the values are injected. A
+        # module with no entry is built normally, injecting nothing.
+        modules:
+          # Key: the module import path exactly as "go list -m" reports it.
+          # The path contains dots, so a target reads these nested settings with
+          # a single-quoted segment: "modules.'github.com/acme/app'.package".
+          github.com/acme/app:
+            # Required. Import path of the package whose package-level string
+            # variables receive the injected values. Declare one `string` var in
+            # it per field you want set (see the names below).
+            package: github.com/acme/app/internal/version
+
+            # Optional. Override the variable name gmgo writes each field into.
+            # Omit a field to keep its default name (shown here). The defaults
+            # match the names gomake injects into its own binary, so an omitted
+            # `names` block Just Works if your version package uses these names.
+            #
+            #   Field         Default var   Value injected
+            #   build date    buildDate     OCI_IMAGE_CREATED env, else build time
+            #   SCM revision  scmRev        `git describe`, else v0.0.0
+            #   SCM hash      scmHash       latest commit hash, else 0000000
+            #   SCM state     scmState      clean/dirty, else unknown
+            #   CI/CD id      ccid          GOMAKE_CCID env, else unknown
+            names:
+              buildDate: BuildDate
+              scmRev: Version
+              scmHash: Commit
+              scmState: State
+              ccid: CIJob
