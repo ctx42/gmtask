@@ -225,7 +225,7 @@ func parseDirTarget(
 	return out, rng, false, nil
 }
 
-// Doc starts the Golang documentation engine service and opens it in default
+// Doc starts the godoc documentation engine service and opens it in default
 // browser for the package in the current working directory. The server binds
 // an OS-assigned free port, so concurrent Doc runs do not collide.
 //
@@ -233,6 +233,34 @@ func parseDirTarget(
 //
 //	gomake :go:doc
 func (Go) Doc(ctx context.Context, rng *ring.Ring) error {
+	// godoc serves package documentation under the "/pkg/" path prefix.
+	return serveDocServer(ctx, rng, serveDoc, "/pkg/")
+}
+
+// Pkgsite starts the pkgsite documentation server and opens it in default
+// browser for the package in the current working directory. The server binds
+// an OS-assigned free port, so concurrent Pkgsite runs do not collide.
+//
+// Example usage:
+//
+//	gomake :go:pkgsite
+func (Go) Pkgsite(ctx context.Context, rng *ring.Ring) error {
+	// pkgsite serves package documentation directly under the import path.
+	return serveDocServer(ctx, rng, servePkgsite, "/")
+}
+
+// serveDocServer reserves a free loopback port, starts a documentation server
+// on it with serve, waits for the server to accept connections, and opens the
+// default browser at the current package's import path joined to the server
+// address under pkgPrefix. It returns serve's error, or a module-resolution
+// error when the working directory is not a Go module.
+func serveDocServer(
+	ctx context.Context,
+	rng *ring.Ring,
+	serve func(ctx context.Context, rng *ring.Ring, addr string) error,
+	pkgPrefix string,
+) error {
+
 	ctx, cxl := context.WithCancel(ctx)
 	defer cxl()
 
@@ -249,11 +277,11 @@ func (Go) Doc(ctx context.Context, rng *ring.Ring) error {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	var docErr error
+	var srvErr error
 	go func() {
 		defer wg.Done()
 		defer cxl()
-		docErr = serveDoc(ctx, rng, addr)
+		srvErr = serve(ctx, rng, addr)
 	}()
 
 	go func() {
@@ -262,7 +290,7 @@ func (Go) Doc(ctx context.Context, rng *ring.Ring) error {
 		if !waitForServer(ctx, base+"/") {
 			return
 		}
-		name, args := browserCmd(runtime.GOOS, base+"/pkg/"+imPath)
+		name, args := browserCmd(runtime.GOOS, base+pkgPrefix+imPath)
 		cmd := exec.CommandContext(ctx, name, args...)
 		cmd.Stdout, cmd.Stderr = rng.Stdout(), rng.Stderr()
 		if err := cmd.Run(); err != nil {
@@ -271,7 +299,7 @@ func (Go) Doc(ctx context.Context, rng *ring.Ring) error {
 	}()
 
 	wg.Wait()
-	return docErr
+	return srvErr
 }
 
 // serveDoc runs the godoc documentation server bound to addr, streaming its
@@ -286,6 +314,20 @@ func serveDoc(ctx context.Context, rng *ring.Ring, addr string) error {
 		"-notes=\"BUG|TODO|FIX\"",
 	}
 	cmd := exec.CommandContext(ctx, "godoc", args...)
+	cmd.Stdout, cmd.Stderr = rng.Stdout(), rng.Stderr()
+	if err := cmd.Run(); err != nil && ctx.Err() == nil {
+		return err
+	}
+	return nil
+}
+
+// servePkgsite runs the pkgsite documentation server bound to addr, serving the
+// module in the current working directory and streaming its output to rng,
+// until ctx is cancelled. It returns an error only when pkgsite exits before
+// ctx is done; a shutdown triggered by the caller cancelling ctx is not an
+// error.
+func servePkgsite(ctx context.Context, rng *ring.Ring, addr string) error {
+	cmd := exec.CommandContext(ctx, "pkgsite", "-http="+addr)
 	cmd.Stdout, cmd.Stderr = rng.Stdout(), rng.Stderr()
 	if err := cmd.Run(); err != nil && ctx.Err() == nil {
 		return err

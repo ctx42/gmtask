@@ -28,6 +28,8 @@ assembly, log-file naming) are also usable as a plain library.
 - **`:go:build`** — runs `go build`, injecting SCM revision, hash, working-tree
   state, build date, and CI id via `-ldflags` when the module is configured.
 - **`:go:doc`** — serves godoc and opens the current package in your browser.
+- **`:go:pkgsite`** — serves pkgsite and opens the current package in your
+  browser.
 - **Library helpers** — `ImpPath`, `InitModule`, `LDFlags`, `CovLogFilename`,
   and `TestLogFilename` for use outside the targets.
 
@@ -39,8 +41,10 @@ assembly, log-file naming) are also usable as a plain library.
   `:go:build` to read SCM metadata.
 - `golangci-lint` — auto-installed by `:go:lint` when missing or older than
   `v2.12.2`.
-- `godoc` and a browser opener (`xdg-open` on Linux, `open` on macOS) — only for
-  `:go:doc`.
+- A browser opener (`xdg-open` on Linux, `open` on macOS) — only for `:go:doc`
+  and `:go:pkgsite`.
+- `godoc` — only for `:go:doc`.
+- `pkgsite` — only for `:go:pkgsite`.
 
 ## Installation
 
@@ -81,6 +85,7 @@ gomake :go:lint         # golangci-lint run
 gomake :go:check        # vet, then lint, then test
 gomake :go:build        # go build with version metadata
 gomake :go:doc          # serve godoc and open the browser
+gomake :go:pkgsite      # serve pkgsite and open the browser
 ```
 
 ### Building with version metadata

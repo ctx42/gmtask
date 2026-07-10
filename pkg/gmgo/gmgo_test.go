@@ -812,6 +812,27 @@ func Test_Go_Doc(t *testing.T) {
 	})
 }
 
+func Test_Go_Pkgsite(t *testing.T) {
+	t.Run("error - not go project", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := Go{}.Pkgsite(ctx, rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, gomake.ErrNoGoMod, err)
+		assert.ErrorContain(t, prj.Root(), err)
+	})
+}
+
 func Test_serveDoc(t *testing.T) {
 	t.Run("error - godoc fails before context is done", func(t *testing.T) {
 		if _, err := exec.LookPath("godoc"); err == nil {
@@ -839,6 +860,39 @@ func Test_serveDoc(t *testing.T) {
 
 		// --- When ---
 		err := serveDoc(ctx, rng, addr)
+
+		// --- Then ---
+		assert.NoError(t, err)
+	})
+}
+
+func Test_servePkgsite(t *testing.T) {
+	t.Run("error - pkgsite fails before context is done", func(t *testing.T) {
+		if _, err := exec.LookPath("pkgsite"); err == nil {
+			t.Skip("pkgsite installed; launch-failure path not reachable")
+		}
+
+		// --- Given ---
+		ctx := context.Background()
+		rng := ringtest.New(t).Ring()
+		addr := "localhost:0"
+
+		// --- When ---
+		err := servePkgsite(ctx, rng, addr)
+
+		// --- Then ---
+		assert.Error(t, err)
+	})
+
+	t.Run("no error when context cancelled", func(t *testing.T) {
+		// --- Given ---
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		rng := ringtest.New(t).Ring()
+		addr := "localhost:0"
+
+		// --- When ---
+		err := servePkgsite(ctx, rng, addr)
 
 		// --- Then ---
 		assert.NoError(t, err)
