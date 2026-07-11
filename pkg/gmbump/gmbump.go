@@ -179,7 +179,10 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		}
 		return err
 	}
-	msg = "\nUse\n\tgo get %s@%s\nto update upstreams.\n"
+	msg = "" +
+		"\nUse\n" +
+		"\tgo get %s@%s\n" +
+		"to update upstreams.\n"
 	_, _ = fmt.Fprintf(rng.Stdout(), msg, mod, next.Original())
 
 	return nil
