@@ -39,7 +39,8 @@ assembly, log-file naming) are also usable as a plain library.
 
 - **`:go:vet`** — runs `go vet ./...`.
 - **`:go:lint`** — runs golangci-lint, auto-installing it and the config.
-- **`:go:test` / `:go:test-v`** — tests with race + coverage (`-v` verbose).
+- **`:go:test`** — tests with race and coverage.
+- **`:go:test-v`** — verbose tests with race and coverage.
 - **`:go:check`** — runs `:go:vet`, `:go:lint`, and `:go:test` in order.
 - **`:go:build`** — runs `go build`, injecting metadata via `-ldflags`.
 - **`:go:doc`** — serves godoc and opens the current package in your browser.
