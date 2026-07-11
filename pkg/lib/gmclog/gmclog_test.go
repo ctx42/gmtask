@@ -3,6 +3,7 @@ package gmclog
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -42,6 +43,17 @@ func Test_CreateFile(t *testing.T) {
 		// --- Given ---
 		fil := oskit.Create(t, "x", t.TempDir(), "file")
 		pth := filepath.Join(fil, "child")
+
+		// --- When ---
+		err := CreateFile(pth)
+
+		// --- Then ---
+		assert.Error(t, err)
+	})
+
+	t.Run("error - create fails", func(t *testing.T) {
+		// --- Given ---
+		pth := filepath.Join(t.TempDir(), "nope", "CHANGELOG.md")
 
 		// --- When ---
 		err := CreateFile(pth)
@@ -144,6 +156,39 @@ func Test_ReadReleases(t *testing.T) {
 			"- Change 3.",
 		}
 		assert.Equal(t, want, rel.Changes)
+	})
+
+	t.Run("error - changelog not found", func(t *testing.T) {
+		// --- When ---
+		cl, err := ReadReleases("testdata", "not_existing.md")
+
+		// --- Then ---
+		assert.ErrorIs(t, os.ErrNotExist, err)
+		assert.Nil(t, cl)
+	})
+
+	t.Run("error - invalid release header", func(t *testing.T) {
+		// --- Given ---
+		pth := oskit.Create(t, "## v0.1.0 (not-a-date)\n", t.TempDir(), "CL.md")
+
+		// --- When ---
+		cl, err := ReadReleases(pth)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrInvRelDate, err)
+		assert.Nil(t, cl)
+	})
+
+	t.Run("error - scan fails", func(t *testing.T) {
+		// --- Given ---
+		pth := oskit.Create(t, strings.Repeat("x", 70000), t.TempDir(), "CL.md")
+
+		// --- When ---
+		cl, err := ReadReleases(pth)
+
+		// --- Then ---
+		assert.ErrorContain(t, "scan changelog", err)
+		assert.Nil(t, cl)
 	})
 }
 
@@ -260,5 +305,17 @@ func Test_Changelog_Save(t *testing.T) {
 			"- Change 2.\n" +
 			"\n"
 		assert.Equal(t, want, oskit.ReadFileStr(t, pth))
+	})
+
+	t.Run("error - create fails", func(t *testing.T) {
+		// --- Given ---
+		pth := filepath.Join(t.TempDir(), "nope", "CHANGELOG.md")
+		cl := &Changelog{pth: pth}
+
+		// --- When ---
+		err := cl.Save()
+
+		// --- Then ---
+		assert.Error(t, err)
 	})
 }
