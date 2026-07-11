@@ -20,6 +20,7 @@ standalone Go packages you can import directly.
 | Package                            | Description                          |
 |------------------------------------|--------------------------------------|
 | [`pkg/gmgo`](pkg/gmgo)             | gomake targets for the Go workflow.  |
+| [`pkg/gmbump`](pkg/gmbump)         | The `:bump` release target.          |
 | [`pkg/lib/gmclog`](pkg/lib/gmclog) | Read/edit/write Markdown changelogs. |
 
 ## Gomake targets
@@ -42,6 +43,14 @@ The [`gmgo`](pkg/gmgo) package provides these targets, run as
 See the [`gmgo` README](pkg/gmgo) for flags, environment variables, and the
 library helpers.
 
+The [`gmbump`](pkg/gmbump) package provides the release target:
+
+| Target  | Description                                          |
+|---------|------------------------------------------------------|
+| `:bump` | Tags the next version, writes the changelog, pushes. |
+
+See the [`gmbump` README](pkg/gmbump) for the interactive flow and flags.
+
 ## Installation
 
 Add `gmgo` to the `targets.yaml` at your gomake source root, then rebuild the
@@ -50,13 +59,15 @@ binary so the targets are compiled in:
 ```yaml
 imports:
   - import: github.com/ctx42/gmtask/pkg/gmgo
+  - import: github.com/ctx42/gmtask/pkg/gmbump
 ```
 
 ```shell
 go run github.com/ctx42/gomake/cmd/install@latest --targets=./targets.yaml
 ```
 
-The `:go:*` targets are then available in every project the binary is used from.
+The `:go:*` and `:bump` targets are then available in every project the binary
+is used from.
 
 ## License
 

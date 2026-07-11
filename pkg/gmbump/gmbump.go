@@ -1,3 +1,13 @@
+// Package gmbump provides the gomake ":bump" target for releasing Go projects.
+//
+// The target proposes the next semantic version from the repository's latest
+// tag (minor bump by default, patch with -p), lets you confirm or override it,
+// prepends a CHANGELOG.md entry built from the commits since that tag, writes
+// the version to a VER file, then commits, tags, and pushes to origin.
+//
+// Import path:
+//
+//	import "github.com/ctx42/gmtask/pkg/gmbump"
 package gmbump
 
 import (
@@ -24,16 +34,19 @@ import (
 // StartSemVer represents the first semantic version used to tag the repo.
 const StartSemVer = "v0.0.0"
 
-var _ = semver.MustParse(StartSemVer) // Check is valid.
+var _ = semver.MustParse(StartSemVer) // Ensure StartSemVer is a valid semver.
 
-// Bump bumps repository version tag, generates changelog and pushes to origin.
-// It uses current working directory.
+// Bump runs the ":bump" target against the current working directory. It is the
+// entry point registered with gomake; see [BumpTarget] for the behavior.
 func Bump(ctx context.Context, rng *ring.Ring) error {
 	return BumpTarget(ctx, rng, "")
 }
 
-// BumpTarget bumps repository version tag, generates changelog and pushes to
-// origin.
+// BumpTarget bumps the version of the repository rooted at repo: it tags the
+// next semantic version, prepends a CHANGELOG.md entry built from the commits
+// since the previous tag, writes the version to a VER file, then commits, tags,
+// and pushes to origin. The empty string for repo means the current working
+// directory.
 func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	tgtName := ":bump"
 	fs := xflag.NewFlagSet(tgtName, flag.ContinueOnError)
@@ -61,9 +74,12 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		return gitaid.ErrNotClean
 	}
 
-	curr, next, err := getSemVer(ctx, rng, repo, "", fs.GetBool("patch"))
+	curr, next, skipped, err := getSemVer(ctx, repo, "", fs.GetBool("patch"))
 	if err != nil {
 		return err
+	}
+	for _, tag := range skipped {
+		_, _ = fmt.Fprintf(rng.Stdout(), "Skipping tag: %q\n", tag)
 	}
 	var curStr string // String representation of the current semantic version.
 	if curr != nil {
@@ -129,7 +145,7 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	_, _ = fmt.Fprint(rng.Stdout(), "Continuing.\n")
 
 	pth = filepath.Join(repo, "VER")
-	if err = os.WriteFile(pth, []byte(next.Original()), 0600); err != nil {
+	if err = os.WriteFile(pth, []byte(next.Original()), 0o600); err != nil {
 		return err
 	}
 
@@ -169,40 +185,38 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	return nil
 }
 
-// getSemVer proposes the next semver tag based on current repository status.
-// It returns current SemVer tag (nil if none) and proposal for next SemVer. In
-// most cases you want to set startRev to empty string but if you need to start
-// searching for specific revision set startRev.
+// getSemVer proposes the next semver tag based on current repository status. It
+// returns the current SemVer tag (nil if none), the proposal for the next
+// SemVer, and the tags skipped because they are not valid semantic versions. In
+// most cases you want to set startRev to the empty string, but to start
+// searching from a specific revision set startRev.
 //
-// When `bumpPatch` is true the fix version will be increased instead of minor.
+// When bumpPatch is true the patch version is increased instead of the minor.
 func getSemVer(
 	ctx context.Context,
-	rng *ring.Ring,
 	repo string,
 	startRev string,
 	bumpPatch bool,
-) (*semver.Version, *semver.Version, error) {
+) (*semver.Version, *semver.Version, []string, error) {
 
 	rev, err := gitaid.ClosestTag(ctx, repo, startRev)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	if rev == "" {
-		return nil, semver.MustParse(StartSemVer), nil
+		return nil, semver.MustParse(StartSemVer), nil, nil
 	}
 
 	ver, err := semver.NewVersion(rev)
 	if err != nil {
-		if rev != startRev {
-			_, _ = fmt.Fprintf(rng.Stdout(), "Skipping tag: %q\n", rev)
-		}
 		if rev == startRev {
 			// The [gitaid.ClosestTag] returned the same rev as the startRev
 			// which means this is the only (not valid semver) tagged commit
 			// in the repository.
-			return nil, semver.MustParse(StartSemVer), nil
+			return nil, semver.MustParse(StartSemVer), nil, nil
 		}
-		return getSemVer(ctx, rng, repo, rev, bumpPatch)
+		curr, next, skipped, err := getSemVer(ctx, repo, rev, bumpPatch)
+		return curr, next, append([]string{rev}, skipped...), err
 	}
 
 	var ret semver.Version
@@ -211,5 +225,5 @@ func getSemVer(
 	} else {
 		ret = ver.IncMinor()
 	}
-	return ver, &ret, nil
+	return ver, &ret, nil, nil
 }

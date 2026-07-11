@@ -3,9 +3,11 @@ package gmbump
 import (
 	"bytes"
 	"context"
+	"io"
 	"path/filepath"
 	"testing"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/ctx42/gitaid/pkg/gitaid"
 	"github.com/ctx42/ring/pkg/ring/ringtest"
 	"github.com/ctx42/testing/pkg/assert"
@@ -16,8 +18,81 @@ import (
 	"github.com/ctx42/gmtask/pkg/lib/gmclog"
 )
 
+func Test_Bump(t *testing.T) {
+	t.Run("bumps the current working directory", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		sin := bytes.NewBufferString("\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+		prj.Chdir()
+		defer prj.ChdirBack()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := Bump(ctx, rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+
+		want := "" +
+			"Current tag: \n" +
+			"Enter a version number [v0.0.0]: " +
+			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
+			"Continuing.\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.Equal(t, "v0.0.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+
+		cl := must.Value(gmclog.ReadReleases(prj.Root(), "CHANGELOG.md"))
+		assert.Len(t, 1, cl.Releases)
+		assert.Equal(t, "v0.0.0", cl.Releases[0].Version.Original())
+	})
+}
+
 func Test_BumpTarget(t *testing.T) {
-	t.Run("not git repo", func(t *testing.T) {
+	t.Run("help flag", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t).WetStderr()
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+
+		rng := tst.Ring("-h")
+
+		// --- When ---
+		err := BumpTarget(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "Usage of :bump:", tst.Stderr())
+	})
+
+	t.Run("error - invalid flag", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t).WetStderr()
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+
+		rng := tst.Ring("-nope")
+
+		// --- When ---
+		err := BumpTarget(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorContain(t, "flag provided but not defined", err)
+		assert.Contain(t, "Usage of :bump:", tst.Stderr())
+	})
+
+	t.Run("error - not git repo", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
 		tst := ringtest.New(t)
@@ -34,7 +109,7 @@ func Test_BumpTarget(t *testing.T) {
 		assert.ErrorIs(t, gitaid.ErrNotRepo, err)
 	})
 
-	t.Run("repo has uncommitted changes", func(t *testing.T) {
+	t.Run("error - repo has uncommitted changes", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
 		tst := ringtest.New(t)
@@ -54,7 +129,7 @@ func Test_BumpTarget(t *testing.T) {
 		assert.ErrorIs(t, gitaid.ErrNotClean, err)
 	})
 
-	t.Run("repo has untracked files", func(t *testing.T) {
+	t.Run("error - repo has untracked files", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
 		tst := ringtest.New(t)
@@ -468,6 +543,82 @@ func Test_BumpTarget(t *testing.T) {
 		assert.Equal(t, "- commit 2.", rel.Changes[0])
 	})
 
+	t.Run("error - EOF reading version", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		sin := bytes.NewBufferString("")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := BumpTarget(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, io.EOF, err)
+
+		want := "" +
+			"Current tag: \n" +
+			"Enter a version number [v0.0.0]: "
+		assert.Equal(t, want, tst.Stdout())
+	})
+
+	t.Run("error - invalid version input", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		sin := bytes.NewBufferString("not-a-version\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := BumpTarget(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, semver.ErrInvalidSemVer, err)
+
+		want := "" +
+			"Current tag: \n" +
+			"Enter a version number [v0.0.0]: "
+		assert.Equal(t, want, tst.Stdout())
+	})
+
+	t.Run("error - EOF reading continue", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		sin := bytes.NewBufferString("\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := BumpTarget(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, io.EOF, err)
+
+		want := "" +
+			"Current tag: \n" +
+			"Enter a version number [v0.0.0]: " +
+			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n"
+		assert.Equal(t, want, tst.Stdout())
+	})
+
 	t.Run("changelog is written in reverse", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
@@ -520,92 +671,82 @@ func Test_BumpTarget(t *testing.T) {
 }
 
 func Test_getSemVer(t *testing.T) {
-	t.Run("not git repo", func(t *testing.T) {
+	t.Run("error - not git repo", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
-		tst := ringtest.New(t)
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		curr, next, err := getSemVer(ctx, rng, prj.Root(), "", false)
+		curr, next, skipped, err := getSemVer(ctx, prj.Root(), "", false)
 
 		// --- Then ---
 		assert.ErrorIs(t, gitaid.ErrNotRepo, err)
 		assert.Empty(t, curr)
 		assert.Nil(t, next)
+		assert.Nil(t, skipped)
 	})
 
 	t.Run("empty git repo", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
-		tst := ringtest.New(t)
 
 		prj := gmtest.NewProject(t)
 		prj.Exe("git", "init")
 		prj.Close()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		curr, next, err := getSemVer(ctx, rng, prj.Root(), "", false)
+		curr, next, skipped, err := getSemVer(ctx, prj.Root(), "", false)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Empty(t, curr)
 		assert.Equal(t, StartSemVer, next.Original())
+		assert.Empty(t, skipped)
 	})
 
 	t.Run("one commit no tags", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
-		tst := ringtest.New(t)
 
 		prj := gmtest.NewProject(t)
 		prj.CreateFileWith("file0 1", "file0.txt")
 		prj.GitInitAddAll()
 		prj.Close()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		curr, next, err := getSemVer(ctx, rng, prj.Root(), "", false)
+		curr, next, skipped, err := getSemVer(ctx, prj.Root(), "", false)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Empty(t, curr)
 		assert.Equal(t, StartSemVer, next.Original())
+		assert.Empty(t, skipped)
 	})
 
 	t.Run("one commit with invalid tag", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
-		tst := ringtest.New(t).WetStdout()
 
 		prj := gmtest.NewProject(t)
 		prj.CreateFileWith("file0 1", "file0.txt")
 		prj.GitInitAddAll("not-sem-ver")
 		prj.Close()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		curr, next, err := getSemVer(ctx, rng, prj.Root(), "", false)
+		curr, next, skipped, err := getSemVer(ctx, prj.Root(), "", false)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Nil(t, curr)
 		assert.Equal(t, StartSemVer, next.Original())
-		assert.Equal(t, "Skipping tag: \"not-sem-ver\"\n", tst.Stdout())
+		assert.Equal(t, []string{"not-sem-ver"}, skipped)
 	})
 
 	t.Run("one commit after invalid tag", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
-		tst := ringtest.New(t).WetStdout()
 
 		prj := gmtest.NewProject(t)
 		prj.CreateFileWith("file0 0", "file0.txt")
@@ -616,22 +757,19 @@ func Test_getSemVer(t *testing.T) {
 		prj.GitCommit("")
 		prj.Close()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		curr, next, err := getSemVer(ctx, rng, prj.Root(), "", false)
+		curr, next, skipped, err := getSemVer(ctx, prj.Root(), "", false)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Empty(t, curr)
 		assert.Equal(t, StartSemVer, next.Original())
-		assert.Equal(t, "Skipping tag: \"not-sem-ver\"\n", tst.Stdout())
+		assert.Equal(t, []string{"not-sem-ver"}, skipped)
 	})
 
 	t.Run("HEAD tagged", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
-		tst := ringtest.New(t)
 
 		prj := gmtest.NewProject(t)
 		prj.CreateFileWith("file0 0", "file0.txt")
@@ -642,21 +780,19 @@ func Test_getSemVer(t *testing.T) {
 		prj.GitCommit("v0.1.0")
 		prj.Close()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		curr, next, err := getSemVer(ctx, rng, prj.Root(), "", false)
+		curr, next, skipped, err := getSemVer(ctx, prj.Root(), "", false)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, "v0.1.0", curr.Original())
 		assert.Equal(t, "v0.2.0", next.Original())
+		assert.Empty(t, skipped)
 	})
 
 	t.Run("one commit after tag", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
-		tst := ringtest.New(t)
 
 		prj := gmtest.NewProject(t)
 		prj.CreateFileWith("file0 1", "file0.txt")
@@ -669,35 +805,32 @@ func Test_getSemVer(t *testing.T) {
 		prj.GitCommit("")
 		prj.Close()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		curr, next, err := getSemVer(ctx, rng, prj.Root(), "", false)
+		curr, next, skipped, err := getSemVer(ctx, prj.Root(), "", false)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, "v0.1.0", curr.Original())
 		assert.Equal(t, "v0.2.0", next.Original())
+		assert.Empty(t, skipped)
 	})
 
 	t.Run("bump patch version", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
-		tst := ringtest.New(t)
 
 		prj := gmtest.NewProject(t)
 		prj.CreateFileWith("file0 1", "file0.txt")
 		prj.GitInitAddAll("v0.1.0")
 		prj.Close()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		curr, next, err := getSemVer(ctx, rng, prj.Root(), "", true)
+		curr, next, skipped, err := getSemVer(ctx, prj.Root(), "", true)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, "v0.1.0", curr.Original())
 		assert.Equal(t, "v0.1.1", next.Original())
+		assert.Empty(t, skipped)
 	})
 }
