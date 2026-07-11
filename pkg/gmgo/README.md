@@ -4,6 +4,24 @@ Ready-made [gomake](https://github.com/ctx42/gomake) targets for Go projects —
 vet, lint, test, build, and serve docs — shared across every repo from one
 binary.
 
+<!-- TOC -->
+* [gmgo](#gmgo)
+  * [Overview](#overview)
+  * [Features](#features)
+  * [Prerequisites](#prerequisites)
+  * [Installation](#installation)
+    * [As built-in gomake targets](#as-built-in-gomake-targets)
+    * [As per-project targets](#as-per-project-targets)
+  * [Usage](#usage)
+    * [Building with version metadata](#building-with-version-metadata)
+    * [Test reports](#test-reports)
+    * [Linting config](#linting-config)
+    * [Use as a library](#use-as-a-library)
+  * [Configuration](#configuration)
+    * [gomake.yaml](#gomakeyaml)
+    * [Environment variables](#environment-variables)
+<!-- TOC -->
+
 ## Overview
 
 `gmgo` packages the routine Go development commands as gomake targets. Instead
@@ -20,31 +38,22 @@ assembly, log-file naming) are also usable as a plain library.
 ## Features
 
 - **`:go:vet`** — runs `go vet ./...`.
-- **`:go:lint`** — runs golangci-lint, installing the binary and fetching the
-  shared config first if needed.
-- **`:go:test` / `:go:test-v`** — runs tests with the race detector and
-  coverage, writing coverage and run logs (verbose variant adds `-v`).
+- **`:go:lint`** — runs golangci-lint, auto-installing it and the config.
+- **`:go:test` / `:go:test-v`** — tests with race + coverage (`-v` verbose).
 - **`:go:check`** — runs `:go:vet`, `:go:lint`, and `:go:test` in order.
-- **`:go:build`** — runs `go build`, injecting SCM revision, hash, working-tree
-  state, build date, and CI id via `-ldflags` when the module is configured.
+- **`:go:build`** — runs `go build`, injecting metadata via `-ldflags`.
 - **`:go:doc`** — serves godoc and opens the current package in your browser.
-- **`:go:pkgsite`** — serves pkgsite and opens the current package in your
-  browser.
-- **Library helpers** — `ImpPath`, `InitModule`, `LDFlags`, `CovLogFilename`,
-  and `TestLogFilename` for use outside the targets.
+- **`:go:pkgsite`** — serves pkgsite and opens the current package.
+- **Library helpers** — `ImpPath`, `InitModule`, `LDFlags`, and more.
 
 ## Prerequisites
 
-- Go 1.26 or newer.
 - [gomake](https://github.com/ctx42/gomake) — the binary that hosts the targets.
-- `git` — used by `:go:lint:config` to fetch the shared config and by
-  `:go:build` to read SCM metadata.
-- `golangci-lint` — auto-installed by `:go:lint` when missing or older than
-  `v2.12.2`.
-- A browser opener (`xdg-open` on Linux, `open` on macOS) — only for `:go:doc`
-  and `:go:pkgsite`.
-- `godoc` — only for `:go:doc`.
-- `pkgsite` — only for `:go:pkgsite`.
+- `git`.
+- `golangci-lint` `v2.12.2` or newer (auto-installed if missing).
+- A browser opener (`xdg-open` on Linux, `open` on macOS).
+- `godoc`.
+- `pkgsite`.
 
 ## Installation
 
@@ -65,13 +74,27 @@ go run github.com/ctx42/gomake/cmd/install@latest --targets=./targets.yaml
 
 The `:go:*` targets are now available in every project the binary is used from.
 
-### As a library
+### As per-project targets
 
-To use the exported helpers directly:
+Pull `gmgo` into one project without rebuilding the binary. Add it to the
+project's module, then import it in `makefile.go` with a `//gomake:import`
+comment (the blank identifier is required):
 
 ```shell
 go get github.com/ctx42/gmtask/pkg/gmgo
 ```
+
+```go
+//go:build gomake
+
+package main
+
+import (
+	_ "github.com/ctx42/gmtask/pkg/gmgo" //gomake:import
+)
+```
+
+The `:go:*` targets are now available in that project only.
 
 ## Usage
 
@@ -165,7 +188,13 @@ gomake :go:lint:config -dir tmp # to a specific directory
 Pin the golangci-lint version and the config file name in `gomake.yaml` — see
 [Configuration](#configuration).
 
-### As a library
+### Use as a library
+
+Add the module to your project:
+
+```shell
+go get github.com/ctx42/gmtask/pkg/gmgo
+```
 
 The helpers are ordinary functions — useful when writing your own targets or
 tooling:
@@ -211,10 +240,10 @@ version: 1
 targets:
   github.com/ctx42/gmtask/pkg/gmgo:
     go:
-      timeout: 5m            # go test -timeout; default: the go tool default.
+      timeout: 5m           # go test -timeout; default: the go tool default.
       lint:
-        version: v2.12.2     # golangci-lint version to install; default: latest.
-        file: .golangci.yml  # shared config file name; default: .golangci.yml.
+        version: v2.12.2    # golangci-lint version to install; default: latest.
+        file: .golangci.yml # shared config file name; default: .golangci.yml.
 ```
 
 A target receives the block from the nearest level on its path — so `:go:build`
@@ -227,11 +256,11 @@ node's block (`timeout` only), so `go.lint`'s `version` and `file` are not
 applied during a check. Run `:go:lint`, `:go:lint:install`, or `:go:lint:config`
 directly to exercise lint configuration.
 
-| Node   | Key       | Meaning                              | Default          | Shared by                         |
-|--------|-----------|--------------------------------------|------------------|-----------------------------------|
-| `lint` | `version` | golangci-lint version installed      | `latest`         | `:go:lint`, `:install`            |
-| `lint` | `file`    | shared config file fetched + written | `.golangci.yml`  | `:go:lint`, `:config`             |
-| `go`   | `timeout` | `go test -timeout` value             | go tool default  | `:go:test`, `:test-v`, `:check`   |
+| Node   | Key       | Meaning                              | Default         |
+|--------|-----------|--------------------------------------|-----------------|
+| `lint` | `version` | golangci-lint version installed      | `latest`        |
+| `lint` | `file`    | shared config file fetched + written | `.golangci.yml` |
+| `go`   | `timeout` | `go test -timeout` value             | go tool default |
 
 ### Environment variables
 

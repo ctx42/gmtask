@@ -3,6 +3,20 @@
 Read, edit, and write Markdown changelog files from Go — semantic-version aware,
 with releases kept in order.
 
+<!-- TOC -->
+* [gmclog](#gmclog)
+  * [Overview](#overview)
+  * [Features](#features)
+  * [Prerequisites](#prerequisites)
+  * [Installation](#installation)
+  * [Usage](#usage)
+    * [Build and render a release](#build-and-render-a-release)
+    * [Prepend a release to a changelog file](#prepend-a-release-to-a-changelog-file)
+    * [Parse existing releases](#parse-existing-releases)
+    * [Parse a single header line](#parse-a-single-header-line)
+    * [Preserve change lines verbatim](#preserve-change-lines-verbatim)
+<!-- TOC -->
+
 ## Overview
 
 `gmclog` treats a changelog as a sequence of releases. Each release is a

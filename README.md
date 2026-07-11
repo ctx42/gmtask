@@ -8,6 +8,15 @@
 Reusable [gomake](https://github.com/ctx42/gomake) targets and supporting
 libraries for Go projects.
 
+<!-- TOC -->
+* [gmtask](#gmtask)
+  * [Overview](#overview)
+  * [Packages](#packages)
+  * [Gomake targets](#gomake-targets)
+  * [Installation](#installation)
+  * [License](#license)
+<!-- TOC -->
+
 ## Overview
 
 `gmtask` is a collection of Go packages that standardize routine project work.
@@ -25,31 +34,24 @@ standalone Go packages you can import directly.
 
 ## Gomake targets
 
-The [`gmgo`](pkg/gmgo) package provides these targets, run as
-`gomake :go:<name>` once it is compiled into the binary:
+The [`gmgo`](pkg/gmgo) and [`gmbump`](pkg/gmbump) packages provide these
+targets, run as `gomake :<name>` once compiled into the binary:
 
-| Target             | Description                                     |
-|--------------------|-------------------------------------------------|
-| `:go:vet`          | Runs `go vet ./...`.                            |
-| `:go:lint`         | Runs golangci-lint (auto-installs it + config). |
-| `:go:lint:install` | Installs the latest golangci-lint.              |
-| `:go:lint:config`  | Downloads the shared `.golangci.yml`.           |
-| `:go:test`         | Tests with race detector and coverage.          |
-| `:go:test-v`       | Same as `:go:test`, verbose.                    |
-| `:go:check`        | Runs vet, lint, and test in order.              |
-| `:go:build`        | Builds with version metadata via `-ldflags`.    |
-| `:go:doc`          | Serves godoc and opens the browser.             |
+| Target             | Description                                          |
+|--------------------|------------------------------------------------------|
+| `:go:vet`          | Runs `go vet ./...`.                                 |
+| `:go:lint`         | Runs golangci-lint (auto-installs it + config).      |
+| `:go:lint:install` | Installs the latest golangci-lint.                   |
+| `:go:lint:config`  | Downloads the shared `.golangci.yml`.                |
+| `:go:test`         | Tests with race detector and coverage.               |
+| `:go:test-v`       | Same as `:go:test`, verbose.                         |
+| `:go:check`        | Runs vet, lint, and test in order.                   |
+| `:go:build`        | Builds with version metadata via `-ldflags`.         |
+| `:go:doc`          | Serves godoc and opens the browser.                  |
+| `:bump`            | Tags the next version, writes the changelog, pushes. |
 
-See the [`gmgo` README](pkg/gmgo) for flags, environment variables, and the
-library helpers.
-
-The [`gmbump`](pkg/gmbump) package provides the release target:
-
-| Target  | Description                                          |
-|---------|------------------------------------------------------|
-| `:bump` | Tags the next version, writes the changelog, pushes. |
-
-See the [`gmbump` README](pkg/gmbump) for the interactive flow and flags.
+See the [`gmgo`](pkg/gmgo) and [`gmbump`](pkg/gmbump) READMEs for flags,
+environment variables, the interactive flow, and library helpers.
 
 ## Installation
 

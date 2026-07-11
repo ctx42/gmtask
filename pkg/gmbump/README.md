@@ -3,6 +3,18 @@
 The [gomake](https://github.com/ctx42/gomake) `:bump` target — tag the next
 release, write its changelog, and push, in one command.
 
+<!-- TOC -->
+* [gmbump](#gmbump)
+  * [Overview](#overview)
+  * [Features](#features)
+  * [Prerequisites](#prerequisites)
+  * [Installation](#installation)
+    * [As a built-in gomake target](#as-a-built-in-gomake-target)
+    * [As a per-project target](#as-a-per-project-target)
+  * [Usage](#usage)
+    * [Use as a library](#use-as-a-library)
+<!-- TOC -->
+
 ## Overview
 
 `gmbump` releases a Go project in a single step. It reads the repository's
@@ -17,22 +29,15 @@ exported `Bump` and `BumpTarget` functions are also usable as a plain library.
 
 ## Features
 
-- **Automatic version proposal** — bumps the minor of the latest tag by
-  default, or the patch with `-p`; starts at `v0.0.0` for an untagged repo.
-- **Interactive confirmation** — accept the proposed version or type your own;
-  a missing `v` prefix is added for you.
-- **Changelog generation** — prepends a dated release built from the commit
-  subjects since the last tag, then pauses so you can edit it.
-- **Clean-tree guard** — refuses to run when the working tree has uncommitted
-  or untracked changes.
-- **Skips non-semver tags** — walks back past tags that are not valid semantic
-  versions.
-- **Go-module aware** — prints the `go get module@version` hint after releasing
-  a module.
+- **Automatic version proposal** — the next minor, or patch with `-p`.
+- **Interactive confirmation** — accept the proposal or type your own version.
+- **Changelog generation** — a dated release from commits, ready to edit.
+- **Clean-tree guard** — refuses to run when the working tree is dirty.
+- **Skips non-semver tags** — walks back past tags that aren't valid semver.
+- **Go-module aware** — prints a `go get module@version` upgrade hint.
 
 ## Prerequisites
 
-- Go 1.26 or newer.
 - [gomake](https://github.com/ctx42/gomake) — the binary that hosts the target.
 - `git` — used to read tags and to commit, tag, and push the release.
 
@@ -55,11 +60,28 @@ go run github.com/ctx42/gomake/cmd/install@latest --targets=./targets.yaml
 
 The `:bump` target is now available in every project the binary is used from.
 
-### As a library
+### As a per-project target
+
+Pull `gmbump` into one project without rebuilding the binary. Add it to the
+project's module, then import it in `makefile.go` with a `//gomake:import`
+comment (the blank identifier is required):
 
 ```shell
 go get github.com/ctx42/gmtask/pkg/gmbump
 ```
+
+```go
+//go:build gomake
+
+package main
+
+import (
+	_ "github.com/ctx42/gmtask/pkg/gmbump" //gomake:import
+)
+```
+
+`:bump` is now available in that project only. Add a namespace prefix — e.g.
+`//gomake:import release` — to expose it as `:release:bump` instead.
 
 ## Usage
 
@@ -99,7 +121,13 @@ Use
 to update upstreams.
 ```
 
-### As a library
+### Use as a library
+
+Add the module to your project:
+
+```shell
+go get github.com/ctx42/gmtask/pkg/gmbump
+```
 
 Both entry points take the gomake `*ring.Ring` for I/O and environment access.
 `Bump` operates on the current working directory; `BumpTarget` takes an explicit
