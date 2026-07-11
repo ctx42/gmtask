@@ -387,7 +387,7 @@ var buildVarNames = []string{
 	xdef.VarScmRev,
 	xdef.VarScmHash,
 	xdef.VarScmState,
-	xdef.VarCcid,
+	xdef.VarCCID,
 }
 
 // Build runs "go build", injecting build metadata via "-ldflags -X" when the
@@ -465,7 +465,7 @@ func buildValues(ctx context.Context, rng *ring.Ring) map[string]string {
 		xdef.VarScmRev:    gitOr(rev, revErr, xdef.PhRev),
 		xdef.VarScmHash:   gitOr(hash, hashErr, xdef.PhHash),
 		xdef.VarScmState:  gitOr(state, stateErr, xdef.PhUnknown),
-		xdef.VarCcid:      ccid,
+		xdef.VarCCID:      ccid,
 	}
 }
 

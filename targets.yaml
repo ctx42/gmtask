@@ -1,0 +1,12 @@
+# External gomake targets compiled into the binary.
+#
+# Point gomake at this file to build a binary with gmtask's own targets:
+#
+#   go run github.com/ctx42/gomake/cmd/install@latest --targets=./targets.yaml
+#
+# Each entry names a target package by its Go import path. Optional per-entry
+# keys: "namespace" (prefixes the package's target names) and "config".
+imports:
+  - import: github.com/ctx42/gmtask/pkg/gmgo   # :go:* targets.
+  - import: github.com/ctx42/gmtask/pkg/gmbump # :bump target.
+  - import: github.com/ctx42/gmtask/pkg/gmprj  # :project:* targets.

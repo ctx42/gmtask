@@ -14,3 +14,16 @@ func NewProject(t tester.T, opts ...func(*prjkit.Project)) *prjkit.Project {
 	dir := oskit.MkdirAll(t, t.TempDir(), "project")
 	return prjkit.New(t, dir, opts...)
 }
+
+// NewNamedProject creates a temporary directory for a test project using name
+// as the directory basename.
+func NewNamedProject(
+	t tester.T,
+	name string,
+	opts ...func(*prjkit.Project),
+) *prjkit.Project {
+
+	t.Helper()
+	dir := oskit.MkdirAll(t, t.TempDir(), name)
+	return prjkit.New(t, dir, opts...)
+}

@@ -1,0 +1,52 @@
+{
+  "structure": {
+    ".editorconfig": {
+      "content": "root = true\n\n[*]\ncharset = utf-8\nend_of_line = lf\nindent_style = space\nindent_size = 4\ninsert_final_newline = true\ntrim_trailing_whitespace = true\n\n[*.go]\nindent_style = tab\n\n[{*.yaml,*.yml}]\nindent_size = 2\n\n[*.md]\nmax_line_length = 80\n",
+      "type": "file"
+    },
+    ".gitignore": {
+      "content": "# Editor / IDE\n.idea/\n.vscode/\n\n# Go build / test artifacts\n*.test\n*.test.*\n*.out\n*.html\ncoverage.*\n\n# Project temp / build / release\ntmp/\ndist/\nbin/\n\n# Go workspace (not used by this module)\ngo.work\ngo.work.sum\n\n# OS / editor noise\n.DS_Store\n*~\n*.swp\n*.swo\n",
+      "feature": "git",
+      "type": "file"
+    },
+    "README.md": {
+      "content": "",
+      "type": "file"
+    },
+    "build": {
+      "type": "dir"
+    },
+    "cmd": {
+      "type": "dir"
+    },
+    "configs": {
+      "project.conf": {
+        "content": "",
+        "type": "file"
+      },
+      "type": "dir"
+    },
+    "dev": {
+      "idea": {
+        "go-test-all.run.xml": {
+          "content": "<component name=\"ProjectRunConfigurationManager\">\n  <configuration default=\"false\" name=\"go test all\" type=\"GoTestRunConfiguration\" factoryName=\"Go Test\">\n    <module name=\"{{.ProjectName}}\" />\n    <working_directory value=\"$PROJECT_DIR$\" />\n    <go_parameters value=\"-count 1 -race\" />\n    <kind value=\"DIRECTORY\" />\n    <directory value=\"$PROJECT_DIR$\" />\n    <filePath value=\"$PROJECT_DIR$\" />\n    <framework value=\"gotest\" />\n    <method v=\"2\" />\n  </configuration>\n</component>\n",
+          "type": "file"
+        },
+        "type": "dir"
+      },
+      "type": "dir"
+    },
+    "dist": {
+      "type": "dir"
+    },
+    "doc": {
+      "type": "dir"
+    },
+    "pkg": {
+      "type": "dir"
+    },
+    "tmp": {
+      "type": "dir"
+    }
+  }
+}

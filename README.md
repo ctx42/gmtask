@@ -28,8 +28,9 @@ standalone Go packages you can import directly.
 
 ## Targets
 
-The [`gmgo`](pkg/gmgo) and [`gmbump`](pkg/gmbump) packages provide gomake
-targets, run as `gomake :<name>` once compiled into the binary:
+The [`gmgo`](pkg/gmgo), [`gmbump`](pkg/gmbump), and [`gmprj`](pkg/gmprj)
+packages provide gomake targets, run as `gomake :<name>` once compiled into the
+binary:
 
 | Target             | Description                                          |
 |--------------------|------------------------------------------------------|
@@ -43,9 +44,13 @@ targets, run as `gomake :<name>` once compiled into the binary:
 | `:go:build`        | Builds with version metadata via `-ldflags`.         |
 | `:go:doc`          | Serves godoc and opens the browser.                  |
 | `:bump`            | Tags the next version, writes the changelog, pushes. |
+| `:project:setup`   | Scaffold a new Go project and init module + git.     |
+| `:project:env`     | Print project info as `KEY=value` env variables.     |
+| `:project:info`    | Print the same information in a readable form.       |
 
-See the [`gmgo`](pkg/gmgo) and [`gmbump`](pkg/gmbump) READMEs for flags,
-environment variables, the interactive flow, and library helpers.
+See the [`gmgo`](pkg/gmgo), [`gmbump`](pkg/gmbump), and [`gmprj`](pkg/gmprj)
+READMEs for flags, environment variables, the interactive flow, and library
+helpers.
 
 ## Libraries
 
@@ -64,14 +69,15 @@ rebuild the binary so the targets are compiled in:
 imports:
   - import: github.com/ctx42/gmtask/pkg/gmgo
   - import: github.com/ctx42/gmtask/pkg/gmbump
+  - import: github.com/ctx42/gmtask/pkg/gmprj
 ```
 
 ```shell
 go run github.com/ctx42/gomake/cmd/install@latest --targets=./targets.yaml
 ```
 
-The `:go:*` and `:bump` targets are then available in every project the binary
-is used from.
+The `:go:*`, `:bump`, and `:project:*` targets are then available in every
+project the binary is used from.
 
 ### As per-project targets
 
@@ -80,7 +86,7 @@ the project's module, then import them in `makefile.go` with `//gomake:import`
 comments (the blank identifier is required):
 
 ```shell
-go get github.com/ctx42/gmtask/pkg/gmgo github.com/ctx42/gmtask/pkg/gmbump
+go get github.com/ctx42/gmtask/pkg/gmgo github.com/ctx42/gmtask/pkg/gmbump github.com/ctx42/gmtask/pkg/gmprj
 ```
 
 ```go
@@ -91,10 +97,12 @@ package main
 import (
 	_ "github.com/ctx42/gmtask/pkg/gmgo"   //gomake:import
 	_ "github.com/ctx42/gmtask/pkg/gmbump" //gomake:import
+	_ "github.com/ctx42/gmtask/pkg/gmprj"  //gomake:import
 )
 ```
 
-The `:go:*` and `:bump` targets are then available in that project only.
+The `:go:*`, `:bump`, and `:project:*` targets are then available in that
+project only.
 
 ## License
 

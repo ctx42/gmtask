@@ -1054,7 +1054,7 @@ func Test_Go_Build(t *testing.T) {
 					xdef.VarScmRev:    "ScmRev",
 					xdef.VarScmHash:   "ScmHash",
 					xdef.VarScmState:  "ScmWDState",
-					xdef.VarCcid:      "CCTag",
+					xdef.VarCCID:      "CCTag",
 				},
 			},
 		})
@@ -1166,7 +1166,7 @@ func Test_Go_Build(t *testing.T) {
 					xdef.VarScmRev:   "ScmRev",
 					xdef.VarScmHash:  "ScmHash",
 					xdef.VarScmState: "ScmWDState",
-					xdef.VarCcid:     "CCTag",
+					xdef.VarCCID:     "CCTag",
 				},
 			},
 		})
@@ -1435,7 +1435,7 @@ func Test_buildValues(t *testing.T) {
 		assert.Equal(t, xdef.PhRev, have[xdef.VarScmRev])
 		assert.Equal(t, xdef.PhHash, have[xdef.VarScmHash])
 		assert.Equal(t, xdef.PhUnknown, have[xdef.VarScmState])
-		assert.Equal(t, xdef.PhUnknown, have[xdef.VarCcid])
+		assert.Equal(t, xdef.PhUnknown, have[xdef.VarCCID])
 		assert.NotEmpty(t, have[xdef.VarBuildDate])
 	})
 
@@ -1458,7 +1458,7 @@ func Test_buildValues(t *testing.T) {
 
 		// --- Then ---
 		assert.Equal(t, "2000-01-02T03:04:05Z", have[xdef.VarBuildDate])
-		assert.Equal(t, "job-42", have[xdef.VarCcid])
+		assert.Equal(t, "job-42", have[xdef.VarCCID])
 		assert.Equal(t, "v1.2.3", have[xdef.VarScmRev])
 		assert.Equal(t, cm.Hash, have[xdef.VarScmHash])
 		assert.Equal(t, "clean", have[xdef.VarScmState])

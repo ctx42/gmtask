@@ -1,0 +1,112 @@
+# Example gomake.yaml for the gmprj :project:setup target.
+#
+# Copy the "structure" block into your project's gomake.yaml to control the
+# layout :project:setup scaffolds. The block is keyed by the target's home
+# package (github.com/ctx42/gmtask/pkg/gmprj) — not by your own module path.
+#
+# The "structure" block declares the directory and file tree the target
+# scaffolds. gomake delivers this block to the target as JSON; setup creates
+# each node, rendering file "content" as a text/template with the project
+# variables (.ProjectName, .Module, .Package, .Origin, .Repo).
+#
+# A node is a "file" or a "dir". A directory nests its children under keys
+# other than the reserved attribute keys (type, content, mode, feature). A
+# file's content is optional; an absent mode uses the default permission; an
+# absent feature is the always-created base.
+version: 1
+
+targets:
+  github.com/ctx42/gmtask/pkg/gmprj:
+    structure:
+      build:
+        type: dir
+      cmd:
+        type: dir
+      configs:
+        type: dir
+        project.conf:
+          type: file
+          content: ""
+      dev:
+        type: dir
+        idea:
+          type: dir
+          go-test-all.run.xml:
+            type: file
+            content: |
+              <component name="ProjectRunConfigurationManager">
+                <configuration default="false" name="go test all" type="GoTestRunConfiguration" factoryName="Go Test">
+                  <module name="{{.ProjectName}}" />
+                  <working_directory value="$PROJECT_DIR$" />
+                  <go_parameters value="-count 1 -race" />
+                  <kind value="DIRECTORY" />
+                  <directory value="$PROJECT_DIR$" />
+                  <filePath value="$PROJECT_DIR$" />
+                  <framework value="gotest" />
+                  <method v="2" />
+                </configuration>
+              </component>
+
+      dist:
+        type: dir
+      doc:
+        type: dir
+      pkg:
+        type: dir
+      tmp:
+        type: dir
+      README.md:
+        type: file
+        content: ""
+      .editorconfig:
+        type: file
+        content: |
+          root = true
+
+          [*]
+          charset = utf-8
+          end_of_line = lf
+          indent_style = space
+          indent_size = 4
+          insert_final_newline = true
+          trim_trailing_whitespace = true
+
+          [*.go]
+          indent_style = tab
+
+          [{*.yaml,*.yml}]
+          indent_size = 2
+
+          [*.md]
+          max_line_length = 80
+
+      .gitignore:
+        type: file
+        feature: git
+        content: |
+          # Editor / IDE
+          .idea/
+          .vscode/
+
+          # Go build / test artifacts
+          *.test
+          *.test.*
+          *.out
+          *.html
+          coverage.*
+
+          # Project temp / build / release
+          tmp/
+          dist/
+          bin/
+
+          # Go workspace (not used by this module)
+          go.work
+          go.work.sum
+
+          # OS / editor noise
+          .DS_Store
+          *~
+          *.swp
+          *.swo
+
