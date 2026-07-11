@@ -3,7 +3,9 @@ package gmgo
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 	"github.com/ctx42/gomake/pkg/gomake"
 	"github.com/ctx42/ring/pkg/ring/ringtest"
 	"github.com/ctx42/testing/pkg/assert"
+	"github.com/ctx42/testkit/pkg/oskit"
 	"github.com/ctx42/testkit/pkg/prjkit"
 
 	"github.com/ctx42/gmtask/internal/gmtest"
@@ -250,6 +253,62 @@ func Test_TestLogFilename(t *testing.T) {
 
 		// --- Then ---
 		assert.Equal(t, "go_test_run.log", have)
+	})
+}
+
+func Test_gitGetFile(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		repo := setupConfigRepo(t)
+		dst := filepath.Join(t.TempDir(), ".golangci.yml")
+
+		// --- When ---
+		err := gitGetFile(ctx, repo, "master", ".golangci.yml", dst)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.FileExist(t, dst)
+		assert.True(t, oskit.FileSize(t, dst) > 0)
+	})
+
+	t.Run("error - destination directory missing", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		repo := setupConfigRepo(t)
+		dst := filepath.Join(t.TempDir(), "missing", ".golangci.yml")
+
+		// --- When ---
+		err := gitGetFile(ctx, repo, "master", ".golangci.yml", dst)
+
+		// --- Then ---
+		assert.ErrorIs(t, fs.ErrNotExist, err)
+	})
+
+	t.Run("error - clone fails", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		repo := filepath.Join(t.TempDir(), "not-a-repo")
+		dst := filepath.Join(t.TempDir(), ".golangci.yml")
+
+		// --- When ---
+		err := gitGetFile(ctx, repo, "master", ".golangci.yml", dst)
+
+		// --- Then ---
+		assert.ErrorContain(t, "git clone", err)
+	})
+
+	t.Run("error - source not in repo", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		repo := setupConfigRepo(t)
+		dst := filepath.Join(t.TempDir(), "out.yml")
+
+		// --- When ---
+		err := gitGetFile(ctx, repo, "master", "missing.yml", dst)
+
+		// --- Then ---
+		assert.ErrorIs(t, fs.ErrNotExist, err)
 	})
 }
 

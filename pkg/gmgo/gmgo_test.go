@@ -2,6 +2,7 @@ package gmgo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -833,6 +834,50 @@ func Test_Go_Pkgsite(t *testing.T) {
 	})
 }
 
+func Test_serveDocServer(t *testing.T) {
+	t.Run("error - not a go module", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		rng := ringtest.New(t).Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		serve := func(context.Context, *ring.Ring, string) error {
+			return errors.New("serve must not be called")
+		}
+
+		// --- When ---
+		err := serveDocServer(ctx, rng, serve, "/pkg/")
+
+		// --- Then ---
+		assert.ErrorIs(t, gomake.ErrNoGoMod, err)
+	})
+
+	t.Run("returns the serve error", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		rng := ringtest.New(t).Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.Close()
+		prj.Chdir()
+
+		wantErr := errors.New("serve failed")
+		serve := func(context.Context, *ring.Ring, string) error {
+			return wantErr
+		}
+
+		// --- When ---
+		err := serveDocServer(ctx, rng, serve, "/pkg/")
+
+		// --- Then ---
+		assert.ErrorIs(t, wantErr, err)
+	})
+}
+
 func Test_serveDoc(t *testing.T) {
 	t.Run("error - godoc fails before context is done", func(t *testing.T) {
 		if _, err := exec.LookPath("godoc"); err == nil {
@@ -1169,6 +1214,53 @@ func Test_Go_Build(t *testing.T) {
 		assert.ErrorIs(t, ErrConfig, err)
 	})
 
+	t.Run("error - invalid names config type", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.CreateFileWith(tstBuildMain, "cmd", "project.go")
+		prj.CreateFileWith(tstBuildVersion, "project.go")
+		prj.GitInitAddAll("v1.0.0")
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring("cmd/project.go")
+		setBuildConfig(t, rng, map[string]any{
+			"example.com/comp/project": map[string]any{
+				"package": "example.com/comp/project",
+				"names":   map[string]any{xdef.VarBuildDate: 5},
+			},
+		})
+
+		// --- When ---
+		err := Go{}.Build(ctx, rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, gomake.ErrType, err)
+	})
+
+	t.Run("error - invalid target config", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring("cmd/project.go")
+		rng.MetaSet(gomake.ConfigMetaKey, []byte("{bad"))
+
+		// --- When ---
+		err := Go{}.Build(ctx, rng)
+
+		// --- Then ---
+		assert.ErrorContain(t, "target config", err)
+	})
+
 	t.Run("error - not a go module", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
@@ -1325,3 +1417,75 @@ var tstInvalidProgram = `package main
 func main() {}
 func main() {}
 `
+
+func Test_buildValues(t *testing.T) {
+	t.Run("outside git repo uses placeholders", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		rng := ringtest.New(t).Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		have := buildValues(ctx, rng)
+
+		// --- Then ---
+		assert.Equal(t, xdef.PhRev, have[xdef.VarScmRev])
+		assert.Equal(t, xdef.PhHash, have[xdef.VarScmHash])
+		assert.Equal(t, xdef.PhUnknown, have[xdef.VarScmState])
+		assert.Equal(t, xdef.PhUnknown, have[xdef.VarCcid])
+		assert.NotEmpty(t, have[xdef.VarBuildDate])
+	})
+
+	t.Run("git repo with environment overrides", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		rng := ringtest.New(t).Ring()
+		tim := time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC)
+		rng.EnvSet(xdef.EnvImgCreated, tim.Format(time.RFC3339Nano))
+		rng.EnvSet(gomake.CCIDEnvKey, "job-42")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		cm := prj.GitInitAddAll("v1.2.3")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		have := buildValues(ctx, rng)
+
+		// --- Then ---
+		assert.Equal(t, "2000-01-02T03:04:05Z", have[xdef.VarBuildDate])
+		assert.Equal(t, "job-42", have[xdef.VarCcid])
+		assert.Equal(t, "v1.2.3", have[xdef.VarScmRev])
+		assert.Equal(t, cm.Hash, have[xdef.VarScmHash])
+		assert.Equal(t, "clean", have[xdef.VarScmState])
+	})
+}
+
+func Test_gitOr_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		s    string
+		err  error
+		ph   string
+		want string
+	}{
+		{"error returns placeholder", "value", errors.New("x"), "ph", "ph"},
+		{"empty string returns placeholder", "", nil, "ph", "ph"},
+		{"value returned when present", "value", nil, "ph", "value"},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			have := gitOr(tc.s, tc.err, tc.ph)
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
+		})
+	}
+}

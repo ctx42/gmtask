@@ -121,6 +121,20 @@ func Test_Lint_checkVersion(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, want, ver.Original())
 	})
+
+	t.Run("error - command fails", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+		rng := tst.Ring()
+
+		// --- When ---
+		ver, err := Lint{}.checkVersion(ctx, rng, "/no/such/dir/gmgo-xyz")
+
+		// --- Then ---
+		assert.Error(t, err)
+		assert.Nil(t, ver)
+	})
 }
 
 func Test_Lint_lint(t *testing.T) {
@@ -249,6 +263,25 @@ func Test_Lint_Install(t *testing.T) {
 		// --- Then ---
 		assert.ErrorIs(t, gomake.ErrType, err)
 	})
+
+	t.Run("error - invalid target config", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring()
+		rng.MetaSet(gomake.ConfigMetaKey, []byte("{bad"))
+
+		// --- When ---
+		err := Lint{}.Install(ctx, rng)
+
+		// --- Then ---
+		assert.ErrorContain(t, "target config", err)
+	})
 }
 
 func Test_Lint_Config(t *testing.T) {
@@ -372,6 +405,25 @@ func Test_Lint_Config(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, gomake.ErrType, err)
+	})
+
+	t.Run("error - invalid target config", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring()
+		rng.MetaSet(gomake.ConfigMetaKey, []byte("{bad"))
+
+		// --- When ---
+		err := Lint{}.Config(ctx, rng)
+
+		// --- Then ---
+		assert.ErrorContain(t, "target config", err)
 	})
 
 	t.Run("error - config checked before arguments", func(t *testing.T) {
