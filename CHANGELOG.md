@@ -1,3 +1,6 @@
+## v0.3.0 (Sun, 12 Jul 2026 20:38:48 UTC)
+- feat(gmprj): add project scaffolding and env targets.
+
 ## v0.2.0 (Sat, 11 Jul 2026 11:36:44 UTC)
 - feat(gmbump): add version bumping and changelog generation tool.
 - refactor(gmbump): return skipped tags from getSemVer.
