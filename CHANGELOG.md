@@ -1,3 +1,6 @@
+## v0.4.0 (Sun, 12 Jul 2026 21:15:40 UTC)
+- feat(gmmce): add :doc:mce example injection target.
+
 ## v0.3.0 (Sun, 12 Jul 2026 20:38:48 UTC)
 - feat(gmprj): add project scaffolding and env targets.
 
