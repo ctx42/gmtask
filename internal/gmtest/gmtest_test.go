@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 package gmtest
 
 import (
@@ -18,13 +21,13 @@ func Test_NewProject(t *testing.T) {
 		tspy.Close()
 
 		// --- When ---
-		prj := NewProject(tspy)
+		have := NewProject(tspy)
 
 		// --- Then ---
-		assert.Equal(t, "project", filepath.Base(prj.Root()))
-		assert.Equal(t, prjkit.GoModName, prj.ImpSpec())
+		assert.Equal(t, "project", filepath.Base(have.Root()))
+		assert.Equal(t, prjkit.GoModName, have.ImpSpec())
 
-		prj.Close() // Must close to prevent error.
+		have.Close() // Must close to prevent error.
 	})
 
 	t.Run("forwards options", func(t *testing.T) {
@@ -38,11 +41,48 @@ func Test_NewProject(t *testing.T) {
 		opt := func(*prjkit.Project) { called = true }
 
 		// --- When ---
-		prj := NewProject(tspy, opt)
+		have := NewProject(tspy, opt)
 
 		// --- Then ---
 		assert.True(t, called)
 
-		prj.Close() // Must close to prevent error.
+		have.Close() // Must close to prevent error.
+	})
+}
+
+func Test_NewNamedProject(t *testing.T) {
+	t.Run("uses name as directory basename", func(t *testing.T) {
+		// --- Given ---
+		tspy := tester.New(t)
+		tspy.ExpectCleanups(1)
+		tspy.ExpectTempDir(1)
+		tspy.Close()
+
+		// --- When ---
+		have := NewNamedProject(tspy, "custom")
+
+		// --- Then ---
+		assert.Equal(t, "custom", filepath.Base(have.Root()))
+
+		have.Close() // Must close to prevent error.
+	})
+
+	t.Run("forwards options", func(t *testing.T) {
+		// --- Given ---
+		tspy := tester.New(t)
+		tspy.ExpectCleanups(1)
+		tspy.ExpectTempDir(1)
+		tspy.Close()
+
+		called := false
+		opt := func(*prjkit.Project) { called = true }
+
+		// --- When ---
+		have := NewNamedProject(tspy, "custom", opt)
+
+		// --- Then ---
+		assert.True(t, called)
+
+		have.Close() // Must close to prevent error.
 	})
 }

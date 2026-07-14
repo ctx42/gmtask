@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 // Package gmtest helps gmtask tests set up temporary Go projects.
 package gmtest
 
@@ -11,8 +14,7 @@ import (
 // directory basename is "project" and the module path is [prjkit.GoModName].
 func NewProject(t tester.T, opts ...func(*prjkit.Project)) *prjkit.Project {
 	t.Helper()
-	dir := oskit.MkdirAll(t, t.TempDir(), "project")
-	return prjkit.New(t, dir, opts...)
+	return NewNamedProject(t, "project", opts...)
 }
 
 // NewNamedProject creates a temporary directory for a test project using name
