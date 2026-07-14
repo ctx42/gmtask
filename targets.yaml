@@ -11,3 +11,4 @@ imports:
   - import: github.com/ctx42/gmtask/pkg/gmbump # :bump target.
   - import: github.com/ctx42/gmtask/pkg/gmprj  # :project:* targets.
   - import: github.com/ctx42/gmtask/pkg/gmmce  # :doc:mce target.
+  - import: github.com/ctx42/gmtask/pkg/gmdkr  # :docker:* targets.
