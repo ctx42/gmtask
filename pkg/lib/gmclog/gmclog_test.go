@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 package gmclog
 
 import (
@@ -158,6 +161,26 @@ func Test_ReadReleases(t *testing.T) {
 		assert.Equal(t, want, rel.Changes)
 	})
 
+	t.Run("hash-prefixed change line is not a release header", func(t *testing.T) {
+		// --- Given ---
+		src := "" +
+			"## v0.1.5 (Sun, 02 Jan 2000 03:04:05 UTC)\n" +
+			"- Change 1.\n" +
+			"## Not a header.\n" +
+			"- Change 2.\n"
+		pth := oskit.Create(t, src, t.TempDir(), "CHANGELOG.md")
+
+		// --- When ---
+		cl, err := ReadReleases(pth)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Len(t, 1, cl.Releases)
+
+		want := []string{"- Change 1.", "## Not a header.", "- Change 2."}
+		assert.Equal(t, want, cl.Releases[0].Changes)
+	})
+
 	t.Run("error - changelog not found", func(t *testing.T) {
 		// --- When ---
 		cl, err := ReadReleases("testdata", "not_existing.md")
@@ -196,6 +219,26 @@ func Test_Changelog_ReadReleases_Save_round_trip(t *testing.T) {
 	t.Run("save does not duplicate parsed releases", func(t *testing.T) {
 		// --- Given ---
 		src := oskit.ReadFileStr(t, "testdata/changelog_1.md")
+		pth := oskit.Create(t, src, t.TempDir(), "CHANGELOG.md")
+		cl := must.Value(ReadReleases(pth))
+
+		// --- When ---
+		err := cl.Save()
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, src, oskit.ReadFileStr(t, pth))
+	})
+
+	t.Run("preserves preamble before the first release", func(t *testing.T) {
+		// --- Given ---
+		src := "" +
+			"# Changelog\n" +
+			"\n" +
+			"## v0.1.5 (Sun, 02 Jan 2000 03:04:05 UTC)\n" +
+			"- Change 1.\n" +
+			"- Change 2.\n" +
+			"\n"
 		pth := oskit.Create(t, src, t.TempDir(), "CHANGELOG.md")
 		cl := must.Value(ReadReleases(pth))
 

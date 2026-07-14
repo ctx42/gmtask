@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 package gmclog
 
 import (
@@ -38,7 +41,7 @@ func WithNoFormatting(rel *Release) { rel.formatChanges = false }
 //	- line 1
 //	- line 2
 //
-// The release ends with two empty lines.
+// The release ends with one empty line.
 type Release struct {
 	Version       *semver.Version // Semantic version.
 	Date          time.Time       // Date release was created.
