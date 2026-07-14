@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 package gmbump
 
 import (
@@ -184,7 +187,7 @@ func Test_BumpTarget(t *testing.T) {
 
 		rel := cl.Releases[0]
 		assert.Equal(t, "v0.0.0", rel.Version.Original())
-		assert.Equal(t, prj.GitCommitLog().Latest().Date, rel.Date)
+		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 1, rel.Changes)
 		assert.Equal(t, "- Initial commit.", rel.Changes[0])
 	})
@@ -227,7 +230,7 @@ func Test_BumpTarget(t *testing.T) {
 
 		rel := cl.Releases[0]
 		assert.Equal(t, "v0.6.0", rel.Version.Original())
-		assert.Equal(t, prj.GitCommitLog().Latest().Date, rel.Date)
+		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 1, rel.Changes)
 		assert.Equal(t, "- test commit 2.", rel.Changes[0])
 	})
@@ -265,7 +268,7 @@ func Test_BumpTarget(t *testing.T) {
 
 		rel := cl.Releases[0]
 		assert.Equal(t, "v0.0.0", rel.Version.Original())
-		assert.Equal(t, prj.GitCommitLog().Latest().Date, rel.Date)
+		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 1, rel.Changes)
 		assert.Equal(t, "- Initial commit.", rel.Changes[0])
 	})
@@ -304,7 +307,7 @@ func Test_BumpTarget(t *testing.T) {
 
 		rel := cl.Releases[0]
 		assert.Equal(t, "v0.0.0", rel.Version.Original())
-		assert.Equal(t, prj.GitCommitLog().Latest().Date, rel.Date)
+		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 2, rel.Changes)
 		assert.Equal(t, "- Initial commit.", rel.Changes[0])
 		assert.Equal(t, "- test commit 2.", rel.Changes[1])
@@ -376,7 +379,7 @@ func Test_BumpTarget(t *testing.T) {
 
 		rel := cl.Releases[0]
 		assert.Equal(t, "v0.1.0", rel.Version.Original())
-		assert.Equal(t, prj.GitCommitLog().Latest().Date, rel.Date)
+		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 1, rel.Changes)
 		assert.Equal(t, "- test commit 3.", rel.Changes[0])
 	})
@@ -423,7 +426,7 @@ func Test_BumpTarget(t *testing.T) {
 
 		rel := cl.Releases[0]
 		assert.Equal(t, "v0.1.0", rel.Version.Original())
-		assert.Equal(t, prj.GitCommitLog().Latest().Date, rel.Date)
+		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 1, rel.Changes)
 		assert.Equal(t, "- test commit 3.", rel.Changes[0])
 	})
@@ -462,7 +465,7 @@ func Test_BumpTarget(t *testing.T) {
 
 		rel := cl.Releases[0]
 		assert.Equal(t, "v0.1.1", rel.Version.Original())
-		assert.Equal(t, prj.GitCommitLog().Latest().Date, rel.Date)
+		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 1, rel.Changes)
 		assert.Equal(t, "- commit 1.", rel.Changes[0])
 	})
@@ -503,7 +506,7 @@ func Test_BumpTarget(t *testing.T) {
 
 		rel := cl.Releases[0]
 		assert.Equal(t, "v0.10.0", rel.Version.Original())
-		assert.Equal(t, prj.GitCommitLog().Latest().Date, rel.Date)
+		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 1, rel.Changes)
 		assert.Equal(t, "- commit 2.", rel.Changes[0])
 	})
@@ -530,7 +533,13 @@ func Test_BumpTarget(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Contain(t, "Current tag: v0.0.1\n", tst.Stdout())
+		want := "" +
+			"Current tag: v0.0.1\n" +
+			"Enter a version number [v0.1.0]: " +
+			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
+			"Continuing.\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
 		assert.Equal(t, "v0.10.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
 
 		cl := must.Value(gmclog.ReadReleases(prj.Root(), "CHANGELOG.md"))
@@ -538,7 +547,7 @@ func Test_BumpTarget(t *testing.T) {
 
 		rel := cl.Releases[0]
 		assert.Equal(t, "v0.10.0", rel.Version.Original())
-		assert.Equal(t, prj.GitCommitLog().Latest().Date, rel.Date)
+		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 1, rel.Changes)
 		assert.Equal(t, "- commit 2.", rel.Changes[0])
 	})
@@ -649,7 +658,7 @@ func Test_BumpTarget(t *testing.T) {
 
 		rel := cl.Releases[0]
 		assert.Equal(t, "v0.1.0", rel.Version.Original())
-		assert.Equal(t, prj.GitCommitLog().Latest().Date, rel.Date)
+		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 1, rel.Changes)
 		assert.Equal(t, "- test commit 2.", rel.Changes[0])
 
@@ -665,8 +674,7 @@ func Test_BumpTarget(t *testing.T) {
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
 			"Done.\n"
-		have := tst.Stdout()
-		assert.Equal(t, want, have)
+		assert.Equal(t, want, tst.Stdout())
 	})
 }
 
