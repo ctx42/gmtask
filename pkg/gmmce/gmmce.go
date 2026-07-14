@@ -41,7 +41,7 @@ type Doc struct{} //gomake:ns_root
 // example body.
 //
 // The path in a marker is relative to the Markdown file's directory.
-func (Doc) Mce(_ context.Context, rng *ring.Ring) error {
+func (Doc) Mce(ctx context.Context, rng *ring.Ring) error {
 	tgtName := ":doc:mce"
 	var dir, file string
 	fs := xflag.NewFlagSet(tgtName, flag.ContinueOnError)
@@ -69,23 +69,23 @@ func (Doc) Mce(_ context.Context, rng *ring.Ring) error {
 
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
-		return err
+		return fmt.Errorf("resolve source directory: %w", err)
 	}
 	if file == "" {
 		file = filepath.Join(absDir, "README.md")
 	}
 	absFile, err := filepath.Abs(file)
 	if err != nil {
-		return err
+		return fmt.Errorf("resolve markdown file: %w", err)
 	}
 	mdDir := filepath.Dir(absFile)
 
 	data, err := os.ReadFile(absFile) //nolint:gosec
 	if err != nil {
-		return err
+		return fmt.Errorf("read markdown file: %w", err)
 	}
 
-	examples, err := findExamples(absDir, mdDir)
+	examples, err := findExamples(ctx, absDir, mdDir)
 	if err != nil {
 		return err
 	}
@@ -102,18 +102,28 @@ func (Doc) Mce(_ context.Context, rng *ring.Ring) error {
 	updated := injectExamples(string(data), examples)
 
 	_, _ = fmt.Fprintf(rng.Stdout(), "Writing %s\n", file)
-	return os.WriteFile(absFile, []byte(updated), 0o644) //nolint:gosec
+	if err = os.WriteFile(absFile, []byte(updated), 0o644); err != nil { //nolint:gosec
+		return fmt.Errorf("write markdown file: %w", err)
+	}
+	return nil
 }
 
 // findExamples walks root recursively and collects all Go example functions
 // from *_test.go files. The returned map keys are "relpath/FuncName" where
 // relpath is the directory of the test file relative to mdDir.
-func findExamples(root, mdDir string) (map[string]string, error) {
+func findExamples(
+	ctx context.Context,
+	root, mdDir string,
+) (map[string]string, error) {
+
 	examples := make(map[string]string)
 	err := filepath.Walk(
 		root,
 		func(pth string, info os.FileInfo, err error) error {
 			if err != nil {
+				return err
+			}
+			if err = ctx.Err(); err != nil {
 				return err
 			}
 			if info.IsDir() || !strings.HasSuffix(pth, "_test.go") {
@@ -222,9 +232,7 @@ func injectExamples(content string, examples map[string]string) string {
 			}
 		}
 
-		result = append(result, "```go")
-		result = append(result, body)
-		result = append(result, "```")
+		result = append(result, "```go", body, "```")
 	}
 	return strings.Join(result, "\n")
 }

@@ -68,7 +68,7 @@ func Test_Doc_Mce(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		_ = tst.Stdout()
+		assert.Contain(t, "Found pkg1/Example_case1\n", tst.Stdout())
 		assert.Equal(t, input, oskit.ReadFileStr(t, readme))
 	})
 
@@ -89,7 +89,7 @@ func Test_Doc_Mce(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		_ = tst.Stdout()
+		assert.Contain(t, "Found pkg1/Example_case1\n", tst.Stdout())
 
 		want := "<!-- gmmce:pkg1/Example_case1 -->\n" +
 			"```go\n" +
@@ -154,11 +154,13 @@ func Test_Doc_Mce(t *testing.T) {
 func Test_findExamples(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// --- Given ---
+		ctx := context.Background()
+
 		root := must.Value(filepath.Abs("testdata"))
 		mdDir := root
 
 		// --- When ---
-		have, err := findExamples(root, mdDir)
+		have, err := findExamples(ctx, root, mdDir)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -171,11 +173,13 @@ func Test_findExamples(t *testing.T) {
 
 	t.Run("root in mdDir", func(t *testing.T) {
 		// --- Given ---
+		ctx := context.Background()
+
 		root := must.Value(filepath.Abs(filepath.Join("testdata", "pkg1")))
 		mdDir := root
 
 		// --- When ---
-		have, err := findExamples(root, mdDir)
+		have, err := findExamples(ctx, root, mdDir)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -184,13 +188,29 @@ func Test_findExamples(t *testing.T) {
 
 	t.Run("error - not existing root", func(t *testing.T) {
 		// --- Given ---
+		ctx := context.Background()
+
 		root := filepath.Join("testdata", "not_existing")
 
 		// --- When ---
-		_, err := findExamples(root, root)
+		_, err := findExamples(ctx, root, root)
 
 		// --- Then ---
 		assert.ErrorContain(t, "not_existing", err)
+	})
+
+	t.Run("error - context cancelled", func(t *testing.T) {
+		// --- Given ---
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		root := must.Value(filepath.Abs("testdata"))
+
+		// --- When ---
+		_, err := findExamples(ctx, root, root)
+
+		// --- Then ---
+		assert.ErrorIs(t, context.Canceled, err)
 	})
 }
 
