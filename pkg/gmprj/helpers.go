@@ -1,7 +1,9 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 package gmprj
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -9,9 +11,6 @@ import (
 
 	"github.com/ctx42/gomake/pkg/gomake"
 )
-
-// ErrNoConfig is returned when project is missing configuration file.
-var ErrNoConfig = errors.New("no project configuration file")
 
 // ProjectName returns the project name derived from origin — a directory path,
 // git remote, or Go import spec — as its last path element with any trailing
@@ -53,9 +52,10 @@ func GoPkgName(name string) string {
 	return names[len(names)-1]
 }
 
-// Root returns absolute path to a project root directory starting at pth. It
-// does it by walking up directories till it finds "configs/project.conf", if
-// it's not found or an error occurred it will return empty string.
+// Root returns the absolute path to a project root directory, located by
+// walking up from pth until a directory containing "configs/project.conf" is
+// found, with elem joined onto the result. It returns an error wrapping
+// [ErrNoConfig] when no such directory exists.
 func Root(pth string, elem ...string) (string, error) {
 	var err error
 	pth, err = filepath.Abs(pth)
@@ -77,7 +77,6 @@ func Root(pth string, elem ...string) (string, error) {
 }
 
 func toAlphabeticalEnv(m map[string]string) []string {
-	// TODO(rz): test this.
 	var keys []string
 	for key := range m {
 		keys = append(keys, key)

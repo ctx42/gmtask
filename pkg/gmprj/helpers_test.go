@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 package gmprj
 
 import (
@@ -18,15 +21,14 @@ func Test_ProjectName_tabular(t *testing.T) {
 	}{
 		{"path", "/dir/dir-proj", "dir-proj"},
 		{"dir", "dir-proj", "dir-proj"},
-		{"repo", "ssh://git@example.com:vr/skw-proj.git", "skw-proj"},
-		{"repo no .git", "ssh://git@example.com:vr/skw-proj", "skw-proj"},
-		{"repo no ssh", "git@bitbucket.org:vrinf/skw-vdef.git", "skw-vdef"},
-		{"go import spec", "example.com/vr/skw-proj", "skw-proj"},
+		{"repo", "ssh://git@example.com:comp/acme-proj.git", "acme-proj"},
+		{"repo no .git", "ssh://git@example.com:comp/acme-proj", "acme-proj"},
+		{"repo no ssh", "git@bitbucket.org:comp/acme-proj.git", "acme-proj"},
+		{"go import spec", "example.com/comp/acme-proj", "acme-proj"},
 		{"empty", "", ""},
 	}
 
 	for _, tc := range tt {
-		tc := tc
 		t.Run(tc.testN, func(t *testing.T) {
 			assert.Equal(t, tc.want, ProjectName(tc.origin))
 		})
@@ -42,16 +44,15 @@ func Test_GoModuleName_tabular(t *testing.T) {
 	}{
 		{"path", "/dir/dir-proj", "dir-proj"},
 		{"dir", "dir-proj", "dir-proj"},
-		{"repo", "ssh://git@example.com:vr/skw-proj.git", "example.com/vr/skw-proj"},
-		{"repo no .git", "ssh://git@example.com:vr/skw-proj", "example.com/vr/skw-proj"},
-		{"repo no ssh", "git@bitbucket.org:vrinf/skw-vdef.git", "bitbucket.org/vrinf/skw-vdef"},
-		{"go import spec", "example.com/vr/skw-proj", "example.com/vr/skw-proj"},
+		{"repo", "ssh://git@example.com:comp/acme-proj.git", "example.com/comp/acme-proj"},
+		{"repo no .git", "ssh://git@example.com:comp/acme-proj", "example.com/comp/acme-proj"},
+		{"repo no ssh", "git@bitbucket.org:comp/acme-proj.git", "bitbucket.org/comp/acme-proj"},
+		{"go import spec", "example.com/comp/acme-proj", "example.com/comp/acme-proj"},
 		{"empty", "", ""},
-		{"multiple", "skw-dki-proj", "skw-dki-proj"},
+		{"multiple", "acme-dki-proj", "acme-dki-proj"},
 	}
 
 	for _, tc := range tt {
-		tc := tc
 		t.Run(tc.testN, func(t *testing.T) {
 			assert.Equal(t, tc.want, GoModuleName(tc.origin))
 		})
@@ -67,16 +68,15 @@ func Test_GoPkgName_tabular(t *testing.T) {
 	}{
 		{"path", "/dir/dir-proj", "proj"},
 		{"dir", "dir-proj", "proj"},
-		{"repo", "ssh://git@example.com:vr/skw-proj.git", "proj"},
-		{"repo no .git", "ssh://git@example.com:vr/skw-proj", "proj"},
-		{"repo no ssh", "git@bitbucket.org:vrinf/skw-vdef.git", "vdef"},
-		{"go import spec", "example.com/vr/skw-proj", "proj"},
+		{"repo", "ssh://git@example.com:comp/acme-proj.git", "proj"},
+		{"repo no .git", "ssh://git@example.com:comp/acme-proj", "proj"},
+		{"repo no ssh", "git@bitbucket.org:comp/acme-proj.git", "proj"},
+		{"go import spec", "example.com/comp/acme-proj", "proj"},
 		{"empty", "", ""},
-		{"multiple", "skw-dki-proj", "proj"},
+		{"multiple", "acme-dki-proj", "proj"},
 	}
 
 	for _, tc := range tt {
-		tc := tc
 		t.Run(tc.testN, func(t *testing.T) {
 			assert.Equal(t, tc.want, GoPkgName(tc.origin))
 		})
@@ -128,4 +128,28 @@ func Test_Root(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, filepath.Join(root, "pkg", "gmprj"), have)
 	})
+}
+
+func Test_toAlphabeticalEnv_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		env  map[string]string
+		want []string
+	}{
+		{"nil", nil, []string{}},
+		{"empty", map[string]string{}, []string{}},
+		{"single", map[string]string{"KEY": "val"}, []string{"KEY=val"}},
+		{
+			"sorted by key",
+			map[string]string{"CCC": "3", "AAA": "1", "BBB": "2"},
+			[]string{"AAA=1", "BBB=2", "CCC=3"},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			assert.Equal(t, tc.want, toAlphabeticalEnv(tc.env))
+		})
+	}
 }

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 package gmprj
 
 import (
@@ -50,7 +53,7 @@ func toEnv(info string) []string {
 	}
 	env := strings.Split(envS, "\n")
 	clean := env[:0]
-	for i := 0; i < len(env); i++ {
+	for i := range env {
 		if env[i] != "" {
 			clean = append(clean, env[i])
 		}

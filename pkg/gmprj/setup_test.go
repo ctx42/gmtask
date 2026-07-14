@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 package gmprj
 
 import (
@@ -60,7 +63,7 @@ func Test_NewSetup(t *testing.T) {
 
 	t.Run("only project root dir set", func(t *testing.T) {
 		// --- Given ---
-		prj := gmtest.NewNamedProject(t, "skw-vxx")
+		prj := gmtest.NewNamedProject(t, "acme")
 		prj.Close()
 		prj.Chdir()
 
@@ -71,17 +74,17 @@ func Test_NewSetup(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, prj.Root(), sup.root)
 		assert.Empty(t, sup.origin)
-		assert.Equal(t, "skw-vxx", sup.name)
-		assert.Equal(t, "skw-vxx", sup.module)
+		assert.Equal(t, "acme", sup.name)
+		assert.Equal(t, "acme", sup.module)
 	})
 
 	t.Run("only module set", func(t *testing.T) {
 		// --- Given ---
-		prj := gmtest.NewNamedProject(t, "skw-vxx")
+		prj := gmtest.NewNamedProject(t, "acme")
 		prj.Close()
 		prj.Chdir()
 
-		module := "example.com/comp/skw-vxx"
+		module := "example.com/comp/acme"
 
 		// --- When ---
 		sup, err := NewSetup(prj.Root(), WithSetupGoModule(module))
@@ -90,17 +93,17 @@ func Test_NewSetup(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, prj.Root(), sup.root)
 		assert.Empty(t, sup.origin)
-		assert.Equal(t, "example.com/comp/skw-vxx", sup.module)
-		assert.Equal(t, "skw-vxx", sup.name)
+		assert.Equal(t, "example.com/comp/acme", sup.module)
+		assert.Equal(t, "acme", sup.name)
 	})
 
 	t.Run("only remote set", func(t *testing.T) {
 		// --- Given ---
-		prj := gmtest.NewNamedProject(t, "skw-vxx")
+		prj := gmtest.NewNamedProject(t, "acme")
 		prj.Close()
 		prj.Chdir()
 
-		origin := "git@example.com:comp/skw-vxx.git"
+		origin := "git@example.com:comp/acme.git"
 
 		// --- When ---
 		sup, err := NewSetup(prj.Root(), WithSetupGitOrigin(origin))
@@ -109,37 +112,18 @@ func Test_NewSetup(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, prj.Root(), sup.root)
 		assert.Equal(t, origin, sup.origin)
-		assert.Equal(t, "example.com/comp/skw-vxx", sup.module)
-		assert.Equal(t, "skw-vxx", sup.name)
-	})
-
-	t.Run("only remote set", func(t *testing.T) {
-		// --- Given ---
-		prj := gmtest.NewNamedProject(t, "skw-vxx")
-		prj.Close()
-		prj.Chdir()
-
-		origin := "git@example.com:comp/skw-vxx.git"
-
-		// --- When ---
-		sup, err := NewSetup(prj.Root(), WithSetupGitOrigin(origin))
-
-		// --- Then ---
-		assert.NoError(t, err)
-		assert.Equal(t, prj.Root(), sup.root)
-		assert.Equal(t, origin, sup.origin)
-		assert.Equal(t, "example.com/comp/skw-vxx", sup.module)
-		assert.Equal(t, "skw-vxx", sup.name)
+		assert.Equal(t, "example.com/comp/acme", sup.module)
+		assert.Equal(t, "acme", sup.name)
 	})
 
 	t.Run("module does not match origin error", func(t *testing.T) {
 		// --- Given ---
-		prj := gmtest.NewNamedProject(t, "skw-vxx")
+		prj := gmtest.NewNamedProject(t, "acme")
 		prj.Close()
 		prj.Chdir()
 
-		origin := "git@example.org:proj/skw-vxx.git"
-		module := "example.com/comp/skw-vxx"
+		origin := "git@example.org:proj/acme.git"
+		module := "example.com/comp/acme"
 		opts := []func(*Setup){
 			WithSetupGitOrigin(origin),
 			WithSetupGoModule(module),
@@ -224,6 +208,30 @@ func Test_Setup_Setup(t *testing.T) {
 		assert.Contain(t, `name="xyz"`, have)
 	})
 
+	t.Run("initializes module in subdir when cwd has go.mod", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t).WetStdout()
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.CreateDir("xyz")
+		prj.Close()
+		prj.Chdir()
+
+		sup := must.Value(NewSetup("xyz"))
+		rng := tst.Ring()
+		setStructure(t, rng)
+
+		// --- When ---
+		err := sup.Setup(ctx, rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "done\n", tst.Stdout())
+		assert.Contain(t, "module xyz\n", prj.ReadFileStr("xyz", "go.mod"))
+	})
+
 	t.Run("based on git origin", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
@@ -234,7 +242,7 @@ func Test_Setup_Setup(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		origin := "git@example.com:comp/skw-vxx.git"
+		origin := "git@example.com:comp/acme.git"
 		sup := must.Value(NewSetup("", WithSetupGitOrigin(origin)))
 		rng := tst.Ring()
 		setStructure(t, rng)
@@ -246,10 +254,10 @@ func Test_Setup_Setup(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contain(t, "done\n", tst.Stdout())
 		have := prj.ReadFileStr("go.mod")
-		assert.Contain(t, "module example.com/comp/skw-vxx\n", have)
+		assert.Contain(t, "module example.com/comp/acme\n", have)
 		assert.Contain(t, origin, prj.ReadFileStr(".git", "config"))
 		have = prj.ReadFileStr("dev", "idea", "go-test-all.run.xml")
-		assert.Contain(t, `name="skw-vxx"`, have)
+		assert.Contain(t, `name="acme"`, have)
 	})
 
 	t.Run("based on module", func(t *testing.T) {
@@ -262,7 +270,7 @@ func Test_Setup_Setup(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		module := "example.com/comp/skw-vxx"
+		module := "example.com/comp/acme"
 		sup := must.Value(NewSetup("", WithSetupGoModule(module)))
 		rng := tst.Ring()
 		setStructure(t, rng)
@@ -274,10 +282,10 @@ func Test_Setup_Setup(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contain(t, "done\n", tst.Stdout())
 		have := prj.ReadFileStr("go.mod")
-		assert.Contain(t, "module example.com/comp/skw-vxx\n", have)
+		assert.Contain(t, "module example.com/comp/acme\n", have)
 		assert.NotContain(t, "[remote ", prj.ReadFileStr(".git", "config"))
 		have = prj.ReadFileStr("dev", "idea", "go-test-all.run.xml")
-		assert.Contain(t, `name="skw-vxx"`, have)
+		assert.Contain(t, `name="acme"`, have)
 	})
 
 	t.Run("error - no structure configured", func(t *testing.T) {
