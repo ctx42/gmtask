@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 package gmgo
 
 import (
@@ -8,7 +11,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"os/exec"
 	"testing"
 	"time"
 
@@ -101,7 +103,8 @@ func Test_Go_Vet(t *testing.T) {
 
 		rng := tst.Ring()
 		// Vet never decodes; a stray key in the delivered block must not fail it.
-		rng.MetaSet(gomake.ConfigMetaKey, jsonkit.To(t, map[string]any{"nonsense": "x"}))
+		cfg := jsonkit.To(t, map[string]any{"nonsense": "x"})
+		rng.MetaSet(gomake.ConfigMetaKey, cfg)
 
 		// --- When ---
 		err := Go{}.Vet(ctx, rng)
@@ -130,7 +133,8 @@ func Test_Go_Check(t *testing.T) {
 		// gomake delivers :go:check the go-node block ({timeout}). The lint step
 		// reads only its own "version"/"file" keys and ignores the sibling
 		// "timeout", so the whole block passes through to Test unchanged.
-		rng.MetaSet(gomake.ConfigMetaKey, jsonkit.To(t, map[string]any{"timeout": "10m"}))
+		cfg := jsonkit.To(t, map[string]any{"timeout": "10m"})
+		rng.MetaSet(gomake.ConfigMetaKey, cfg)
 
 		// --- When ---
 		err := Go{}.Check(ctx, rng)
@@ -284,7 +288,8 @@ func Test_Go_TestV(t *testing.T) {
 		tst := ringtest.New(t).WetStdout()
 
 		rng := tst.Ring()
-		rng.MetaSet(gomake.ConfigMetaKey, jsonkit.To(t, map[string]any{"timeout": "1ns"}))
+		cfg := jsonkit.To(t, map[string]any{"timeout": "1ns"})
+		rng.MetaSet(gomake.ConfigMetaKey, cfg)
 
 		prj := gmtest.NewProject(t, prjkit.WithProjectEnv(os.Environ()))
 		prj.GoModInit()
@@ -329,7 +334,8 @@ func Test_Go_TestV(t *testing.T) {
 		tst := ringtest.New(t).WetStdout()
 
 		rng := tst.Ring()
-		rng.MetaSet(gomake.ConfigMetaKey, jsonkit.To(t, map[string]any{"timeout": "10m"}))
+		cfg := jsonkit.To(t, map[string]any{"timeout": "10m"})
+		rng.MetaSet(gomake.ConfigMetaKey, cfg)
 		rng.EnvSet(GoTestTimeoutEnvKey, "1ns")
 
 		prj := gmtest.NewProject(t, prjkit.WithProjectEnv(os.Environ()))
@@ -352,7 +358,8 @@ func Test_Go_TestV(t *testing.T) {
 		tst := ringtest.New(t)
 
 		rng := tst.Ring()
-		rng.MetaSet(gomake.ConfigMetaKey, jsonkit.To(t, map[string]any{"timeout": "nope"}))
+		cfg := jsonkit.To(t, map[string]any{"timeout": "nope"})
+		rng.MetaSet(gomake.ConfigMetaKey, cfg)
 
 		prj := gmtest.NewProject(t, prjkit.WithProjectEnv(os.Environ()))
 		prj.GoModInit()
@@ -365,6 +372,7 @@ func Test_Go_TestV(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, gomake.ErrType, err)
+		assert.NoFileExist(t, prj.Path(TestLogFilename(rng)))
 	})
 
 	t.Run("additional args passed to test", func(t *testing.T) {
@@ -880,14 +888,15 @@ func Test_serveDocServer(t *testing.T) {
 
 func Test_serveDoc(t *testing.T) {
 	t.Run("error - godoc fails before context is done", func(t *testing.T) {
-		if _, err := exec.LookPath("godoc"); err == nil {
-			t.Skip("godoc installed; launch-failure path not reachable")
-		}
-
 		// --- Given ---
 		ctx := context.Background()
 		rng := ringtest.New(t).Ring()
 		addr := "localhost:0"
+
+		// Point PATH at an empty directory, so the "godoc" binary cannot be
+		// resolved, and its launch fails immediately, whether godoc is
+		// installed on the host.
+		t.Setenv("PATH", t.TempDir())
 
 		// --- When ---
 		err := serveDoc(ctx, rng, addr)
@@ -913,14 +922,15 @@ func Test_serveDoc(t *testing.T) {
 
 func Test_servePkgsite(t *testing.T) {
 	t.Run("error - pkgsite fails before context is done", func(t *testing.T) {
-		if _, err := exec.LookPath("pkgsite"); err == nil {
-			t.Skip("pkgsite installed; launch-failure path not reachable")
-		}
-
 		// --- Given ---
 		ctx := context.Background()
 		rng := ringtest.New(t).Ring()
 		addr := "localhost:0"
+
+		// Point PATH at an empty directory so the "pkgsite" binary cannot be
+		// resolved and its launch fails immediately, whether or not pkgsite is
+		// installed on the host.
+		t.Setenv("PATH", t.TempDir())
 
 		// --- When ---
 		err := servePkgsite(ctx, rng, addr)
@@ -1025,7 +1035,8 @@ func Test_waitForServer(t *testing.T) {
 // "names" overrides.
 func setBuildConfig(t tester.T, rng *ring.Ring, modules map[string]any) {
 	t.Helper()
-	rng.MetaSet(gomake.ConfigMetaKey, jsonkit.To(t, map[string]any{"modules": modules}))
+	cfg := jsonkit.To(t, map[string]any{"modules": modules})
+	rng.MetaSet(gomake.ConfigMetaKey, cfg)
 }
 
 func Test_Go_Build(t *testing.T) {

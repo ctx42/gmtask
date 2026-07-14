@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 package gmgo
 
 import (
@@ -80,10 +83,7 @@ func (Lint) lint(ctx context.Context, rng *ring.Ring, dir string) error {
 	cmd.Env = append(rng.EnvAll(), "LOG_LEVEL=error")
 	cmd.Stdout, cmd.Stderr = rng.Stdout(), rng.Stderr()
 	cmd.Dir = dir
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	return nil
+	return cmd.Run()
 }
 
 // Install installs the golangci-lint binary. It installs the latest release

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 // Package gmgo provides gomake targets and helpers for Go projects: vetting,
 // linting, testing, building, and serving documentation.
 package gmgo
@@ -72,6 +75,7 @@ type Go struct{} //gomake:ns_root
 func (Go) Vet(ctx context.Context, rng *ring.Ring) error {
 	cmd := exec.CommandContext(ctx, "go", "vet", "./...")
 	cmd.Stdout, cmd.Stderr = rng.Stdout(), rng.Stderr()
+	cmd.Env = rng.EnvAll()
 	return cmd.Run()
 }
 
@@ -131,6 +135,8 @@ func (tgt Go) Test(ctx context.Context, rng *ring.Ring) error {
 //
 // The additional arguments may be passed to the "go test" with "-- arg0 arg1"
 // construct.
+//
+//nolint:cyclop
 func (Go) test(ctx context.Context, rng *ring.Ring, verbose bool) error {
 	tgtName := ":go:test"
 	if verbose {
@@ -153,12 +159,6 @@ func (Go) test(ctx context.Context, rng *ring.Ring, verbose bool) error {
 
 	covPth := filepath.Join(out, CovLogFilename(rng))
 	repPth := filepath.Join(out, TestLogFilename(rng))
-	rep, err := os.Create(repPth) //nolint:gosec
-	if err != nil {
-		return err
-	}
-	defer func() { _ = rep.Close() }()
-	mw := io.MultiWriter(rng.Stdout(), rep)
 
 	cmdArgs := []string{"test"}
 	if verbose {
@@ -191,8 +191,19 @@ func (Go) test(ctx context.Context, rng *ring.Ring, verbose bool) error {
 		cmdArgs = append(cmdArgs, "-timeout="+timeout.String())
 	}
 	cmdArgs = append(cmdArgs, "./...")
+
+	// Create the report only after config and timeout resolution so an
+	// invalid config fails before a stray empty report is written to disk.
+	rep, err := os.Create(repPth) //nolint:gosec
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rep.Close() }()
+	mw := io.MultiWriter(rng.Stdout(), rep)
+
 	cmd := exec.CommandContext(ctx, "go", cmdArgs...)
 	cmd.Stdout, cmd.Stderr = mw, rng.Stderr()
+	cmd.Env = rng.EnvAll()
 	return cmd.Run()
 }
 
@@ -293,9 +304,9 @@ func serveDocServer(
 		name, args := browserCmd(runtime.GOOS, base+pkgPrefix+imPath)
 		cmd := exec.CommandContext(ctx, name, args...)
 		cmd.Stdout, cmd.Stderr = rng.Stdout(), rng.Stderr()
-		if err := cmd.Run(); err != nil {
-			_, _ = fmt.Fprint(rng.Stderr(), err.Error()+"\n")
-		}
+		// Opening the browser is best-effort: a background goroutine cannot
+		// propagate an error and the server runs regardless, so ignore it.
+		_ = cmd.Run()
 	}()
 
 	wg.Wait()
@@ -360,7 +371,12 @@ func waitForServer(ctx context.Context, url string) bool {
 
 	cli := &http.Client{Timeout: time.Second}
 	for {
-		req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+		req, err := http.NewRequestWithContext(
+			ctx,
+			http.MethodHead,
+			url,
+			http.NoBody,
+		)
 		if err != nil {
 			return false
 		}
