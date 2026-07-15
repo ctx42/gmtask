@@ -260,9 +260,7 @@ func (Image) RunProj(ctx context.Context, rng *ring.Ring) error {
 		return err
 	}
 
-	args := bld.Cmd()
-	args = args[:len(args)-3]
-	args = append(args, "-")
+	args := bld.CmdStdin()
 	_, _ = fmt.Fprintf(
 		rng.Stderr(),
 		"%s%s\n",

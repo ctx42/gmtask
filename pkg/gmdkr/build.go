@@ -101,10 +101,21 @@ func (bld *Build) Env() []string {
 	return nil
 }
 
-// Cmd returns "docker build" command. The build uses "Dockerfile" implicitly,
-// and the last element of the slice is path, and it's always set to current
-// working directory ".".
+// Cmd returns a "docker build" command that builds from "./Dockerfile" in the
+// current working directory. The last element is always the context path ".".
 func (bld *Build) Cmd() []string {
+	return append(bld.cmdArgs(), "--file", "Dockerfile", ".")
+}
+
+// CmdStdin returns a "docker build" command that reads the Dockerfile from
+// standard input (context path "-") instead of a filesystem path.
+func (bld *Build) CmdStdin() []string {
+	return append(bld.cmdArgs(), "-")
+}
+
+// cmdArgs returns the shared "docker build" prefix without the Dockerfile path
+// or build context.
+func (bld *Build) cmdArgs() []string {
 	cmd := []string{"build", "--platform", bld.platform}
 	if bld.ssh != "" {
 		cmd = append(cmd, "--ssh", fmt.Sprintf("default=%s", bld.ssh))
@@ -128,7 +139,6 @@ func (bld *Build) Cmd() []string {
 		arg := fmt.Sprintf("%s=%s", name, bld.args[name])
 		cmd = append(cmd, "--build-arg", arg)
 	}
-	cmd = append(cmd, "--file", "Dockerfile", ".")
 	return cmd
 }
 
