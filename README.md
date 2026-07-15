@@ -33,7 +33,7 @@ Requires [gomake](https://github.com/ctx42/gomake) for the target packages.
 ## Targets
 
 | Target                    | Description                                   |
-| ------------------------- | --------------------------------------------- |
+|---------------------------|-----------------------------------------------|
 | `:go:vet`                 | Runs `go vet ./...`.                          |
 | `:go:lint`                | Runs golangci-lint (auto-installs + config).  |
 | `:go:lint:install`        | Installs the latest golangci-lint.            |
@@ -66,7 +66,7 @@ variables, the interactive flow, and library helpers.
 ## Libraries
 
 | Package                            | Description                          |
-| ---------------------------------- | ------------------------------------ |
+|------------------------------------|--------------------------------------|
 | [`pkg/lib/gmclog`](pkg/lib/gmclog) | Read/edit/write Markdown changelogs. |
 
 ## Installation
@@ -94,16 +94,13 @@ then available in every project the binary is used from.
 
 ### As per-project targets
 
-Pull the packages into one project without rebuilding the binary. Add them to
-the project's module, then import them in `makefile.go` with `//gomake:import`
-comments (the blank identifier is required):
+Pull the packages into one project without rebuilding the binary. One
+`go get` of any package path adds the module; then import each package you
+want in `makefile.go` with `//gomake:import` (the blank identifier is
+required):
 
 ```shell
-go get github.com/ctx42/gmtask/pkg/gmgo \
-  github.com/ctx42/gmtask/pkg/gmdkr \
-  github.com/ctx42/gmtask/pkg/gmbump \
-  github.com/ctx42/gmtask/pkg/gmprj \
-  github.com/ctx42/gmtask/pkg/gmmce
+go get github.com/ctx42/gmtask/pkg/gmgo
 ```
 
 ```go
