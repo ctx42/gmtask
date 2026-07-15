@@ -87,7 +87,7 @@ func (Doc) Mce(ctx context.Context, rng *ring.Ring) error {
 
 	examples, err := findExamples(ctx, absDir, mdDir)
 	if err != nil {
-		return err
+		return fmt.Errorf("find examples: %w", err)
 	}
 
 	keys := make([]string, 0, len(examples))
