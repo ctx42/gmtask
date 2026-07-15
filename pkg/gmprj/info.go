@@ -281,13 +281,13 @@ func getConfig(pth string) (map[string]string, error) {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("%w: %w", ErrNoConfig, err)
 		}
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", pth, err)
 	}
 	defer func() { _ = fil.Close() }()
 
 	cfg := make(map[string]string, 10)
 	if err = dotenv.Parse(cfg, fil); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", pth, err)
 	}
 	return cfg, nil
 }
