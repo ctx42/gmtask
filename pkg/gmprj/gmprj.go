@@ -36,6 +36,10 @@ var (
 	ErrModuleOriginMismatch = errors.New(
 		"go module name does not match git origin",
 	)
+
+	// ErrMkdirNeedsName is returned when --mkdir is set without --origin or
+	// --module (or when those values yield no project directory name).
+	ErrMkdirNeedsName = errors.New("mkdir requires --origin or --module")
 )
 
 // EnvSSHAuthSock holds the SSH agent socket path. It keeps the standard
@@ -193,6 +197,9 @@ func (Project) Setup(ctx context.Context, rng *ring.Ring) error {
 			src = mod
 		}
 		root = ProjectName(src)
+		if root == "" {
+			return ErrMkdirNeedsName
+		}
 		if err := os.Mkdir(root, 0o755); err != nil { //nolint:gosec
 			return err
 		}

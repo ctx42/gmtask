@@ -529,6 +529,24 @@ func Test_Project_Setup(t *testing.T) {
 		assert.ErrorContain(t, "file exists", err)
 	})
 
+	t.Run("error - mkdir without origin or module", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring("--mkdir")
+
+		// --- When ---
+		err := Project{}.Setup(ctx, rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrMkdirNeedsName, err)
+	})
+
 	t.Run("default module name", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
