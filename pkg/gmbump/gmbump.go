@@ -93,7 +93,7 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 
 	changes, err := gitaid.ChangeLog(ctx, repo, curStr)
 	if err != nil {
-		return fmt.Errorf("read change log: %w", err)
+		return fmt.Errorf("read changelog: %w", err)
 	}
 	if len(changes) == 0 {
 		_, _ = fmt.Fprint(rng.Stdout(), "HEAD on tag. Nothing to do.\n")
@@ -113,11 +113,10 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		}
 	}
 
-	// We always use "v" prefix.
+	// Always use a "v" prefix. User input was already validated as a semver
+	// string above when non-empty.
 	nextStr := next.Original()
 	if nextStr != "" && nextStr[0] != 'v' {
-		// At this point we are sure next is valid
-		// we checked that during input validation.
 		next = semver.MustParse("v" + nextStr)
 	}
 
