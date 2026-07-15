@@ -246,7 +246,7 @@ func Test_BumpTarget(t *testing.T) {
 		assert.Equal(t, "- test commit 2.", rel.Changes[0])
 	})
 
-	t.Run("no previous commits", func(t *testing.T) {
+	t.Run("only initial commit, no tags", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
 		sin := bytes.NewBufferString("\n\n")
@@ -710,7 +710,7 @@ func Test_getSemVer(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, gitaid.ErrNotRepo, err)
-		assert.Empty(t, curr)
+		assert.Nil(t, curr)
 		assert.Nil(t, next)
 		assert.Nil(t, skipped)
 	})
@@ -728,7 +728,7 @@ func Test_getSemVer(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Empty(t, curr)
+		assert.Nil(t, curr)
 		assert.Equal(t, StartSemVer, next.Original())
 		assert.Empty(t, skipped)
 	})
@@ -747,7 +747,7 @@ func Test_getSemVer(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Empty(t, curr)
+		assert.Nil(t, curr)
 		assert.Equal(t, StartSemVer, next.Original())
 		assert.Empty(t, skipped)
 	})
