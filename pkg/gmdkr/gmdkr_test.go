@@ -1202,8 +1202,17 @@ func Test_Image_Info(t *testing.T) {
 
 func Test_Image_Clean(t *testing.T) {
 	// NOTE: Clean prunes ALL dangling docker images on the host, not only the
-	// one this test creates. Run only in a disposable docker environment.
-	t.Run("removes dangling images and keeps fresh test images", func(t *testing.T) {
+	// one this test creates. It is destructive, so it never runs by default and
+	// must be requested explicitly by setting GMDKR_TEST_CLEAN. Run only in a
+	// disposable docker environment, e.g.:
+	//
+	//   GMDKR_TEST_CLEAN=1 go test ./pkg/gmdkr/ -run Test_Image_Clean
+	if _, ok := os.LookupEnv("GMDKR_TEST_CLEAN"); !ok {
+		t.Skip("destructive: prunes all dangling docker images; " +
+			"set GMDKR_TEST_CLEAN to run")
+	}
+
+	t.Run("prunes dangling, keeps fresh", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
 		tst := ringtest.New(t)
