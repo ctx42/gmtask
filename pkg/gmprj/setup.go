@@ -43,14 +43,13 @@ type Setup struct {
 	repo   string // Docker private repository.
 }
 
-// NewSetup returns new instance of Setup for project in root directory.
+// NewSetup returns a new [Setup] for the project in root. An empty root means
+// the current working directory.
 //
 // Example:
 //
-//	Setup("/path/to/dir")
-//	Setup("")
-//
-// The empty project root directory means current working directory.
+//	NewSetup("/path/to/dir")
+//	NewSetup("")
 func NewSetup(root string, opts ...func(*Setup)) (*Setup, error) {
 	sup := &Setup{
 		root: root,
@@ -166,9 +165,8 @@ func (sup *Setup) addImgSrc(rng *ring.Ring) error {
 	return nil
 }
 
-// initScmRepo initializes git repository in given directory, creates initial
-// commit and the first tag v0.0.0. The empty string used for root directory
-// means current working directory.
+// initScmRepo initializes a git repository at the setup root, creates the
+// initial commit, and tags it v0.0.0.
 func (sup *Setup) initScmRepo(ctx context.Context, rng *ring.Ring) error {
 	err := gitaid.Init(ctx, sup.root)
 	if err != nil {
