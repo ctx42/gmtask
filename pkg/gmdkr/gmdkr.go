@@ -80,7 +80,7 @@ var (
 	ErrNoTargets = errors.New("no targets defined")
 
 	// ErrNoTarget is returned when --targets/-T names a target that is not
-	// defined by [xdef.EnvBldTargets].
+	// defined by [xdef.EnvBldTargets] (CLI selection before docker runs).
 	ErrNoTarget = errors.New("unknown target")
 
 	// ErrNoDockerfile is returned when no Dockerfile is found.
@@ -93,10 +93,11 @@ var (
 	// one is allowed.
 	ErrMultiTarget = errors.New("can pick only one target")
 
-	// ErrReqTarget is returned when target is required but not provided.
+	// ErrReqTarget is returned when a target name is required but not provided.
 	ErrReqTarget = errors.New("target name required")
 
-	// ErrUnkTarget is returned when target is unknown.
+	// ErrUnkTarget is returned when docker rejects a multi-stage --target that
+	// is not a stage in the Dockerfile (build-time failure from the daemon).
 	ErrUnkTarget = errors.New("unknown target name")
 )
 
