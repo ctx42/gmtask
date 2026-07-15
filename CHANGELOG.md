@@ -1,3 +1,14 @@
+## v0.5.0 (Wed, 15 Jul 2026 08:11:36 UTC)
+- refactor(gmtest): route NewProject through NewNamedProject.
+- docs: clarify target installation modes in README.
+- feat(gmdkr): add :docker:* targets.
+- refactor(gmprj): group errors and constants; genericize test fixtures.
+- feat(gmmce): thread context through Mce and add runnable example.
+- feat(gmgo): pin go.mod directive to major.minor and pass env to commands.
+- refactor(gmbump): wrap errors with context and best-effort upgrade hint.
+- fix(gmclog): keep changelog preamble and harden release parsing.
+- build(deps): bump gomake, testkit, and xdef.
+
 ## v0.4.0 (Sun, 12 Jul 2026 21:15:40 UTC)
 - feat(gmmce): add :doc:mce example injection target.
 
