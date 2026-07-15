@@ -255,6 +255,19 @@ func Test_parseExamples(t *testing.T) {
 		assert.Equal(t, "", have["Example"])
 	})
 
+	t.Run("single-line non-empty body", func(t *testing.T) {
+		// --- Given ---
+		src := "package foo\n\nfunc Example() { fmt.Println(\"x\") }\n"
+		pth := oskit.Write(t, src, t.TempDir(), "eg_test.go")
+
+		// --- When ---
+		have, err := parseExamples(pth)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "fmt.Println(\"x\")", have["Example"])
+	})
+
 	t.Run("error - not existing file", func(t *testing.T) {
 		// --- When ---
 		_, err := parseExamples("not_existing_test.go")

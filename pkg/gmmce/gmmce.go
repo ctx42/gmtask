@@ -164,7 +164,6 @@ func parseExamples(filename string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	srcLines := strings.Split(string(src), "\n")
 	examples := make(map[string]string)
 	for _, decl := range f.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
@@ -174,15 +173,11 @@ func parseExamples(filename string) (map[string]string, error) {
 		if !strings.HasPrefix(fn.Name.Name, "Example") {
 			continue
 		}
-		startLine := fset.Position(fn.Body.Lbrace).Line
-		endLine := fset.Position(fn.Body.Rbrace).Line
-		if endLine-1 < startLine {
-			// Single-line body, e.g. "func Example() {}"; nothing between
-			// the braces.
-			examples[fn.Name.Name] = ""
-			continue
-		}
-		bodyLines := srcLines[startLine : endLine-1]
+		// Slice by brace byte offsets so single-line bodies keep their content.
+		lo := fset.Position(fn.Body.Lbrace).Offset
+		hi := fset.Position(fn.Body.Rbrace).Offset
+		inner := string(src[lo+1 : hi])
+		bodyLines := strings.Split(inner, "\n")
 		stripped := make([]string, len(bodyLines))
 		for i, line := range bodyLines {
 			stripped[i] = strings.TrimPrefix(line, "\t")
