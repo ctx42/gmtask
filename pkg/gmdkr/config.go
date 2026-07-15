@@ -112,7 +112,8 @@ func (cfg *Config) Args() map[string]string {
 	return maps.Clone(cfg.args)
 }
 
-// fromInfo sets argument map only if value is not empty string.
+// fromInfo copies name from inf into the config argument map when the key is
+// present, including when its value is empty.
 func (cfg *Config) fromInfo(inf *gmprj.Info, name string) {
 	if val, ok := inf.Lookup(name); ok {
 		cfg.args[name] = val
