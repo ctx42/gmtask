@@ -75,12 +75,12 @@ const goImageLatest = "ghcr.io/ctx42/dkigo-test:latest"
 
 // Sentinel errors.
 var (
-	// ErrNoTargets is returned when dkr-target option to build is provided
-	// but no Docker targets were defined.
+	// ErrNoTargets is returned when --targets/-T names are given but the
+	// project defines no Docker targets.
 	ErrNoTargets = errors.New("no targets defined")
 
-	// ErrNoTarget is returned when "--dkr-target" option to build target is
-	// provided with target which is not defined by [xdef.EnvBldTargets].
+	// ErrNoTarget is returned when --targets/-T names a target that is not
+	// defined by [xdef.EnvBldTargets].
 	ErrNoTarget = errors.New("unknown target")
 
 	// ErrNoDockerfile is returned when no Dockerfile is found.
