@@ -856,7 +856,7 @@ func Test_Info_Lookup(t *testing.T) {
 			Other: make(map[string]string),
 		}
 
-		// --- Then ---
+		// --- When ---
 		haveVal, haveExist := inf.Lookup("EXTRA")
 
 		// --- Then ---
