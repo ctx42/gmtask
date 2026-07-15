@@ -53,9 +53,9 @@ func GoPkgName(name string) string {
 }
 
 // Root returns the absolute path to a project root directory, located by
-// walking up from pth until a directory containing "configs/project.conf" is
-// found, with elem joined onto the result. It returns an error wrapping
-// [ErrNoConfig] when no such directory exists.
+// walking up from pth until a directory containing [CfgPath] is found, with
+// elem joined onto the result. It returns an error wrapping [ErrNoConfig] when
+// no such directory exists.
 func Root(pth string, elem ...string) (string, error) {
 	var err error
 	pth, err = filepath.Abs(pth)
@@ -64,14 +64,15 @@ func Root(pth string, elem ...string) (string, error) {
 	}
 	start := pth
 	for {
-		if pth == "/" {
-			return "", fmt.Errorf("%w starting at %s", ErrNoConfig, start)
-		}
-		check := filepath.Join(pth, "configs", "project.conf")
-		if gomake.FileExists(check) {
+		if gomake.FileExists(filepath.Join(pth, CfgPath)) {
 			break
 		}
-		pth = filepath.Dir(pth)
+		parent := filepath.Dir(pth)
+		if parent == pth {
+			// Volume root (e.g. "/" or "C:\"); no config found above.
+			return "", fmt.Errorf("%w starting at %s", ErrNoConfig, start)
+		}
+		pth = parent
 	}
 	return filepath.Join(append([]string{pth}, elem...)...), nil
 }
