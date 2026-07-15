@@ -305,6 +305,27 @@ func Test_injectExamples(t *testing.T) {
 		assert.Equal(t, want, have)
 	})
 
+	t.Run("replace fence after blank lines", func(t *testing.T) {
+		// --- Given ---
+		input := "<!-- gmmce:pkg1/Example_case1 -->\n" +
+			"\n" +
+			"```go\n" +
+			"old content\n" +
+			"```\n" +
+			"after"
+
+		// --- When ---
+		have := injectExamples(input, examples)
+
+		// --- Then ---
+		want := "<!-- gmmce:pkg1/Example_case1 -->\n" +
+			"```go\n" +
+			"fmt.Println(\"hello\")\n" +
+			"```\n" +
+			"after"
+		assert.Equal(t, want, have)
+	})
+
 	t.Run("unknown marker key is left unchanged", func(t *testing.T) {
 		// --- Given ---
 		input := "<!-- gmmce:unknown/Func -->\n```go\nold\n```"

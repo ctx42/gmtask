@@ -221,9 +221,14 @@ func injectExamples(content string, examples map[string]string) string {
 			continue
 		}
 
-		// Skip existing code fence if present.
-		if i < len(lines) && strings.HasPrefix(lines[i], "```") {
-			i++ // skip opening fence
+		// Skip an existing code fence if present, allowing blank lines between
+		// the marker and the opening fence (common Markdown layout).
+		j := i
+		for j < len(lines) && strings.TrimSpace(lines[j]) == "" {
+			j++
+		}
+		if j < len(lines) && strings.HasPrefix(lines[j], "```") {
+			i = j + 1 // skip opening fence
 			for i < len(lines) && strings.TrimSpace(lines[i]) != "```" {
 				i++ // skip fence body
 			}
