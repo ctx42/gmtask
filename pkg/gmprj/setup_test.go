@@ -380,6 +380,31 @@ func Test_Setup_Setup(t *testing.T) {
 		assert.NotContain(t, "git: repository initialized", tst.Stdout())
 		assert.Contain(t, "done\n", tst.Stdout())
 	})
+
+	t.Run("error - IsRepo cancelled", func(t *testing.T) {
+		// --- Given ---
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		tst := ringtest.New(t).WetStdout()
+
+		prj := gmtest.NewProject(t)
+		// go.mod present so InitModule is skipped and IsRepo is the first
+		// ctx-aware call after structure materialization.
+		prj.GoModInit()
+		prj.Close()
+		prj.Chdir()
+
+		sup := must.Value(NewSetup("", WithSetupGoModule("project")))
+		rng := tst.Ring()
+		setStructure(t, rng)
+
+		// --- When ---
+		err := sup.Setup(ctx, rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, context.Canceled, err)
+		assert.NotContain(t, "done\n", tst.Stdout())
+	})
 }
 
 func Test_Setup_addImgSrc(t *testing.T) {

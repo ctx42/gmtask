@@ -124,7 +124,10 @@ func (sup *Setup) Setup(ctx context.Context, rng *ring.Ring) error {
 		_, _ = fmt.Fprintf(rng.Stdout(), "module %q initialized\n", sup.module)
 	}
 
-	if err := gitaid.IsRepo(ctx, sup.root); errors.Is(err, gitaid.ErrNotRepo) {
+	if err = gitaid.IsRepo(ctx, sup.root); err != nil {
+		if !errors.Is(err, gitaid.ErrNotRepo) {
+			return err
+		}
 		if err = sup.initScmRepo(ctx, rng); err != nil {
 			return err
 		}
