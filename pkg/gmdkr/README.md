@@ -39,7 +39,7 @@ name from the project name, the tag from the SCM revision (`git describe`), and
 injects build metadata (build date, commit, repo, CI id) as `--build-arg`s. It
 supports both single-image projects and multi-stage projects that build several
 named target images at once. The exported types (`DockerCmd`, `Config`,
-`Build`, `DkrImages`) are also usable as a plain library.
+`Build`, `ImageInfos`) are also usable as a plain library.
 
 ## Features
 

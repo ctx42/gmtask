@@ -218,7 +218,7 @@ func (dc *DockerCmd) Sh(ctx context.Context, rng *ring.Ring) error {
 	return nil
 }
 
-// Reference prints image reference.
+// Reference returns the selected image reference.
 func (dc *DockerCmd) Reference() (string, error) {
 	if len(dc.Builds) == 0 {
 		return "", ErrNoTarget
