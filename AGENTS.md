@@ -20,9 +20,6 @@ are plain importable packages.
 | `pkg/lib/gmclog`  | Library: read/edit/write Markdown changelogs.  |
 | `internal/gmtest` | Test helper for temporary Go projects.         |
 
-Note: `pkg/gmprj` exists but is not yet listed in the root `README.md` package
-index (Targets/Libraries). Add it there when it stabilizes.
-
 ## Build, test, lint
 
 - Test (canonical, matches CI): `go test -race ./...`.
