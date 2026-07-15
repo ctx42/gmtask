@@ -110,6 +110,7 @@ Current tag: v0.1.0
 Enter a version number [v0.2.0]:
 Now you may edit CHANGELOG.md. Then press ENTER to continue.
 Continuing.
+No remote configured; skip push.
 Done.
 ```
 

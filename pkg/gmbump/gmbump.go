@@ -166,14 +166,15 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		if !errors.Is(err, gitaid.ErrNoRemote) {
 			return fmt.Errorf("git push: %w", err)
 		}
+		_, _ = fmt.Fprint(rng.Stdout(), "No remote configured; skip push.\n")
 	}
 
 	_, _ = fmt.Fprint(rng.Stdout(), "Done.\n")
 
 	// Print additional info if this is a Go module. The release is already
-	// committed, tagged, and pushed, so the upgrade hint is best-effort: any
-	// failure to resolve the module path is ignored rather than failing a
-	// completed release.
+	// committed and tagged (and pushed when a remote exists), so the upgrade
+	// hint is best-effort: any failure to resolve the module path is ignored
+	// rather than failing a completed release.
 	mod, err := gmgo.ImpPath(ctx, rng, repo)
 	if err != nil {
 		return nil

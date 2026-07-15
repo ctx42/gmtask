@@ -48,6 +48,7 @@ func Test_Bump(t *testing.T) {
 			"Enter a version number [v0.0.0]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
 		assert.Equal(t, "v0.0.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
@@ -178,6 +179,7 @@ func Test_BumpTarget(t *testing.T) {
 			"Enter a version number [v0.0.0]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
 		assert.Equal(t, "v0.0.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
@@ -221,6 +223,7 @@ func Test_BumpTarget(t *testing.T) {
 			"Enter a version number [v0.6.0]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
 		assert.Equal(t, "v0.6.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
@@ -267,6 +270,7 @@ func Test_BumpTarget(t *testing.T) {
 			"Enter a version number [v0.0.0]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
 		assert.Equal(t, "v0.0.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
@@ -306,6 +310,7 @@ func Test_BumpTarget(t *testing.T) {
 			"Enter a version number [v0.0.0]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
 		assert.Equal(t, "v0.0.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
@@ -378,6 +383,7 @@ func Test_BumpTarget(t *testing.T) {
 			"Enter a version number [v0.1.0]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
 		assert.Equal(t, "v0.1.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
@@ -421,6 +427,7 @@ func Test_BumpTarget(t *testing.T) {
 			"Enter a version number [v0.1.0]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
 			"Done.\n" +
 			"\n" +
 			"Use\n" +
@@ -464,6 +471,7 @@ func Test_BumpTarget(t *testing.T) {
 			"Enter a version number [v0.1.1]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
 		assert.Equal(t, "v0.1.1", oskit.ReadFileStr(t, prj.Root(), "VER"))
@@ -505,6 +513,7 @@ func Test_BumpTarget(t *testing.T) {
 			"Enter a version number [v0.1.0]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
 		assert.Equal(t, "v0.10.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
@@ -546,6 +555,7 @@ func Test_BumpTarget(t *testing.T) {
 			"Enter a version number [v0.1.0]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
 		assert.Equal(t, "v0.10.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
@@ -681,6 +691,7 @@ func Test_BumpTarget(t *testing.T) {
 			"Enter a version number [v0.1.0]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
 	})
