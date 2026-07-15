@@ -221,6 +221,29 @@ func Test_Lint_lint(t *testing.T) {
 		want := "source.go:10:22: printf: fmt.Sprintf format"
 		assert.Contain(t, want, tst.Stdout())
 	})
+
+	t.Run("resolves config under dir without chdir", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t).WetStdout()
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.ProjectFrom("testdata/vet/failure/project")
+		// Config lives only under the project; process CWD is not the project.
+		prj.CreateFileWith("version: \"2\"\n", "tmp", ".golangci.yml")
+		prj.Close()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := Lint{}.lint(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.ExitCode(t, 1, err)
+		want := "source.go:10:22: printf: fmt.Sprintf format"
+		assert.Contain(t, want, tst.Stdout())
+	})
 }
 
 func Test_Lint_Install(t *testing.T) {
