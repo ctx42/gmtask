@@ -12,8 +12,10 @@
 //	- Change 2.
 //
 // Use [ReadChangelog] to prepend releases without parsing the existing file,
-// or [ReadReleases] to parse the releases for inspection or editing. Releases
-// are ordered youngest to oldest by [Release.Compare] when saved.
+// or [ReadReleases] to parse the releases for inspection or editing.
+// [Changelog.AddRelease] sorts the structured [Changelog.Releases] slice
+// youngest to oldest by [Release.Compare]; unparsed body bytes left by
+// [ReadChangelog] are written as-is and are not reordered.
 //
 // Import path:
 //

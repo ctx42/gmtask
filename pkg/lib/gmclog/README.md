@@ -32,15 +32,16 @@ followed by the lines describing its changes:
 There are two ways in. Use `ReadChangelog` to prepend new releases to the top of
 a file without parsing what is already there — the cheap path for release
 tooling. Use `ReadReleases` to parse existing releases into structured values
-for inspection or editing. Either way, releases are sorted youngest to oldest by
-semantic version when saved.
+for inspection or editing. `AddRelease` sorts the structured `Releases` slice
+youngest to oldest by semantic version; unparsed body text kept by
+`ReadChangelog` is written unchanged.
 
 ## Features
 
 - **Two read modes** — `ReadChangelog` prepends without parsing; `ReadReleases`
   parses existing releases for inspection or editing.
-- **Ordered on save** — releases are sorted youngest to oldest by semantic
-  version rules.
+- **Ordered on add** — `AddRelease` sorts structured releases youngest to
+  oldest by semantic version; unparsed body text is not reordered.
 - **Automatic formatting** — change lines are prefixed with `- ` and get a
   trailing period; disable with the `WithNoFormatting` option.
 - **Flexible construction** — build a `Release` from a version string, a
