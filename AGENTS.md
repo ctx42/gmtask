@@ -12,13 +12,15 @@ are plain importable packages.
 
 ## Layout
 
-| Path              | Role                                           |
-|-------------------|------------------------------------------------|
-| `pkg/gmgo`        | gomake `:go:*` targets + library helpers.      |
-| `pkg/gmbump`      | gomake `:bump` release target.                 |
-| `pkg/gmprj`       | Project setup/scaffolding targets and helpers. |
-| `pkg/lib/gmclog`  | Library: read/edit/write Markdown changelogs.  |
-| `internal/gmtest` | Test helper for temporary Go projects.         |
+| Path              | Role                                              |
+| ----------------- | ------------------------------------------------- |
+| `pkg/gmgo`        | gomake `:go:*` targets + library helpers.         |
+| `pkg/gmdkr`       | gomake `:docker:*` targets + image helpers.       |
+| `pkg/gmbump`      | gomake `:bump` release target.                    |
+| `pkg/gmprj`       | gomake `:project:*` setup/info targets + helpers. |
+| `pkg/gmmce`       | gomake `:doc:mce` Markdown example injection.     |
+| `pkg/lib/gmclog`  | Library: read/edit/write Markdown changelogs.     |
+| `internal/gmtest` | Test helper for temporary Go projects.            |
 
 ## Build, test, lint
 
@@ -27,8 +29,8 @@ are plain importable packages.
   `git@github.com:ctx42/xdev.git`.
 - CI (`.github/workflows/test.yml`) installs golangci-lint `v2.12.2` and runs
   `go test -race ./...` on push and PR.
-- Dogfooding: if `gmgo`/`gmbump` are compiled into your gomake binary, run
-  `gomake :go:check`, `gomake :go:test`, etc.
+- Dogfooding: if the packages are compiled into your gomake binary, run
+  `gomake :go:check`, `gomake :go:test`, `gomake :docker:image:build`, etc.
 
 ## gomake target model (how targets are defined)
 
@@ -38,6 +40,8 @@ are plain importable packages.
   the target name is the type + method path (e.g. `Go.Vet` → `:go:vet`,
   `Lint.Config` → `:go:lint:config`). The `//gomake:` comment tag must have no
   space after `//`.
+- `//gomake:hidden` on a target method keeps it out of public docs and indexes
+  (e.g. incomplete `:docker:image:run-proj`).
 - `*ring.Ring` carries I/O (`rng.Stdout()`, `rng.Stderr()`, `rng.Args()`) and
   environment access; pass it through, do not reach for `os.Stdout`/`os.Args`.
 - Read settings with `gomake.TargetConfig(rng)` + `gomake.GetCfgDefault(...)`
@@ -78,17 +82,26 @@ not the bare module path.
 - `.editorconfig` governs: `*.md` wraps at 80 columns, `*.go` uses tabs, YAML
   uses 2-space indent. Count characters, not bytes — an em-dash is 3 bytes but
   one column.
-- Use `craft:readme-smith` for README work. Root vs member READMEs differ: the
-  root carries badges, a `## License` section, and a package index (split into
-  Targets and Libraries); member READMEs carry no badges/License and never link
-  up to the root.
+- Use `craft:readme-smith` for README work.
+- **Root vs member:** root carries badges, a `## License` section, and a package
+  index (Targets table + Libraries table + relative links down to each member).
+  Members carry no badges, no License, and never link up to the root; they may
+  link sideways to a sibling only when they use it.
+- **Root header order:** badges (one per line) → `#` H1 → tagline → TOC.
+  **Member header order:** `#` H1 → tagline → TOC.
+- **Target names** always include the leading colon (`` `:go:vet` ``, not
+  `` `go:vet` ``) in Features, Usage, and the root Targets table.
+- **Root Targets table** lists every public target. Omit methods marked
+  `//gomake:hidden`. Keep the table in sync when adding a target.
+- **Features:** one feature per line, ≤80 columns. Multi-target packages lead
+  each bullet with a command token (`` `:go:vet` ``); single-command packages
+  lead with a capability phrase — one style shared across the repo's members.
 - Markdown tables must have aligned columns (pad every cell; align the `|`).
+  Prefer total line width ≤80 when descriptions allow.
+- Code fences declare a language; keep fence lines ≤ ~100 chars (prefer ≤80);
+  break long `go get` / shell lines with `\`.
 - Table of contents is a tool-generated `<!-- TOC -->` block (H1 + nested
   H2/H3), the same in every README.
-- Features section: one feature per line, ≤80 columns. Lead each bullet with
-  a command token (`` `:go:vet` ``) for a multi-target package, or a
-  capability phrase for a single-command package — pick one style all the
-  repo's READMEs can share.
 - Do not add goreportcard.com badges — the service no longer works.
 
 ## Commits
