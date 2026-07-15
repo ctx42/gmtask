@@ -72,9 +72,11 @@ func (Lint) checkVersion(
 // empty string used for dir means current working directory.
 func (Lint) lint(ctx context.Context, rng *ring.Ring, dir string) error {
 	args := []string{"run"}
-	cfgPth := filepath.Join("tmp", ".golangci.yml")
+	// Resolve the config under dir (not process CWD) so FileExists matches
+	// cmd.Dir when dir is non-empty and not the process working directory.
+	cfgPth := filepath.Join(dir, "tmp", ".golangci.yml")
 	if !gomake.FileExists(cfgPth) {
-		cfgPth = ".golangci.yml"
+		cfgPth = filepath.Join(dir, ".golangci.yml")
 	}
 	if gomake.FileExists(cfgPth) {
 		args = append(args, "-c", cfgPth)
@@ -110,6 +112,7 @@ func (Lint) Install(ctx context.Context, rng *ring.Ring) error {
 	pkg := "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@" + ver
 	cmd := exec.CommandContext(ctx, "go", "install", pkg)
 	cmd.Env = append(rng.EnvAll(), "CGO_ENABLED=0")
+	cmd.Stdout, cmd.Stderr = rng.Stdout(), rng.Stderr()
 	return cmd.Run()
 }
 
