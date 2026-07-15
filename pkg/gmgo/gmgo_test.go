@@ -186,8 +186,9 @@ func Test_Go_TestV(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		have := prj.ReadFileStr(TestLogFilename(rng))
-		assert.Equal(t, have, tst.Stdout())
+		wantLog := prj.ReadFileStr(TestLogFilename(rng))
+		have := tst.Stdout()
+		assert.Equal(t, wantLog, have)
 		assert.Contain(t, "--- PASS: Test_Hello (", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
 
@@ -217,8 +218,9 @@ func Test_Go_TestV(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		have := prj.ReadFileStr("tmp", TestLogFilename(rng))
-		assert.Equal(t, have, tst.Stdout())
+		wantLog := prj.ReadFileStr("tmp", TestLogFilename(rng))
+		have := tst.Stdout()
+		assert.Equal(t, wantLog, have)
 		assert.Contain(t, "--- PASS: Test_Hello (", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
 
@@ -248,8 +250,9 @@ func Test_Go_TestV(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		have := oskit.ReadFileStr(t, tmp, TestLogFilename(rng))
-		assert.Equal(t, have, tst.Stdout())
+		wantLog := oskit.ReadFileStr(t, tmp, TestLogFilename(rng))
+		have := tst.Stdout()
+		assert.Equal(t, wantLog, have)
 		assert.Contain(t, "--- PASS: Test_Hello (", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
 
@@ -436,8 +439,9 @@ func Test_Go_TestV(t *testing.T) {
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
-		have := prj.ReadFileStr("tmp", TestLogFilename(rng))
-		assert.Equal(t, have, tst.Stdout())
+		wantLog := prj.ReadFileStr("tmp", TestLogFilename(rng))
+		have := tst.Stdout()
+		assert.Equal(t, wantLog, have)
 		assert.Contain(t, "source_test.go:9: expected different result", have)
 		assert.Contain(t, "--- FAIL: Test_Hello (", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
@@ -536,8 +540,9 @@ func Test_Go_Test(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		have := prj.ReadFileStr(TestLogFilename(rng))
-		assert.Equal(t, have, tst.Stdout())
+		wantLog := prj.ReadFileStr(TestLogFilename(rng))
+		have := tst.Stdout()
+		assert.Equal(t, wantLog, have)
 		assert.Contain(t, "ok  \texample.com/comp/project\t", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
 
@@ -567,8 +572,9 @@ func Test_Go_Test(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		have := prj.ReadFileStr("tmp", TestLogFilename(rng))
-		assert.Equal(t, have, tst.Stdout())
+		wantLog := prj.ReadFileStr("tmp", TestLogFilename(rng))
+		have := tst.Stdout()
+		assert.Equal(t, wantLog, have)
 		assert.Contain(t, "ok  \texample.com/comp/project\t", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
 
@@ -598,8 +604,9 @@ func Test_Go_Test(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		have := oskit.ReadFileStr(t, tmp, TestLogFilename(rng))
-		assert.Equal(t, have, tst.Stdout())
+		wantLog := oskit.ReadFileStr(t, tmp, TestLogFilename(rng))
+		have := tst.Stdout()
+		assert.Equal(t, wantLog, have)
 		assert.Contain(t, "ok  \texample.com/comp/project\t", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
 
@@ -650,8 +657,9 @@ func Test_Go_Test(t *testing.T) {
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
-		have := prj.ReadFileStr("tmp", TestLogFilename(rng))
-		assert.Equal(t, have, tst.Stdout())
+		wantLog := prj.ReadFileStr("tmp", TestLogFilename(rng))
+		have := tst.Stdout()
+		assert.Equal(t, wantLog, have)
 		assert.Contain(t, "source_test.go:9: expected different result", have)
 		assert.Contain(t, "--- FAIL: Test_Hello (", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
