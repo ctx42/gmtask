@@ -51,7 +51,7 @@ func Test_CreateFile(t *testing.T) {
 		err := CreateFile(pth)
 
 		// --- Then ---
-		assert.Error(t, err)
+		assert.ErrorContain(t, "stat file", err)
 	})
 
 	t.Run("error - create fails", func(t *testing.T) {
@@ -62,7 +62,7 @@ func Test_CreateFile(t *testing.T) {
 		err := CreateFile(pth)
 
 		// --- Then ---
-		assert.Error(t, err)
+		assert.ErrorContain(t, "create file", err)
 	})
 }
 
@@ -324,13 +324,12 @@ func Test_Changelog_Save(t *testing.T) {
 		rel2 := must.Value(NewRelease("v0.1.2", tim2))
 		rel2.AddChange("Change 5", "Change 6")
 
-		cl, err := ReadChangelog(pth)
-		assert.NoError(t, err)
+		cl := must.Value(ReadChangelog(pth))
 		cl.AddRelease(rel1)
 		cl.AddRelease(rel2)
 
 		// --- When ---
-		err = cl.Save()
+		err := cl.Save()
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -359,6 +358,6 @@ func Test_Changelog_Save(t *testing.T) {
 		err := cl.Save()
 
 		// --- Then ---
-		assert.Error(t, err)
+		assert.ErrorContain(t, "create temp changelog file", err)
 	})
 }
