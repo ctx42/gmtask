@@ -102,7 +102,8 @@ func (Doc) Mce(ctx context.Context, rng *ring.Ring) error {
 	updated := injectExamples(string(data), examples)
 
 	_, _ = fmt.Fprintf(rng.Stdout(), "Writing %s\n", file)
-	if err = os.WriteFile(absFile, []byte(updated), 0o644); err != nil { //nolint:gosec
+	//nolint:gosec // Path is resolved earlier; mode is intentional.
+	if err = os.WriteFile(absFile, []byte(updated), 0o644); err != nil {
 		return fmt.Errorf("write markdown file: %w", err)
 	}
 	return nil
