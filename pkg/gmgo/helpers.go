@@ -23,10 +23,10 @@ import (
 )
 
 var (
-	// ErrModInit is returned when Go module initialization failed.
+	// ErrModInit is returned when Go module initialization fails.
 	ErrModInit = errors.New("go module initialization error")
 
-	// ErrImpPath is returned when ImpPath function failed.
+	// ErrImpPath is returned when [ImpPath] cannot resolve the module path.
 	ErrImpPath = errors.New("cannot determine Go module import path")
 )
 
