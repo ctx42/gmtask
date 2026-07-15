@@ -18,10 +18,9 @@ import (
 // Lint collects Go linting targets.
 type Lint Go
 
-// Default lints Go code in current working directory and subdirectories.
-// Every time it runs it creates a linting log file in "${dir}/tmp" directory.
-// The name of the file depends on the context the linting is done - see
-// [LintLogPth] for details.
+// Default ensures golangci-lint is installed at the required version, fetches
+// the shared config when needed, and lints the current working directory and
+// its subdirectories. Lint output is written to the ring streams.
 //
 // Example usage:
 //
