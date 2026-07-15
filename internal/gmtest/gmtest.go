@@ -10,7 +10,7 @@ import (
 	"github.com/ctx42/testkit/pkg/prjkit"
 )
 
-// NewProject creates a temporary directory for a test project. By default the
+// NewProject creates a temporary directory for a test project. By default, the
 // directory basename is "project" and the module path is [prjkit.GoModName].
 func NewProject(t tester.T, opts ...func(*prjkit.Project)) *prjkit.Project {
 	t.Helper()
