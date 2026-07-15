@@ -142,23 +142,23 @@ func ReadReleases(pth string, elems ...string) (*Changelog, error) {
 
 // AddRelease adds the release(s) to the changelog. Before exiting, it sorts
 // releases from youngest to oldest according to semantic version rules.
-func (cl *Changelog) AddRelease(rel ...*Release) {
-	cl.Releases = append(cl.Releases, rel...)
-	sort.Stable(sort.Reverse(ReleaseSlice(cl.Releases)))
+func (clg *Changelog) AddRelease(rel ...*Release) {
+	clg.Releases = append(clg.Releases, rel...)
+	sort.Stable(sort.Reverse(ReleaseSlice(clg.Releases)))
 }
 
 // Save saves the changelog, overwriting the original file with the releases.
 // It writes to a temporary file in the same directory and renames it into
 // place so a crash or partial write cannot truncate an existing changelog.
-func (cl *Changelog) Save() error {
+func (clg *Changelog) Save() error {
 	buf := &bytes.Buffer{}
-	buf.Write(cl.preamble)
-	for _, rel := range cl.Releases {
+	buf.Write(clg.preamble)
+	for _, rel := range clg.Releases {
 		buf.WriteString(rel.String())
 	}
-	buf.Write(cl.contents)
+	buf.Write(clg.contents)
 
-	dir := filepath.Dir(cl.pth)
+	dir := filepath.Dir(clg.pth)
 	tmp, err := os.CreateTemp(dir, ".changelog-*.tmp")
 	if err != nil {
 		return fmt.Errorf("create temp changelog file: %w", err)
@@ -178,7 +178,7 @@ func (cl *Changelog) Save() error {
 	if err = tmp.Close(); err != nil {
 		return fmt.Errorf("close temp changelog file: %w", err)
 	}
-	if err = os.Rename(tmpName, cl.pth); err != nil {
+	if err = os.Rename(tmpName, clg.pth); err != nil {
 		return fmt.Errorf("replace changelog file: %w", err)
 	}
 	ok = true
