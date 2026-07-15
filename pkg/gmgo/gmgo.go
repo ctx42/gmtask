@@ -322,7 +322,7 @@ func serveDoc(ctx context.Context, rng *ring.Ring, addr string) error {
 		"-http=" + addr,
 		"-play",
 		"-index",
-		"-notes=\"BUG|TODO|FIX\"",
+		"-notes=BUG|TODO|FIX",
 	}
 	cmd := exec.CommandContext(ctx, "godoc", args...)
 	cmd.Stdout, cmd.Stderr = rng.Stdout(), rng.Stderr()
