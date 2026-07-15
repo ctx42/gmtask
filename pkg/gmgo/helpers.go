@@ -44,7 +44,11 @@ func ImpPath(ctx context.Context, rng *ring.Ring, dir string) (string, error) {
 		if dir == "" {
 			dir, _ = os.Getwd()
 		}
-		return "", fmt.Errorf(format, ErrImpPath, dir, eout.String())
+		msg := strings.TrimSpace(eout.String())
+		if msg != "" {
+			return "", fmt.Errorf("%w: %s: %s: %w", ErrImpPath, dir, msg, err)
+		}
+		return "", fmt.Errorf("%w: %s: %w", ErrImpPath, dir, err)
 	}
 	rsp := strings.TrimSpace(sout.String())
 	if rsp == "command-line-arguments" {
@@ -67,11 +71,11 @@ func InitModule(ctx context.Context, rng *ring.Ring, dir, name string) error {
 	cmd.Stdout, cmd.Stderr = sout, eout
 	cmd.Dir = dir
 	if err := cmd.Run(); err != nil {
-		msg := eout.String()
+		msg := strings.TrimSpace(eout.String())
 		if msg != "" {
-			return fmt.Errorf("%w: %s: %s", ErrModInit, dir, msg)
+			return fmt.Errorf("%w: %s: %s: %w", ErrModInit, dir, msg, err)
 		}
-		return fmt.Errorf("%w: %s", ErrModInit, dir)
+		return fmt.Errorf("%w: %s: %w", ErrModInit, dir, err)
 	}
 	return pinGoMajorMinor(ctx, rng, dir)
 }
@@ -110,7 +114,11 @@ func pinGoMajorMinor(ctx context.Context, rng *ring.Ring, dir string) error {
 	cmd.Stdout, cmd.Stderr = io.Discard, eout
 	cmd.Dir = dir
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("%w: %s: %s", ErrModInit, dir, eout.String())
+		msg := strings.TrimSpace(eout.String())
+		if msg != "" {
+			return fmt.Errorf("%w: %s: %s: %w", ErrModInit, dir, msg, err)
+		}
+		return fmt.Errorf("%w: %s: %w", ErrModInit, dir, err)
 	}
 	return nil
 }
