@@ -17,8 +17,9 @@ func NewProject(t tester.T, opts ...func(*prjkit.Project)) *prjkit.Project {
 	return NewNamedProject(t, "project", opts...)
 }
 
-// NewNamedProject creates a temporary directory for a test project using name
-// as the directory basename.
+// NewNamedProject is like [NewProject] but uses name as the directory
+// basename. The module path defaults to [prjkit.GoModNameStem]+name unless
+// options override it.
 func NewNamedProject(
 	t tester.T,
 	name string,

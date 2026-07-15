@@ -57,12 +57,14 @@ func Test_NewNamedProject(t *testing.T) {
 		tspy.ExpectCleanups(1)
 		tspy.ExpectTempDir(1)
 		tspy.Close()
+		name := "custom"
 
 		// --- When ---
-		have := NewNamedProject(tspy, "custom")
+		have := NewNamedProject(tspy, name)
 
 		// --- Then ---
-		assert.Equal(t, "custom", filepath.Base(have.Root()))
+		assert.Equal(t, name, filepath.Base(have.Root()))
+		assert.Equal(t, prjkit.GoModNameStem+name, have.ImpSpec())
 
 		have.Close() // Must close to prevent error.
 	})
@@ -73,12 +75,12 @@ func Test_NewNamedProject(t *testing.T) {
 		tspy.ExpectCleanups(1)
 		tspy.ExpectTempDir(1)
 		tspy.Close()
-
+		name := "custom"
 		called := false
 		opt := func(*prjkit.Project) { called = true }
 
 		// --- When ---
-		have := NewNamedProject(tspy, "custom", opt)
+		have := NewNamedProject(tspy, name, opt)
 
 		// --- Then ---
 		assert.True(t, called)
