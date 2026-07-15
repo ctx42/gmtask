@@ -182,10 +182,10 @@ func (sup *Setup) initScmRepo(ctx context.Context, rng *ring.Ring) error {
 	_, _ = fmt.Fprintf(rng.Stdout(), "git: all files added\n")
 
 	if sup.origin != "" {
-		_, _ = fmt.Fprintf(rng.Stdout(), "git: remote origin added\n")
 		if err = gitaid.AddRemote(ctx, sup.root, sup.origin); err != nil {
 			return err
 		}
+		_, _ = fmt.Fprintf(rng.Stdout(), "git: remote origin added\n")
 	}
 
 	if err = gitaid.Commit(ctx, sup.root, "Initial commit."); err != nil {
