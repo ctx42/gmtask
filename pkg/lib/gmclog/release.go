@@ -36,10 +36,9 @@ type Release struct {
 	formatChanges bool            // Controls if changes are prefixed with "- ".
 }
 
-// NewRelease parses ver as a Semantic Version string and calls the
-// NewSemVerRelease constructor function. When version parsing fails, it
-// returns an error wrapping ErrInvRelVersion and the one returned by the
-// semver package.
+// NewRelease parses ver as a Semantic Version string and calls
+// [NewSemVerRelease]. When version parsing fails, it returns an error wrapping
+// [ErrInvRelVersion] and the one returned by the semver package.
 func NewRelease(
 	ver string,
 	date time.Time,
