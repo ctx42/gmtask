@@ -134,25 +134,39 @@ func (cl *Changelog) AddRelease(rel ...*Release) {
 }
 
 // Save saves the changelog, overwriting the original file with the releases.
-func (cl *Changelog) Save() (err error) {
-	fil, err := os.Create(cl.pth)
-	if err != nil {
-		return fmt.Errorf("create changelog file: %w", err)
-	}
-	defer func() {
-		if cerr := fil.Close(); cerr != nil && err == nil {
-			err = fmt.Errorf("close changelog file: %w", cerr)
-		}
-	}()
-
+// It writes to a temporary file in the same directory and renames it into
+// place so a crash or partial write cannot truncate an existing changelog.
+func (cl *Changelog) Save() error {
 	buf := &bytes.Buffer{}
 	buf.Write(cl.preamble)
 	for _, rel := range cl.Releases {
 		buf.WriteString(rel.String())
 	}
 	buf.Write(cl.contents)
-	if _, err = fil.Write(buf.Bytes()); err != nil {
+
+	dir := filepath.Dir(cl.pth)
+	tmp, err := os.CreateTemp(dir, ".changelog-*.tmp")
+	if err != nil {
+		return fmt.Errorf("create temp changelog file: %w", err)
+	}
+	tmpName := tmp.Name()
+	ok := false
+	defer func() {
+		if !ok {
+			_ = os.Remove(tmpName)
+		}
+	}()
+
+	if _, err = tmp.Write(buf.Bytes()); err != nil {
+		_ = tmp.Close()
 		return fmt.Errorf("write changelog: %w", err)
 	}
+	if err = tmp.Close(); err != nil {
+		return fmt.Errorf("close temp changelog file: %w", err)
+	}
+	if err = os.Rename(tmpName, cl.pth); err != nil {
+		return fmt.Errorf("replace changelog file: %w", err)
+	}
+	ok = true
 	return nil
 }
