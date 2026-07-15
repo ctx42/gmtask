@@ -304,18 +304,18 @@ func (nod *structNode) create(
 
 	perm, err := nod.perm(dirMode)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: %w", rel, err)
 	}
 	_, err = os.Stat(pth)
 	exists := err == nil
 	if err = os.MkdirAll(pth, perm); err != nil {
-		return err
+		return fmt.Errorf("%s: %w", rel, err)
 	}
 	if !exists {
 		if nod.Mode != "" {
 			// Force the exact mode past the umask, as createFile does.
 			if err = os.Chmod(pth, perm); err != nil {
-				return err
+				return fmt.Errorf("%s: %w", rel, err)
 			}
 		}
 		_, _ = fmt.Fprintf(w, "dir created: %s\n", rel)
@@ -345,23 +345,23 @@ func (nod *structNode) createFile(
 	}
 	content, err := vrs.render(nod.Content)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: %w", rel, err)
 	}
 	perm, err := nod.perm(fileMode)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: %w", rel, err)
 	}
 	if err = os.MkdirAll(filepath.Dir(pth), dirMode); err != nil {
-		return err
+		return fmt.Errorf("%s: %w", rel, err)
 	}
 	if err = os.WriteFile(pth, []byte(content), perm); err != nil {
-		return err
+		return fmt.Errorf("%s: %w", rel, err)
 	}
 	if nod.Mode != "" {
 		// Force the exact mode: os.WriteFile applies the umask, which an
 		// explicit permission such as "0755" must ignore.
 		if err = os.Chmod(pth, perm); err != nil {
-			return err
+			return fmt.Errorf("%s: %w", rel, err)
 		}
 	}
 	_, _ = fmt.Fprintf(w, "file created: %s\n", rel)

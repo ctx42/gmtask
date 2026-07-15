@@ -508,6 +508,7 @@ func Test_structure_materialize(t *testing.T) {
 		err := str.materialize(io.Discard, root, tmplVars{})
 
 		// --- Then ---
+		assert.ErrorContain(t, "bad", err)
 		assert.ErrorContain(t, "Nope", err)
 		assert.False(t, oskit.PathExists(t, root, "bad"))
 	})
@@ -597,6 +598,7 @@ func Test_structNode_create(t *testing.T) {
 		err := nod.create(io.Discard, root, "bad", tmplVars{}, featureSet())
 
 		// --- Then ---
+		assert.ErrorContain(t, "bad", err)
 		assert.ErrorContain(t, `invalid mode "0999"`, err)
 	})
 
@@ -611,6 +613,7 @@ func Test_structNode_create(t *testing.T) {
 		err := nod.create(io.Discard, root, "sub", tmplVars{}, featureSet())
 
 		// --- Then ---
+		assert.ErrorContain(t, "f.txt", err)
 		assert.ErrorContain(t, "Nope", err)
 	})
 
@@ -623,6 +626,7 @@ func Test_structNode_create(t *testing.T) {
 		err := nod.create(io.Discard, root, "f.txt", tmplVars{}, featureSet())
 
 		// --- Then ---
+		assert.ErrorContain(t, "f.txt", err)
 		assert.ErrorContain(t, `invalid mode "0999"`, err)
 	})
 
