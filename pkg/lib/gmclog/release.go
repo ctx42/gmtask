@@ -5,25 +5,12 @@ package gmclog
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-)
-
-// Release related errors.
-var (
-	// ErrInvRelHeader represents error indicating an invalid release header.
-	ErrInvRelHeader = errors.New("invalid release header")
-
-	// ErrInvRelDate represents error indicating an invalid release date.
-	ErrInvRelDate = errors.New("invalid release date")
-
-	// ErrInvRelVersion represents error indicating an invalid release version.
-	ErrInvRelVersion = errors.New("invalid release version")
 )
 
 // releaseHeaderRx is a regular expression matching a release header.

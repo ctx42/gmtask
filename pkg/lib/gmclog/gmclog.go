@@ -33,6 +33,18 @@ import (
 	"strings"
 )
 
+// Package-level sentinel errors.
+var (
+	// ErrInvRelHeader is returned for a malformed release header.
+	ErrInvRelHeader = errors.New("invalid release header")
+
+	// ErrInvRelDate is returned for a malformed release date.
+	ErrInvRelDate = errors.New("invalid release date")
+
+	// ErrInvRelVersion is returned for a malformed release version.
+	ErrInvRelVersion = errors.New("invalid release version")
+)
+
 // CreateFile creates an empty file if it doesn't exist.
 func CreateFile(pth string) error {
 	_, err := os.Stat(pth)
