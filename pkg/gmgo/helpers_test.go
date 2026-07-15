@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 package gmgo
 
 import (
@@ -6,6 +9,8 @@ import (
 	"io/fs"
 	"net"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -135,7 +140,12 @@ func Test_InitModule(t *testing.T) {
 		assert.NoError(t, err)
 		have := prj.ReadFileStr("go.mod")
 		assert.Contain(t, "module package", have)
-		assert.Contain(t, "\ngo ", have)
+
+		// The "go" directive is pinned to "major.minor", not the toolchain's
+		// patch version.
+		ver := semver.MustParse(strings.TrimPrefix(runtime.Version(), "go"))
+		want := fmt.Sprintf("go %d.%d\n", ver.Major(), ver.Minor())
+		assert.Contain(t, want, have)
 	})
 
 	t.Run("error - directory does not exist", func(t *testing.T) {

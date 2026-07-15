@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 package gmgo
 
 import (
@@ -10,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -53,7 +57,9 @@ func ImpPath(ctx context.Context, rng *ring.Ring, dir string) (string, error) {
 }
 
 // InitModule initializes Go module with given name in directory dir. The empty
-// string used for dir means current working directory.
+// string used for dir means current working directory. The "go" directive in
+// the resulting go.mod is pinned to the toolchain's "major.minor" version
+// (e.g. "go 1.26"), not its patch version (e.g. "go 1.26.3").
 func InitModule(ctx context.Context, rng *ring.Ring, dir, name string) error {
 	sout, eout := io.Discard, &bytes.Buffer{}
 	cmd := exec.CommandContext(ctx, "go", "mod", "init", name)
@@ -66,6 +72,45 @@ func InitModule(ctx context.Context, rng *ring.Ring, dir, name string) error {
 			return fmt.Errorf("%w: %s: %s", ErrModInit, dir, msg)
 		}
 		return fmt.Errorf("%w: %s", ErrModInit, dir)
+	}
+	return pinGoMajorMinor(ctx, rng, dir)
+}
+
+// rxGoDirective captures the version in a go.mod "go" directive, e.g. the
+// "1.26.3" in "go 1.26.3".
+var rxGoDirective = regexp.MustCompile(`(?m)^go (\d+\.\d+(?:\.\d+)?)`)
+
+// pinGoMajorMinor rewrites the "go" directive in the go.mod located in dir to
+// its "major.minor" form (e.g. "go 1.26" instead of "go 1.26.3"), so the
+// project is not pinned to the patch version of the toolchain that created it.
+// It is a no-op when the directive is already "major.minor" or absent.
+func pinGoMajorMinor(ctx context.Context, rng *ring.Ring, dir string) error {
+	data, err := os.ReadFile(filepath.Join(dir, "go.mod")) //nolint:gosec
+	if err != nil {
+		return fmt.Errorf("%w: %s: %w", ErrModInit, dir, err)
+	}
+	m := rxGoDirective.FindSubmatch(data)
+	if m == nil {
+		return nil
+	}
+	ver, err := semver.NewVersion(string(m[1]))
+	if err != nil {
+		// The go directive is not a version we can parse; leave it as is
+		// rather than rewriting an unexpected value.
+		return nil
+	}
+	mm := fmt.Sprintf("%d.%d", ver.Major(), ver.Minor())
+	if mm == string(m[1]) {
+		return nil
+	}
+
+	eout := &bytes.Buffer{}
+	cmd := exec.CommandContext(ctx, "go", "mod", "edit", "-go="+mm)
+	cmd.Env = rng.EnvAll()
+	cmd.Stdout, cmd.Stderr = io.Discard, eout
+	cmd.Dir = dir
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("%w: %s: %s", ErrModInit, dir, eout.String())
 	}
 	return nil
 }
