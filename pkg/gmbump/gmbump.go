@@ -152,12 +152,12 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		return fmt.Errorf("git add: %w", err)
 	}
 
-	cm := fmt.Sprintf("Bump version to %s.", next)
+	cm := fmt.Sprintf("Bump version to %s.", next.Original())
 	if err = gitaid.Commit(ctx, repo, cm); err != nil {
 		return fmt.Errorf("git commit: %w", err)
 	}
 
-	tm := fmt.Sprintf("Tag version %s.", next)
+	tm := fmt.Sprintf("Tag version %s.", next.Original())
 	if err = gitaid.Tag(ctx, repo, next.Original(), tm); err != nil {
 		return fmt.Errorf("git tag: %w", err)
 	}

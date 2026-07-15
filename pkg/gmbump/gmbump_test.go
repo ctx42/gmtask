@@ -224,6 +224,14 @@ func Test_BumpTarget(t *testing.T) {
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
 		assert.Equal(t, "v0.6.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+		assert.Equal(t,
+			"Bump version to v0.6.0.",
+			prj.GitCommitLog().Latest().Summary,
+		)
+		assert.Equal(t,
+			"Tag version v0.6.0.\n\n",
+			prj.ExeStdout("git", "tag", "-l", "--format=%(contents)", "v0.6.0"),
+		)
 
 		cl := must.Value(gmclog.ReadReleases(prj.Root(), "CHANGELOG.md"))
 		assert.Len(t, 1, cl.Releases)
