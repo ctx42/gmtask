@@ -325,6 +325,7 @@ func serveDoc(ctx context.Context, rng *ring.Ring, addr string) error {
 		"-notes=BUG|TODO|FIX",
 	}
 	cmd := exec.CommandContext(ctx, "godoc", args...)
+	cmd.Env = rng.EnvAll()
 	cmd.Stdout, cmd.Stderr = rng.Stdout(), rng.Stderr()
 	if err := cmd.Run(); err != nil && ctx.Err() == nil {
 		return err
@@ -339,6 +340,7 @@ func serveDoc(ctx context.Context, rng *ring.Ring, addr string) error {
 // error.
 func servePkgsite(ctx context.Context, rng *ring.Ring, addr string) error {
 	cmd := exec.CommandContext(ctx, "pkgsite", "-http="+addr)
+	cmd.Env = rng.EnvAll()
 	cmd.Stdout, cmd.Stderr = rng.Stdout(), rng.Stderr()
 	if err := cmd.Run(); err != nil && ctx.Err() == nil {
 		return err
