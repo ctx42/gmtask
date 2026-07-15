@@ -70,7 +70,7 @@ func NewSetup(root string, opts ...func(*Setup)) (*Setup, error) {
 	case sup.origin != "":
 		module := GoModuleName(sup.origin)
 		if sup.module != "" && module != GoModuleName(sup.module) {
-			return nil, errors.New("go module name does not match git origin")
+			return nil, ErrModuleOriginMismatch
 		}
 		sup.module = module
 		sup.name = ProjectName(sup.origin)

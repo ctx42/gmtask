@@ -133,7 +133,7 @@ func Test_NewSetup(t *testing.T) {
 		sup, err := NewSetup(prj.Root(), opts...)
 
 		// --- Then ---
-		assert.ErrorEqual(t, "go module name does not match git origin", err)
+		assert.ErrorIs(t, ErrModuleOriginMismatch, err)
 		assert.Nil(t, sup)
 	})
 }

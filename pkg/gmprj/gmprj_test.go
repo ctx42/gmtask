@@ -633,7 +633,7 @@ func Test_Project_Setup(t *testing.T) {
 		err := Project{}.Setup(ctx, rng)
 
 		// --- Then ---
-		assert.ErrorEqual(t, "go module name does not match git origin", err)
+		assert.ErrorIs(t, ErrModuleOriginMismatch, err)
 	})
 
 	t.Run("setup error - no structure configured", func(t *testing.T) {

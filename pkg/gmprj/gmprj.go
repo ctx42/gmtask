@@ -30,6 +30,12 @@ var (
 	// ErrNoStructure is returned when the running target's gomake.yaml carries
 	// no "structure" block to scaffold from.
 	ErrNoStructure = errors.New("no project structure defined")
+
+	// ErrModuleOriginMismatch is returned when both a Go module path and a git
+	// origin are set and they do not resolve to the same module name.
+	ErrModuleOriginMismatch = errors.New(
+		"go module name does not match git origin",
+	)
 )
 
 // EnvSSHAuthSock holds the SSH agent socket path. It keeps the standard
