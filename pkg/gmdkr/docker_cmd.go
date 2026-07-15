@@ -244,7 +244,9 @@ func (dc *DockerCmd) Clean(ctx context.Context, rng *ring.Ring) error {
 	ims.RemoveDuplicates()
 
 	for _, img := range ims {
-		_ = deleteImage(ctx, rng, img.ID)
+		if err = deleteImage(ctx, rng, img.ID); err != nil {
+			return fmt.Errorf("delete dangling image %s: %w", img.ID, err)
+		}
 	}
 
 	ims, err = ImgLs(ctx, rng)
@@ -260,7 +262,9 @@ func (dc *DockerCmd) Clean(ctx context.Context, rng *ring.Ring) error {
 		if !strings.Contains(img.Repository, "ctx42-tst-img-") {
 			continue
 		}
-		_ = deleteImage(ctx, rng, img.ID)
+		if err = deleteImage(ctx, rng, img.ID); err != nil {
+			return fmt.Errorf("delete image %s: %w", img.ID, err)
+		}
 	}
 	return nil
 }
