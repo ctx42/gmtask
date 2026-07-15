@@ -141,7 +141,8 @@ func findExamples(
 			for name, body := range funcs {
 				key := name
 				if relDir != "." {
-					key = relDir + "/" + name
+					// Markers always use slash separators (Markdown is OS-agnostic).
+					key = filepath.ToSlash(relDir) + "/" + name
 				}
 				examples[key] = body
 			}
