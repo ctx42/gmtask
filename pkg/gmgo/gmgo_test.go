@@ -186,13 +186,13 @@ func Test_Go_TestV(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		wantLog := prj.ReadFileStr(TestLogFilename(rng))
+		want := prj.ReadFileStr(TestLogFilename(rng))
 		have := tst.Stdout()
-		assert.Equal(t, wantLog, have)
+		assert.Equal(t, want, have)
 		assert.Contain(t, "--- PASS: Test_Hello (", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
 
-		want := "" +
+		want = "" +
 			"mode: atomic\n" +
 			"example.com/comp/project/source.go:4.21,4.45 1 1\n"
 		have = prj.ReadFileStr(CovLogFilename(rng))
@@ -218,13 +218,13 @@ func Test_Go_TestV(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		wantLog := prj.ReadFileStr("tmp", TestLogFilename(rng))
+		want := prj.ReadFileStr("tmp", TestLogFilename(rng))
 		have := tst.Stdout()
-		assert.Equal(t, wantLog, have)
+		assert.Equal(t, want, have)
 		assert.Contain(t, "--- PASS: Test_Hello (", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
 
-		want := "" +
+		want = "" +
 			"mode: atomic\n" +
 			"example.com/comp/project/source.go:4.21,4.45 1 1\n"
 		have = prj.ReadFileStr("tmp", CovLogFilename(rng))
@@ -250,13 +250,13 @@ func Test_Go_TestV(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		wantLog := oskit.ReadFileStr(t, tmp, TestLogFilename(rng))
+		want := oskit.ReadFileStr(t, tmp, TestLogFilename(rng))
 		have := tst.Stdout()
-		assert.Equal(t, wantLog, have)
+		assert.Equal(t, want, have)
 		assert.Contain(t, "--- PASS: Test_Hello (", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
 
-		want := "" +
+		want = "" +
 			"mode: atomic\n" +
 			"example.com/comp/project/source.go:4.21,4.45 1 1\n"
 		have = oskit.ReadFileStr(t, tmp, CovLogFilename(rng))
@@ -439,14 +439,14 @@ func Test_Go_TestV(t *testing.T) {
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
-		wantLog := prj.ReadFileStr("tmp", TestLogFilename(rng))
+		want := prj.ReadFileStr("tmp", TestLogFilename(rng))
 		have := tst.Stdout()
-		assert.Equal(t, wantLog, have)
+		assert.Equal(t, want, have)
 		assert.Contain(t, "source_test.go:9: expected different result", have)
 		assert.Contain(t, "--- FAIL: Test_Hello (", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
 
-		want := "" +
+		want = "" +
 			"mode: atomic\n" +
 			"example.com/comp/project/source.go:7.21,7.70 1 1\n"
 		have = prj.ReadFileStr("tmp", CovLogFilename(rng))
@@ -540,13 +540,13 @@ func Test_Go_Test(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		wantLog := prj.ReadFileStr(TestLogFilename(rng))
+		want := prj.ReadFileStr(TestLogFilename(rng))
 		have := tst.Stdout()
-		assert.Equal(t, wantLog, have)
+		assert.Equal(t, want, have)
 		assert.Contain(t, "ok  \texample.com/comp/project\t", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
 
-		want := "" +
+		want = "" +
 			"mode: atomic\n" +
 			"example.com/comp/project/source.go:4.21,4.45 1 1\n"
 		have = prj.ReadFileStr(CovLogFilename(rng))
@@ -572,13 +572,13 @@ func Test_Go_Test(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		wantLog := prj.ReadFileStr("tmp", TestLogFilename(rng))
+		want := prj.ReadFileStr("tmp", TestLogFilename(rng))
 		have := tst.Stdout()
-		assert.Equal(t, wantLog, have)
+		assert.Equal(t, want, have)
 		assert.Contain(t, "ok  \texample.com/comp/project\t", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
 
-		want := "" +
+		want = "" +
 			"mode: atomic\n" +
 			"example.com/comp/project/source.go:4.21,4.45 1 1\n"
 		have = prj.ReadFileStr("tmp", CovLogFilename(rng))
@@ -604,13 +604,13 @@ func Test_Go_Test(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		wantLog := oskit.ReadFileStr(t, tmp, TestLogFilename(rng))
+		want := oskit.ReadFileStr(t, tmp, TestLogFilename(rng))
 		have := tst.Stdout()
-		assert.Equal(t, wantLog, have)
+		assert.Equal(t, want, have)
 		assert.Contain(t, "ok  \texample.com/comp/project\t", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
 
-		want := "" +
+		want = "" +
 			"mode: atomic\n" +
 			"example.com/comp/project/source.go:4.21,4.45 1 1\n"
 		have = oskit.ReadFileStr(t, tmp, CovLogFilename(rng))
@@ -657,14 +657,14 @@ func Test_Go_Test(t *testing.T) {
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
-		wantLog := prj.ReadFileStr("tmp", TestLogFilename(rng))
+		want := prj.ReadFileStr("tmp", TestLogFilename(rng))
 		have := tst.Stdout()
-		assert.Equal(t, wantLog, have)
+		assert.Equal(t, want, have)
 		assert.Contain(t, "source_test.go:9: expected different result", have)
 		assert.Contain(t, "--- FAIL: Test_Hello (", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
 
-		want := "" +
+		want = "" +
 			"mode: atomic\n" +
 			"example.com/comp/project/source.go:7.21,7.70 1 1\n"
 		have = prj.ReadFileStr("tmp", CovLogFilename(rng))

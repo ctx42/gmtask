@@ -254,7 +254,7 @@ func (vrs tmplVars) render(content string) (string, error) {
 // node it actually creates, materialize writes a "dir created: <path>" or
 // "file created: <path>" line, relative to root, to w.
 //
-// Only nodes whose feature is [featureBase] or listed in enabled are created;
+// Only nodes whose feature is featureBase or listed in enabled are created;
 // disabled subtrees are skipped entirely.
 func (str structure) materialize(
 	w io.Writer,

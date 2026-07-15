@@ -261,7 +261,7 @@ func (Image) RunProj(ctx context.Context, rng *ring.Ring) error {
 		return err
 	}
 
-	args := bld.CmdStdin()
+	args := append(bld.cmdArgs(), "-")
 	_, _ = fmt.Fprintf(
 		rng.Stderr(),
 		"%s%s\n",
@@ -454,10 +454,8 @@ func (Image) Info(ctx context.Context, rng *ring.Ring) error {
 	return nil
 }
 
-// Clean removes no longer necessary test images.
-//
-// Removes dangling images and images that repository reference contains
-// "ctx42-tst-img-" string that were created more than an hour ago.
+// Clean removes dangling images and images whose repository reference contains
+// "ctx42-tst-img-" that were created more than an hour ago.
 func (Image) Clean(ctx context.Context, rng *ring.Ring) error {
 	dc := NewDockerCmd(NewFlags(":docker:image:clean"))
 	return dc.Clean(ctx, rng)

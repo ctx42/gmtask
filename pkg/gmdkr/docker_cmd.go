@@ -234,7 +234,7 @@ func (dc *DockerCmd) Reference() (string, error) {
 }
 
 // Clean removes dangling images and images whose repository reference contains
-// the "ctx42-tst-img-" string that were created more than an hour ago.
+// "ctx42-tst-img-" that were created more than an hour ago.
 func (dc *DockerCmd) Clean(ctx context.Context, rng *ring.Ring) error {
 	// Clone so the dangling filter does not stick on rng for later ImgLs calls.
 	ims, err := ImgLs(ctx, rng.Clone().SetArgs([]string{"-f", "dangling=true"}))

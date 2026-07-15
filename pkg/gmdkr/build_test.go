@@ -640,24 +640,6 @@ func Test_Build_Cmd(t *testing.T) {
 	})
 }
 
-func Test_Build_CmdStdin(t *testing.T) {
-	// --- Given ---
-	cfg := Config{name: "project", tag: "v1.0.0", platform: "linux/amd64"}
-	bld := must.Value(NewBuild(cfg))
-
-	// --- When ---
-	have := bld.CmdStdin()
-
-	// --- Then ---
-	want := []string{
-		"build",
-		"--platform", "linux/amd64",
-		"-t", "project:v1.0.0",
-		"-",
-	}
-	assert.Equal(t, want, have)
-}
-
 func Test_Build_String(t *testing.T) {
 	t.Run("with build kit", func(t *testing.T) {
 		// --- Given ---

@@ -107,12 +107,6 @@ func (bld *Build) Cmd() []string {
 	return append(bld.cmdArgs(), "--file", "Dockerfile", ".")
 }
 
-// CmdStdin returns a "docker build" command that reads the Dockerfile from
-// standard input (context path "-") instead of a filesystem path.
-func (bld *Build) CmdStdin() []string {
-	return append(bld.cmdArgs(), "-")
-}
-
 // cmdArgs returns the shared "docker build" prefix without the Dockerfile path
 // or build context.
 func (bld *Build) cmdArgs() []string {
