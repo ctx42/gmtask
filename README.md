@@ -22,37 +22,39 @@ libraries for Go projects.
 ## Overview
 
 `gmtask` is a collection of Go packages that standardize routine project work.
-Its targets compile into the gomake binary as built-in commands — available in
-every repo with no per-project `makefile.go` — while its libraries are
-standalone Go packages you can import directly.
+Its targets are reusable gomake targets — how you wire them in is up to you:
+compile them into your gomake binary as built-in commands available in every
+project, or import them per-project from a `makefile.go`
+(see [Installation](#installation)). Its libraries are standalone Go packages
+you can import directly.
 
 ## Targets
 
-| Target                    | Description                                          |
-|---------------------------|------------------------------------------------------|
-| `:go:vet`                 | Runs `go vet ./...`.                                 |
-| `:go:lint`                | Runs golangci-lint (auto-installs it + config).      |
-| `:go:lint:install`        | Installs the latest golangci-lint.                   |
-| `:go:lint:config`         | Downloads the shared `.golangci.yml`.                |
-| `:go:test`                | Tests with race detector and coverage.               |
-| `:go:test-v`              | Same as `:go:test`, verbose.                         |
-| `:go:check`               | Runs vet, lint, and test in order.                   |
-| `:go:build`               | Builds with version metadata via `-ldflags`.         |
-| `:go:doc`                 | Serves godoc and opens the browser.                  |
-| `:docker:image:build`     | Builds the project image(s) from the `Dockerfile`.   |
-| `:docker:image:run`       | Builds if needed, then runs the image.               |
-| `:docker:image:sh`        | Builds if needed, then opens a shell in the image.   |
-| `:docker:image:push`      | Pushes the image(s) to the private registry.         |
-| `:docker:image:reference` | Prints the fully-qualified image reference.          |
-| `:docker:image:env`       | Prints the derived image variables as `KEY=value`.   |
-| `:docker:image:info`      | Prints the same variables in a readable form.        |
-| `:docker:image:clean`     | Removes dangling and stale test images.              |
-| `:docker:login`           | Logs in to the configured private registry.          |
-| `:doc:mce`                | Inject Go example bodies into Markdown docs.         |
-| `:bump`                   | Tags the next version, writes the changelog, pushes. |
-| `:project:setup`          | Scaffold a new Go project and init module + git.     |
-| `:project:env`            | Print project info as `KEY=value` env variables.     |
-| `:project:info`           | Print the same information in a readable form.       |
+| Target                   | Description                                          |
+|--------------------------|------------------------------------------------------|
+| `go:vet`                 | Runs `go vet ./...`.                                 |
+| `go:lint`                | Runs golangci-lint (auto-installs it + config).      |
+| `go:lint:install`        | Installs the latest golangci-lint.                   |
+| `go:lint:config`         | Downloads the shared `.golangci.yml`.                |
+| `go:test`                | Tests with race detector and coverage.               |
+| `go:test-v`              | Same as `:go:test`, verbose.                         |
+| `go:check`               | Runs vet, lint, and test in order.                   |
+| `go:build`               | Builds with version metadata via `-ldflags`.         |
+| `go:doc`                 | Serves godoc and opens the browser.                  |
+| `docker:image:build`     | Builds the project image(s) from the `Dockerfile`.   |
+| `docker:image:run`       | Builds if needed, then runs the image.               |
+| `docker:image:sh`        | Builds if needed, then opens a shell in the image.   |
+| `docker:image:push`      | Pushes the image(s) to the private registry.         |
+| `docker:image:reference` | Prints the fully-qualified image reference.          |
+| `docker:image:env`       | Prints the derived image variables as `KEY=value`.   |
+| `docker:image:info`      | Prints the same variables in a readable form.        |
+| `docker:image:clean`     | Removes dangling and stale test images.              |
+| `docker:login`           | Logs in to the configured private registry.          |
+| `doc:mce`                | Inject Go example bodies into Markdown docs.         |
+| `bump`                   | Tags the next version, writes the changelog, pushes. |
+| `project:setup`          | Scaffold a new Go project and init module + git.     |
+| `project:env`            | Print project info as `KEY=value` env variables.     |
+| `project:info`           | Print the same information in a readable form.       |
 
 See the [`gmgo`](pkg/gmgo), [`gmdkr`](pkg/gmdkr), [`gmbump`](pkg/gmbump),
 [`gmprj`](pkg/gmprj), and [`gmmce`](pkg/gmmce) READMEs for flags, environment
