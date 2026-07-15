@@ -68,7 +68,9 @@ func Test_Doc_Mce(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
+
 		assert.Contain(t, "Found pkg1/Example_case1\n", tst.Stdout())
+
 		assert.Equal(t, input, oskit.ReadFileStr(t, readme))
 	})
 
@@ -89,6 +91,7 @@ func Test_Doc_Mce(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
+
 		assert.Contain(t, "Found pkg1/Example_case1\n", tst.Stdout())
 
 		want := "<!-- gmmce:pkg1/Example_case1 -->\n" +
