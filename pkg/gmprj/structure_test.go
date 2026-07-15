@@ -512,7 +512,7 @@ func Test_structure_materialize(t *testing.T) {
 		assert.False(t, oskit.PathExists(t, root, "bad"))
 	})
 
-	t.Run("feature-tagged nodes are all created today", func(t *testing.T) {
+	t.Run("skips nodes whose feature is not enabled", func(t *testing.T) {
 		// --- Given ---
 		root := t.TempDir()
 		str := structure{
@@ -523,6 +523,31 @@ func Test_structure_materialize(t *testing.T) {
 
 		// --- When ---
 		err := str.materialize(io.Discard, root, tmplVars{})
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.FileExist(t, filepath.Join(root, "README.md"))
+		assert.False(t, oskit.PathExists(t, root, ".gitignore"))
+		assert.False(t, oskit.PathExists(t, root, "go.sum"))
+	})
+
+	t.Run("creates nodes for enabled features", func(t *testing.T) {
+		// --- Given ---
+		root := t.TempDir()
+		str := structure{
+			"README.md":  {Type: typeFile, Content: "b", Feature: featureBase},
+			".gitignore": {Type: typeFile, Content: "g", Feature: featureGit},
+			"go.sum":     {Type: typeFile, Content: "o", Feature: featureGolang},
+		}
+
+		// --- When ---
+		err := str.materialize(
+			io.Discard,
+			root,
+			tmplVars{},
+			featureGit,
+			featureGolang,
+		)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -540,7 +565,7 @@ func Test_structNode_create(t *testing.T) {
 		rel := filepath.Join("sub", "deep", "f.txt")
 
 		// --- When ---
-		err := nod.create(io.Discard, root, rel, tmplVars{})
+		err := nod.create(io.Discard, root, rel, tmplVars{}, featureSet())
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -555,7 +580,7 @@ func Test_structNode_create(t *testing.T) {
 		}}
 
 		// --- When ---
-		err := nod.create(io.Discard, root, "sub", tmplVars{})
+		err := nod.create(io.Discard, root, "sub", tmplVars{}, featureSet())
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -569,7 +594,7 @@ func Test_structNode_create(t *testing.T) {
 		nod := &structNode{Type: typeDir, Mode: "0999"}
 
 		// --- When ---
-		err := nod.create(io.Discard, root, "bad", tmplVars{})
+		err := nod.create(io.Discard, root, "bad", tmplVars{}, featureSet())
 
 		// --- Then ---
 		assert.ErrorContain(t, `invalid mode "0999"`, err)
@@ -583,7 +608,7 @@ func Test_structNode_create(t *testing.T) {
 		}}
 
 		// --- When ---
-		err := nod.create(io.Discard, root, "sub", tmplVars{})
+		err := nod.create(io.Discard, root, "sub", tmplVars{}, featureSet())
 
 		// --- Then ---
 		assert.ErrorContain(t, "Nope", err)
@@ -595,10 +620,27 @@ func Test_structNode_create(t *testing.T) {
 		nod := &structNode{Type: typeFile, Content: "x", Mode: "0999"}
 
 		// --- When ---
-		err := nod.create(io.Discard, root, "f.txt", tmplVars{})
+		err := nod.create(io.Discard, root, "f.txt", tmplVars{}, featureSet())
 
 		// --- Then ---
 		assert.ErrorContain(t, `invalid mode "0999"`, err)
+	})
+
+	t.Run("skips node when feature not enabled", func(t *testing.T) {
+		// --- Given ---
+		root := t.TempDir()
+		nod := &structNode{
+			Type:    typeFile,
+			Content: "x",
+			Feature: featureGit,
+		}
+
+		// --- When ---
+		err := nod.create(io.Discard, root, "skip.txt", tmplVars{}, featureSet())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.False(t, oskit.PathExists(t, root, "skip.txt"))
 	})
 }
 
@@ -619,7 +661,13 @@ func Test_fixture_gomake_json(t *testing.T) {
 
 	// --- Then ---
 	assert.NoError(t, err)
-	assert.NoError(t, str.materialize(io.Discard, root, vrs))
+	assert.NoError(t, str.materialize(
+		io.Discard,
+		root,
+		vrs,
+		featureGit,
+		featureGolang,
+	))
 
 	assert.DirExist(t, filepath.Join(root, "dev", "idea"))
 	assert.DirExist(t, filepath.Join(root, "build"))

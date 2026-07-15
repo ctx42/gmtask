@@ -253,23 +253,49 @@ func (vrs tmplVars) render(content string) (string, error) {
 // untouched, never overwritten; directories go through [os.MkdirAll]. For each
 // node it actually creates, materialize writes a "dir created: <path>" or
 // "file created: <path>" line, relative to root, to w.
-func (str structure) materialize(w io.Writer, root string, vrs tmplVars) error {
+//
+// Only nodes whose feature is [featureBase] or listed in enabled are created;
+// disabled subtrees are skipped entirely.
+func (str structure) materialize(
+	w io.Writer,
+	root string,
+	vrs tmplVars,
+	enabled ...string,
+) error {
+
+	feats := featureSet(enabled...)
 	for _, name := range sortedNames(str) {
-		if err := str[name].create(w, root, name, vrs); err != nil {
+		if err := str[name].create(w, root, name, vrs, feats); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
+// featureSet returns the enabled feature set for a materialize run. Base is
+// always enabled; optional names (git, golang) are added on top.
+func featureSet(names ...string) map[string]bool {
+	set := map[string]bool{featureBase: true}
+	for _, name := range names {
+		set[name] = true
+	}
+	return set
+}
+
 // create writes the node at rel below root and, for a directory, recurses into
 // its children. See [structure.materialize] for the creation and logging rules.
+// Nodes whose feature is not in enabled are skipped with no error.
 func (nod *structNode) create(
 	w io.Writer,
 	root string,
 	rel string,
 	vrs tmplVars,
+	enabled map[string]bool,
 ) error {
+
+	if !enabled[nod.feature()] {
+		return nil
+	}
 
 	pth := filepath.Join(root, rel)
 	if nod.Type == typeFile {
@@ -297,7 +323,7 @@ func (nod *structNode) create(
 
 	for _, name := range sortedNames(nod.Children) {
 		sub := filepath.Join(rel, name)
-		if err = nod.Children[name].create(w, root, sub, vrs); err != nil {
+		if err = nod.Children[name].create(w, root, sub, vrs, enabled); err != nil {
 			return err
 		}
 	}

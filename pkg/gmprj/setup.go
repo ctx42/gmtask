@@ -109,7 +109,16 @@ func (sup *Setup) Setup(ctx context.Context, rng *ring.Ring) error {
 
 	_, _ = fmt.Fprintf(rng.Stdout(), "setting up project in: %s\n", sup.root)
 
-	if err = str.materialize(rng.Stdout(), sup.root, sup.vars()); err != nil {
+	// Setup always initializes git and a Go module, so both optional features
+	// are enabled for the scaffold.
+	err = str.materialize(
+		rng.Stdout(),
+		sup.root,
+		sup.vars(),
+		featureGit,
+		featureGolang,
+	)
+	if err != nil {
 		return err
 	}
 
