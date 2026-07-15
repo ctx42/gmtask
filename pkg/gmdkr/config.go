@@ -39,7 +39,7 @@ type Config struct {
 	// Use build kit when building (default: true).
 	kit bool
 
-	// Build date
+	// Build date.
 	buildDate time.Time
 
 	// Dockerfile arguments.

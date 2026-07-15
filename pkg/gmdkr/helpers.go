@@ -47,8 +47,8 @@ func splitTargets(targets string) []string {
 	return ret
 }
 
-// pickTargets checks all wanted tags in wantTgs are in haveTgs and returns
-// them as slice with the same order as in haveTgs. Returns error when:
+// pickTargets checks all wanted targets in wantTgs are in haveTgs and returns
+// them as a slice with the same order as in haveTgs. Returns an error when:
 //   - haveTgs is empty and wantTgs is not,
 //   - wantTgs has names that are not in haveTgs.
 func pickTargets(haveTgs, wantTgs []string) ([]string, error) {

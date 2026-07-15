@@ -12,10 +12,10 @@ import (
 
 // Sentinel errors.
 var (
-	// ErrEmptyTag is error returned when Docker image tag is empty string.
+	// ErrEmptyTag is the error returned when the Docker image tag is empty.
 	ErrEmptyTag = errors.New("image tag must not be empty")
 
-	// ErrEmptyName is error returned when Docker image name is empty string.
+	// ErrEmptyName is the error returned when the Docker image name is empty.
 	ErrEmptyName = errors.New("image name must not be empty")
 )
 

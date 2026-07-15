@@ -368,7 +368,7 @@ func (Image) Reference(ctx context.Context, rng *ring.Ring) error {
 
 // Env prints information about project in current working directory in the
 // same format as Linux shell command "env". Additional argument may be passed
-// to the target in form of environment variable name to display only it's
+// to the target in form of environment variable name to display only its
 // value.
 func (Image) Env(ctx context.Context, rng *ring.Ring) error {
 	fp := NewFlagParser(":docker:image:env", rng.Stderr())
@@ -411,7 +411,7 @@ func (Image) Env(ctx context.Context, rng *ring.Ring) error {
 // Info prints information about project in current working directory. Its
 // output is more readable version of "docker:image:env" target. Additional
 // argument may be passed to the target in form of environment variable name
-// to display only it's value.
+// to display only its value.
 func (Image) Info(ctx context.Context, rng *ring.Ring) error {
 	tgtName := ":docker:image:info"
 	eout := rng.Stderr()
