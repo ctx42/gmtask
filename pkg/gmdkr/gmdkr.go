@@ -71,7 +71,7 @@ const (
 
 // goImageLatest is the latest Docker image reference with Go and test tools
 // installed.
-const goImageLatest = "docker pull ghcr.io/ctx42/dkigo-test:latest"
+const goImageLatest = "ghcr.io/ctx42/dkigo-test:latest"
 
 // Sentinel errors.
 var (
