@@ -6,6 +6,7 @@ package gmgo
 import (
 	"context"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -99,6 +100,42 @@ func Test_Lint_Default(t *testing.T) {
 		assert.ExitCode(t, 1, err)
 		want := "source.go:10:21: SA5009: Printf format %d has arg #1"
 		assert.Contain(t, want, tst.Stdout())
+	})
+
+	t.Run("auto-installs when binary is missing", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t).WetStdout()
+		repo := setupConfigRepo(t)
+		bin := t.TempDir()
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.ProjectFrom("testdata/vet/success/project")
+		prj.CreateDir("tmp")
+		prj.Close()
+		prj.Chdir()
+
+		// exec.Command resolves the binary via the process PATH, not cmd.Env,
+		// so strip golangci-lint from the process PATH. GOBIN/bin is first so
+		// the post-install re-check finds the freshly installed binary.
+		path := bin + string(os.PathListSeparator) +
+			pathWithoutBinary("golangci-lint")
+		t.Setenv("PATH", path)
+
+		rng := tst.Ring()
+		rng.EnvSet(GoLintConfigRepoEnvKey, repo)
+		rng.EnvSet("GOBIN", bin)
+		rng.EnvSet("PATH", path)
+
+		// --- When ---
+		err := Lint{}.Default(ctx, rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.FileExist(t, filepath.Join(bin, "golangci-lint"))
+		assert.FileExist(t, prj.Path("tmp", ".golangci.yml"))
+		assert.Contain(t, "0 issues.", tst.Stdout())
 	})
 }
 

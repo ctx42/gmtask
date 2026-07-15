@@ -4,7 +4,10 @@
 package gmgo
 
 import (
+	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"github.com/ctx42/testing/pkg/tester"
 	"github.com/ctx42/testkit/pkg/oskit"
@@ -39,4 +42,17 @@ func setupConfigRepo(t tester.T, name ...string) string {
 	git("add", "-A")
 	git("commit", "-m", "config")
 	return repo
+}
+
+// pathWithoutBinary returns PATH with directories that contain name removed, so
+// tests can force LookPath / exec to miss an otherwise-installed tool.
+func pathWithoutBinary(name string) string {
+	var keep []string
+	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
+		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
+			continue
+		}
+		keep = append(keep, dir)
+	}
+	return strings.Join(keep, string(os.PathListSeparator))
 }

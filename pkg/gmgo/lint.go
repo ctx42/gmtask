@@ -28,11 +28,13 @@ type Lint Go
 //	gomake :go:lint
 func (tgt Lint) Default(ctx context.Context, rng *ring.Ring) error {
 	ver, err := tgt.checkVersion(ctx, rng, "")
-	if err != nil {
-		return err
-	}
-	if ver.Compare(expLintVer) < 0 {
+	// Install when the binary is missing/unusable or older than required,
+	// then re-check so a failed install surfaces before linting.
+	if err != nil || ver.Compare(expLintVer) < 0 {
 		if err = tgt.Install(ctx, rng); err != nil {
+			return err
+		}
+		if _, err = tgt.checkVersion(ctx, rng, ""); err != nil {
 			return err
 		}
 	}
