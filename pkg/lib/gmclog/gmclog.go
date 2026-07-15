@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 // Package gmclog reads, edits, and writes Markdown changelog files.
 //
 // A changelog is a sequence of releases, each starting with a second-level
@@ -51,6 +54,7 @@ func CreateFile(pth string) error {
 type Changelog struct {
 	pth      string     // Absolute path to the changelog file.
 	Releases []*Release // Releases to write to the changelog.
+	preamble []byte     // Lines preceding the first release header.
 	contents []byte     // The changelog file as it is now.
 }
 
@@ -84,13 +88,14 @@ func ReadReleases(pth string, elems ...string) (*Changelog, error) {
 	}
 
 	curr := -1
+	var preamble []string
 	scn := bufio.NewScanner(bytes.NewReader(cl.contents))
 	for scn.Scan() {
 		lin := scn.Text()
-		if strings.HasPrefix(lin, "## ") {
+		if releaseHeaderRx.MatchString(lin) {
 			var rel *Release
 			if rel, err = ReleaseFromHeader(lin, WithNoFormatting); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("parse release header: %w", err)
 			}
 			cl.Releases = append(cl.Releases, rel)
 			curr = len(cl.Releases) - 1
@@ -98,7 +103,12 @@ func ReadReleases(pth string, elems ...string) (*Changelog, error) {
 		}
 		if curr >= 0 {
 			cl.Releases[curr].Changes = append(cl.Releases[curr].Changes, lin)
+			continue
 		}
+		// A line before the first release header, such as a "# Changelog"
+		// title. It belongs to no release; keep it so Save re-emits it ahead
+		// of the releases instead of dropping it.
+		preamble = append(preamble, lin)
 	}
 	if err = scn.Err(); err != nil {
 		return nil, fmt.Errorf("scan changelog: %w", err)
@@ -106,8 +116,12 @@ func ReadReleases(pth string, elems ...string) (*Changelog, error) {
 	for _, rel := range cl.Releases {
 		rel.finalize()
 	}
-	// The parsed releases fully represent the file; drop the raw contents so
-	// Save reserializes from Releases instead of appending the file to itself.
+	// The parsed releases and preamble fully represent the file; drop the raw
+	// contents so Save reserializes from them instead of appending the file to
+	// itself.
+	if len(preamble) > 0 {
+		cl.preamble = []byte(strings.Join(preamble, "\n") + "\n")
+	}
 	cl.contents = nil
 	return cl, nil
 }
@@ -116,7 +130,7 @@ func ReadReleases(pth string, elems ...string) (*Changelog, error) {
 // releases from youngest to oldest according to semantic version rules.
 func (cl *Changelog) AddRelease(rel ...*Release) {
 	cl.Releases = append(cl.Releases, rel...)
-	sort.Sort(sort.Reverse(ReleaseSlice(cl.Releases)))
+	sort.Stable(sort.Reverse(ReleaseSlice(cl.Releases)))
 }
 
 // Save saves the changelog, overwriting the original file with the releases.
@@ -132,6 +146,7 @@ func (cl *Changelog) Save() (err error) {
 	}()
 
 	buf := &bytes.Buffer{}
+	buf.Write(cl.preamble)
 	for _, rel := range cl.Releases {
 		buf.WriteString(rel.String())
 	}
