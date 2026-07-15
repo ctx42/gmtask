@@ -70,7 +70,7 @@ func ConfigFrom(inf *gmprj.Info, fls *Flags) *Config {
 		cfg.buildDate = inf.BuildDate
 	}
 
-	cfg.repo = inf.CfgGet(CfgDkrRepo)
+	cfg.repo = inf.CfgGet(xdef.EnvRegRepo)
 	if inf.Config != nil {
 		cfg.args = maps.Clone(inf.Config)
 	}
@@ -78,7 +78,7 @@ func ConfigFrom(inf *gmprj.Info, fls *Flags) *Config {
 	cfg.fromInfo(inf, xdef.EnvScmHash)
 	cfg.fromInfo(inf, xdef.EnvScmRev)
 	cfg.fromInfo(inf, xdef.EnvCCID)
-	cfg.fromInfo(inf, CfgDkrRepo)
+	cfg.fromInfo(inf, xdef.EnvRegRepo)
 	cfg.fromInfo(inf, EnvSSHSock)
 	if val, ok := cfg.args[EnvSSHSock]; ok && val != "" {
 		cfg.ssh = val

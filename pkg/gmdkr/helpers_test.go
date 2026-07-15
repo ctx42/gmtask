@@ -15,6 +15,7 @@ import (
 	"github.com/ctx42/testing/pkg/must"
 	"github.com/ctx42/testkit/pkg/dkrkit"
 	"github.com/ctx42/testkit/pkg/netkit"
+	"github.com/ctx42/xdef/pkg/xdef"
 
 	"github.com/ctx42/gmtask/internal/gmtest"
 	"github.com/ctx42/gmtask/pkg/gmprj"
@@ -468,22 +469,22 @@ func Test_isRemoteSet_tabular(t *testing.T) {
 		{"not set", map[string]string{}, false},
 		{
 			"only host key set but empty",
-			map[string]string{CfgDkrRegHost: ""},
+			map[string]string{xdef.EnvRegHost: ""},
 			false,
 		},
 		{
 			"only repo key set but empty",
-			map[string]string{CfgDkrRepo: ""},
+			map[string]string{xdef.EnvRegRepo: ""},
 			false,
 		},
 		{
 			"host and repo key values empty",
-			map[string]string{CfgDkrRegHost: "", CfgDkrRepo: ""},
+			map[string]string{xdef.EnvRegHost: "", xdef.EnvRegRepo: ""},
 			false,
 		},
 		{
 			"host and repo key set",
-			map[string]string{CfgDkrRegHost: "host", CfgDkrRepo: "repo"},
+			map[string]string{xdef.EnvRegHost: "host", xdef.EnvRegRepo: "repo"},
 			true,
 		},
 	}

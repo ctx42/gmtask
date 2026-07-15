@@ -29,26 +29,6 @@ import (
 //go:embed data/Dockerfile
 var shim string
 
-// Project configuration keys. It defines all the keys that may appear
-// in the "project.conf" configuration file.
-const (
-	// CfgDkrTargets represents Dockerfile targets to build. The targets must
-	// exist in the Dockerfile.
-	//
-	// Example:
-	//
-	//   C42_BLD_TARGETS=first,second,third
-	CfgDkrTargets = xdef.EnvBldTargets
-
-	// CfgDkrRepo represents the Docker private repository the image reference
-	// is built from and images are pushed to.
-	CfgDkrRepo = xdef.EnvRegRepo
-
-	// CfgDkrRegHost represents the Docker registry host of the private
-	// repository. Together with [CfgDkrRepo] it marks the remote as configured.
-	CfgDkrRegHost = xdef.EnvRegHost
-)
-
 // EnvSSHSock is the well-known environment variable pointing at the SSH agent
 // socket exposed to "docker build".
 const EnvSSHSock = "SSH_AUTH_SOCK"
@@ -57,7 +37,7 @@ const EnvSSHSock = "SSH_AUTH_SOCK"
 const (
 	// EnvDkrImgNameStem holds stem of Docker image file. The value is the
 	// image name stem used as a prefix for image names when
-	// [CfgDkrTargets] is set in the project configuration file.
+	// [xdef.EnvBldTargets] is set in the project configuration file.
 	EnvDkrImgNameStem = "C42_DKI_NAME_STEM"
 
 	// EnvDkrImgName holds Docker image name. Set when project builds only one
@@ -65,10 +45,10 @@ const (
 	EnvDkrImgName = "C42_DKI_NAME"
 
 	// EnvDkrImgNames holds comma-delimited list of Docker images. Set when
-	// [CfgDkrTargets] is used and project builds more than one image.
+	// [xdef.EnvBldTargets] is used and project builds more than one image.
 	EnvDkrImgNames = "C42_DKI_NAMES"
 
-	// EnvDkrImgTag is environment variable name representing Docker image tag.
+	// EnvDkrImgTag is an environment variable name representing Docker image tag.
 	// In the docker image reference:
 	//
 	//   my.nexus.dev:5000/repo/image:1.2.3
@@ -84,7 +64,7 @@ const (
 	EnvDkrImgRef = "C42_DKI_REF"
 
 	// EnvDkrImgRefs is environment variable name representing comma delimited
-	// list of Docker images references. Set when [CfgDkrTargets] is used in
+	// list of Docker images references. Set when [xdef.EnvBldTargets] is used in
 	// the project configuration file and project builds more than one image.
 	EnvDkrImgRefs = "C42_DKI_REFS"
 )
@@ -100,7 +80,7 @@ var (
 	ErrNoTargets = errors.New("no targets defined")
 
 	// ErrNoTarget is returned when "--dkr-target" option to build target is
-	// provided with target which is not defined by [CfgDkrTargets].
+	// provided with target which is not defined by [xdef.EnvBldTargets].
 	ErrNoTarget = errors.New("unknown target")
 
 	// ErrNoDockerfile is returned when no Dockerfile is found.
@@ -139,7 +119,7 @@ func (Docker) Login(ctx context.Context, rng *ring.Ring) error {
 	if err != nil {
 		return err
 	}
-	dkrPrvRepo := inf.CfgGet(CfgDkrRepo)
+	dkrPrvRepo := inf.CfgGet(xdef.EnvRegRepo)
 	if dkrPrvRepo == "" {
 		format := "docker private repo not configured in %s"
 		return fmt.Errorf(format, gmprj.CfgPath)
@@ -475,7 +455,7 @@ func (Image) Info(ctx context.Context, rng *ring.Ring) error {
 	return nil
 }
 
-// Clean removes no longer needed test images.
+// Clean removes no longer necessary test images.
 //
 // Removes dangling images and images that repository reference contains
 // "ctx42-tst-img-" string that were created more than an hour ago.

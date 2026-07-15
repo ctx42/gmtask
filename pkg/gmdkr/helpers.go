@@ -19,6 +19,7 @@ import (
 
 	"github.com/ctx42/gomake/pkg/gomake"
 	"github.com/ctx42/ring/pkg/ring"
+	"github.com/ctx42/xdef/pkg/xdef"
 
 	"github.com/ctx42/gmtask/pkg/gmprj"
 )
@@ -192,8 +193,8 @@ func dockerErrorOr(msg string, err error) error {
 
 // isRemoteSet returns true if docker remote repository is set.
 func isRemoteSet(cfg map[string]string) bool {
-	host := cfg[CfgDkrRegHost]
-	repo := cfg[CfgDkrRepo]
+	host := cfg[xdef.EnvRegHost]
+	repo := cfg[xdef.EnvRegRepo]
 	return host != "" && repo != ""
 }
 

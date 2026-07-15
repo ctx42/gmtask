@@ -137,7 +137,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 			EnvSSHSock:        "ssh-sock",
 			xdef.EnvBuildDate: "2000-01-02T03:04:05.6Z",
 			xdef.EnvCCID:      xdef.PhUnknown,
-			CfgDkrTargets:     "first,second,third",
+			xdef.EnvBldTargets:     "first,second,third",
 			xdef.EnvScmRepo:   prjkit.GitOrigin,
 			xdef.EnvScmHash:   cm.Hash,
 			xdef.EnvScmRev:    "v1.1.1",
@@ -248,7 +248,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 			EnvSSHSock:        "ssh-sock",
 			xdef.EnvBuildDate: "2000-01-02T03:04:05.6Z",
 			xdef.EnvCCID:      xdef.PhUnknown,
-			CfgDkrTargets:     "first,second,third",
+			xdef.EnvBldTargets:     "first,second,third",
 			xdef.EnvScmRepo:   prjkit.GitOrigin,
 			xdef.EnvScmHash:   cm.Hash,
 			xdef.EnvScmRev:    "v1.1.1",
@@ -943,7 +943,7 @@ func Test_DockerCmd_Push(t *testing.T) {
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
 		prj.CfgRegRepoDef()
-		prj.CfgAdd(CfgDkrTargets, "first,second,third")
+		prj.CfgAdd(xdef.EnvBldTargets, "first,second,third")
 		prj.WithDockerfile()
 		prj.GitInitAddAll("v1.1.1")
 		prj.Close()

@@ -52,7 +52,7 @@ func (dc *DockerCmd) Init(
 	}
 
 	var wantTgs []string
-	haveTgs := splitTargets(dc.Info.CfgGet(CfgDkrTargets))
+	haveTgs := splitTargets(dc.Info.CfgGet(xdef.EnvBldTargets))
 	if wantTgs, err = pickTargets(haveTgs, dc.Flags.Targets); err != nil {
 		return err
 	}
