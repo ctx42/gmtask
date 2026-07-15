@@ -789,7 +789,7 @@ func Test_getSemVer(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Empty(t, curr)
+		assert.Nil(t, curr)
 		assert.Equal(t, StartSemVer, next.Original())
 		assert.Equal(t, []string{"not-sem-ver"}, skipped)
 	})
