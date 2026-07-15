@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 package gmprj
 
 import (
@@ -17,16 +20,6 @@ import (
 	"github.com/ctx42/xdef/pkg/xdef"
 
 	"github.com/ctx42/gmtask/pkg/gmgo"
-)
-
-// Configuration file name and relative path.
-const (
-	// CfgFile is the project configuration file name.
-	CfgFile = "project.conf"
-
-	// CfgPath is the relative (to project root) path to the project's
-	// configuration file.
-	CfgPath = "configs" + string(os.PathSeparator) + CfgFile
 )
 
 // Info represents project configuration and environment.
@@ -52,7 +45,8 @@ type Info struct {
 	LDFlags string
 }
 
-// NewInfo returns a new instance of Info.
+// NewInfo returns an Info seeded from env. BuildDate defaults to the current
+// UTC time, overridden by [xdef.EnvBuildDate] (RFC3339) when it is set.
 func NewInfo(env []string) *Info {
 	inf := &Info{
 		Config:    make(map[string]string),
@@ -282,7 +276,7 @@ func getGoSpec(ctx context.Context, env []string, root string) (string, error) {
 
 // getConfig reads the project configuration at the given path.
 func getConfig(pth string) (map[string]string, error) {
-	fil, err := os.Open(pth)
+	fil, err := os.Open(pth) //nolint:gosec
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("%w: %w", ErrNoConfig, err)

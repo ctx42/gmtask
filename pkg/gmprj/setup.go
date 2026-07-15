@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 package gmprj
 
 import (
@@ -14,8 +17,6 @@ import (
 
 	"github.com/ctx42/gmtask/pkg/gmgo"
 )
-
-// TODO(rz): The go version should not be `1.26.3` but `go 1.26`.
 
 // WithSetupDockerRepo is option for [NewSetup] setting Docker private
 // repository link.
@@ -116,7 +117,7 @@ func (sup *Setup) Setup(ctx context.Context, rng *ring.Ring) error {
 		return err
 	}
 
-	if !gomake.FileExists("go.mod") {
+	if !gomake.FileExists(filepath.Join(sup.root, "go.mod")) {
 		if err := gmgo.InitModule(ctx, rng, sup.root, sup.module); err != nil {
 			return err
 		}
@@ -139,7 +140,7 @@ func (sup *Setup) addImgSrc(rng *ring.Ring) error {
 		return nil
 	}
 	pth := filepath.Join(sup.root, CfgPath)
-	fil, err := os.OpenFile(pth, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o666)
+	fil, err := os.OpenFile(pth, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o666) //nolint:gosec
 	if err != nil {
 		return err
 	}

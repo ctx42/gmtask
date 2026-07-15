@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 // Package gmprj provides gomake targets and helpers for scaffolding Go projects
 // and inspecting their build environment: creating the directory and file
 // layout, initializing the module and git repository, and reporting project
@@ -16,13 +19,33 @@ import (
 	"github.com/ctx42/xflag/pkg/xflag"
 )
 
-// ErrTooManyArgs is returned when a target gets too many arguments.
-var ErrTooManyArgs = errors.New("too many arguments")
+// Package-level errors.
+var (
+	// ErrTooManyArgs is returned when a target gets too many arguments.
+	ErrTooManyArgs = errors.New("too many arguments")
+
+	// ErrNoConfig is returned when project is missing configuration file.
+	ErrNoConfig = errors.New("no project configuration file")
+
+	// ErrNoStructure is returned when the running target's gomake.yaml carries
+	// no "structure" block to scaffold from.
+	ErrNoStructure = errors.New("no project structure defined")
+)
 
 // EnvSSHAuthSock holds the SSH agent socket path. It keeps the standard
 // operating system variable name, set outside gomake, and is the only project
 // environment variable gmprj declares.
 const EnvSSHAuthSock = "SSH_AUTH_SOCK"
+
+// Configuration file name and relative path.
+const (
+	// CfgFile is the project configuration file name.
+	CfgFile = "project.conf"
+
+	// CfgPath is the relative (to project root) path to the project's
+	// configuration file.
+	CfgPath = "configs" + string(os.PathSeparator) + CfgFile //nolint:gocritic
+)
 
 // Working directory state values reported through [xdef.EnvScmState].
 const (
@@ -44,10 +67,6 @@ type Project struct{} //gomake:ns_root
 //
 //	gomake :project:env
 func (Project) Env(ctx context.Context, rng *ring.Ring) error {
-	if len(rng.Args()) > 1 {
-		return ErrTooManyArgs
-	}
-
 	tgtName := ":project:env"
 	fs := xflag.NewFlagSet(tgtName, flag.ContinueOnError)
 	fs.SetOutput(rng.Stderr())
@@ -64,6 +83,9 @@ func (Project) Env(ctx context.Context, rng *ring.Ring) error {
 	if fs.GetBool("help") {
 		fs.Usage()
 		return nil
+	}
+	if len(rng.Args()) > 1 {
+		return ErrTooManyArgs
 	}
 
 	root, err := Root(".")
@@ -165,7 +187,7 @@ func (Project) Setup(ctx context.Context, rng *ring.Ring) error {
 			src = mod
 		}
 		root = ProjectName(src)
-		if err := os.Mkdir(root, 0o755); err != nil {
+		if err := os.Mkdir(root, 0o755); err != nil { //nolint:gosec
 			return err
 		}
 	}

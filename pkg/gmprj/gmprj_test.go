@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 package gmprj
 
 import (
@@ -127,6 +130,27 @@ func Test_Project_Env(t *testing.T) {
 		prj.Chdir()
 
 		rng := tst.Ring(xdef.EnvProjDistDir)
+
+		// --- When ---
+		err := Project{}.Env(ctx, rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, prj.Path("dist"), tst.Stdout())
+	})
+
+	t.Run("single variable with export flag", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t).WetStdout()
+
+		prj := gmtest.NewProject(t)
+		prj.WithConfig()
+		prj.GoModInit()
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring("-e", xdef.EnvProjDistDir)
 
 		// --- When ---
 		err := Project{}.Env(ctx, rng)
@@ -391,7 +415,7 @@ func Test_Project_Setup(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		origin := "git@example.com:comp/skw-vxx.git"
+		origin := "git@example.com:comp/acme.git"
 		rng := tst.Ring("--origin", origin)
 		setStructure(t, rng)
 
@@ -402,10 +426,10 @@ func Test_Project_Setup(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contain(t, "done\n", tst.Stdout())
 		have := prj.ReadFileStr("go.mod")
-		assert.Contain(t, "module example.com/comp/skw-vxx\n", have)
+		assert.Contain(t, "module example.com/comp/acme\n", have)
 		assert.Contain(t, origin, prj.ReadFileStr(".git", "config"))
 		have = prj.ReadFileStr("dev", "idea", "go-test-all.run.xml")
-		assert.Contain(t, `name="skw-vxx"`, have)
+		assert.Contain(t, `name="acme"`, have)
 	})
 
 	t.Run("in current working directory with module name", func(t *testing.T) {
@@ -443,7 +467,7 @@ func Test_Project_Setup(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		origin := "git@example.com:comp/skw-vxx.git"
+		origin := "git@example.com:comp/acme.git"
 		rng := tst.Ring("--origin", origin, "--mkdir")
 		setStructure(t, rng)
 
@@ -453,11 +477,11 @@ func Test_Project_Setup(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Contain(t, "done\n", tst.Stdout())
-		have := prj.ReadFileStr("skw-vxx", "go.mod")
-		assert.Contain(t, "module example.com/comp/skw-vxx\n", have)
-		assert.Contain(t, origin, prj.ReadFileStr("skw-vxx", ".git", "config"))
-		have = prj.ReadFileStr("skw-vxx", "dev", "idea", "go-test-all.run.xml")
-		assert.Contain(t, `name="skw-vxx"`, have)
+		have := prj.ReadFileStr("acme", "go.mod")
+		assert.Contain(t, "module example.com/comp/acme\n", have)
+		assert.Contain(t, origin, prj.ReadFileStr("acme", ".git", "config"))
+		have = prj.ReadFileStr("acme", "dev", "idea", "go-test-all.run.xml")
+		assert.Contain(t, `name="acme"`, have)
 	})
 
 	t.Run("create directory with module name", func(t *testing.T) {
@@ -601,8 +625,8 @@ func Test_Project_Setup(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		origin := "git@example.org:proj/skw-vxx.git"
-		module := "example.com/comp/skw-vxx"
+		origin := "git@example.org:proj/acme.git"
+		module := "example.com/comp/acme"
 		rng := tst.Ring("-o", origin, "-m", module)
 
 		// --- When ---

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
+// SPDX-License-Identifier: MIT
+
 package gmprj
 
 import (
@@ -24,10 +27,6 @@ const (
 	// fileMode is the default file permission.
 	fileMode os.FileMode = 0o600
 )
-
-// ErrNoStructure is returned when the running target's gomake.yaml carries no
-// "structure" block to scaffold from.
-var ErrNoStructure = errors.New("no project structure defined")
 
 // Reserved attribute keys within a structure node. Every other key in a node
 // names a child node — a nested file or directory.
