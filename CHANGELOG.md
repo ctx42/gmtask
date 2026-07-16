@@ -1,3 +1,6 @@
+## v0.6.1 (Thu, 16 Jul 2026 19:30:31 UTC)
+- build(deps): bump gomake to 0.26.0 and testing to 0.56.0.
+
 ## v0.6.0 (Wed, 15 Jul 2026 18:19:01 UTC)
 - fix(gmdkr): clone ring for dangling Clean ImgLs.
 - fix(gmdkr): drop docker pull from goImageLatest ref.
