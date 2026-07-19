@@ -1,3 +1,6 @@
+## v0.7.0 (Sun, 19 Jul 2026 20:10:49 UTC)
+- feat(gmgo): make lint config source repo configurable.
+
 ## v0.6.1 (Thu, 16 Jul 2026 19:30:31 UTC)
 - build(deps): bump gomake to 0.26.0 and testing to 0.56.0.
 
