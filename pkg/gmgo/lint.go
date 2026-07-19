@@ -6,6 +6,7 @@ package gmgo
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -120,7 +121,8 @@ func (Lint) Install(ctx context.Context, rng *ring.Ring) error {
 // customizable with target arguments. If the execution context has no deadline
 // set, it will be set to 60 seconds. You may force the config file download by
 // setting the [GoLintConfigForceEnvKey] environment variable to 1. The source
-// repository defaults to [goDevRepo] but may be overridden by setting the
+// repository defaults to [goDevRepo] but may be overridden by the target's
+// "repo" configuration, or, taking precedence over both, the
 // [GoLintConfigRepoEnvKey] environment variable. The config file name defaults
 // to ".golangci.yml" but may be overridden by the target's "file"
 // configuration, applied to both the fetched and the written file.
@@ -138,6 +140,10 @@ func (Lint) Config(ctx context.Context, rng *ring.Ring) error {
 		return err
 	}
 	cfgFile, err := gomake.GetCfgDefault(cfg, "file", ".golangci.yml")
+	if err != nil {
+		return err
+	}
+	repo, err := gomake.GetCfgDefault(cfg, "repo", goDevRepo)
 	if err != nil {
 		return err
 	}
@@ -161,12 +167,15 @@ func (Lint) Config(ctx context.Context, rng *ring.Ring) error {
 	dst := filepath.Join(out, cfgFile)
 	if rng.EnvGet(GoLintConfigForceEnvKey) == "" {
 		if _, err := os.Stat(dst); err == nil {
+			format := "#gomake INFO# lint config: using %s\n"
+			_, _ = fmt.Fprintf(rng.Stderr(), format, dst)
 			return nil
 		}
 	}
-	repo := goDevRepo
 	if env := rng.EnvGet(GoLintConfigRepoEnvKey); env != "" {
 		repo = env
 	}
+	format := "#gomake INFO# lint config: downloading from %s to %s\n"
+	_, _ = fmt.Fprintf(rng.Stderr(), format, repo, dst)
 	return gitGetFile(ctx, repo, "master", cfgFile, dst)
 }

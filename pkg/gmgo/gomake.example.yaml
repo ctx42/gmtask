@@ -40,6 +40,12 @@ targets:
         # Applied to both the downloaded and the local file. Default: .golangci.yml.
         file: .golangci.yml
 
+        # Git repository the shared config file is fetched from (shallow clone
+        # of its "master" branch). Any remote git can clone, SSH or HTTPS.
+        # Overridden per run by the GOMAKE_GOLINT_CONFIG_REPO env var.
+        # Default: git@github.com:ctx42/xdev.git.
+        repo: git@github.com:acme/dev.git
+
       build:
         # :go:build injects build metadata via "-ldflags -X" for a module listed
         # here. `modules` maps a module import path (as reported by "go list -m")

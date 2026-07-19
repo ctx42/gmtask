@@ -118,7 +118,7 @@ func Test_Go_Check(t *testing.T) {
 	t.Run("success - lint ignores the sibling timeout", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
-		tst := ringtest.New(t).WetStdout()
+		tst := ringtest.New(t).WetStdout().WetStderr()
 		repo := setupConfigRepo(t)
 
 		prj := gmtest.NewProject(t, prjkit.WithProjectEnv(os.Environ()))
@@ -143,6 +143,8 @@ func Test_Go_Check(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contain(t, "0 issues.", tst.Stdout())
 		assert.Contain(t, "ok  \texample.com/comp/project", tst.Stdout())
+		want := "#gomake INFO# lint config: downloading"
+		assert.Contain(t, want, tst.Stderr())
 	})
 
 	t.Run("error - vet fails first", func(t *testing.T) {

@@ -189,6 +189,18 @@ gomake :go:lint:config -dir tmp # to a specific directory
 Pin the golangci-lint version and the config file name in `gomake.yaml` — see
 [Configuration](#configuration).
 
+The config is fetched with a shallow clone of a git repository (the `master`
+branch's `.golangci.yml`), defaulting to `git@github.com:ctx42/xdev.git`. Point
+it at your own repository with `GOMAKE_GOLINT_CONFIG_REPO` — any remote `git`
+can clone, SSH or HTTPS:
+
+```shell
+GOMAKE_GOLINT_CONFIG_REPO=git@github.com:acme/dev.git gomake :go:lint:config
+GOMAKE_GOLINT_CONFIG_REPO=https://github.com/acme/dev.git gomake :go:lint
+```
+
+Add `GOMAKE_GOLINT_CONFIG_FORCE=1` to re-download over an existing file.
+
 ### Use as a library
 
 Add the module to your project:
@@ -245,6 +257,16 @@ targets:
       lint:
         version: v2.12.2    # golangci-lint version to install; default: latest.
         file: .golangci.yml # shared config file name; default: .golangci.yml.
+        repo: git@github.com:acme/dev.git # config source; default: ctx42/xdev.
+```
+
+The `file` key names the config; the `repo` key sets the git repository it is
+fetched from (a shallow clone of the `master` branch, any SSH or HTTPS remote).
+`repo` is also settable per run with the `GOMAKE_GOLINT_CONFIG_REPO` environment
+variable, which takes precedence:
+
+```shell
+GOMAKE_GOLINT_CONFIG_REPO=git@github.com:acme/dev.git gomake :go:lint
 ```
 
 A target receives the block from the nearest level on its path — so `:go:build`
@@ -253,15 +275,16 @@ injection is configured under `go.build` and never sees `timeout`. See
 annotated example is in [`gomake.example.yaml`](gomake.example.yaml).
 
 `:go:check` runs its lint step with lint defaults: it is delivered the `go`
-node's block (`timeout` only), so `go.lint`'s `version` and `file` are not
-applied during a check. Run `:go:lint`, `:go:lint:install`, or `:go:lint:config`
-directly to exercise lint configuration.
+node's block (`timeout` only), so `go.lint`'s `version`, `file`, and `repo` are
+not applied during a check. Run `:go:lint`, `:go:lint:install`, or
+`:go:lint:config` directly to exercise lint configuration.
 
-| Node   | Key       | Meaning                              | Default         |
-|--------|-----------|--------------------------------------|-----------------|
-| `lint` | `version` | golangci-lint version installed      | `latest`        |
-| `lint` | `file`    | shared config file fetched + written | `.golangci.yml` |
-| `go`   | `timeout` | `go test -timeout` value             | go tool default |
+| Node   | Key       | Meaning                              | Default                         |
+|--------|-----------|--------------------------------------|---------------------------------|
+| `lint` | `version` | golangci-lint version installed      | `latest`                        |
+| `lint` | `file`    | shared config file fetched + written | `.golangci.yml`                 |
+| `lint` | `repo`    | git repo the config is fetched from  | `git@github.com:ctx42/xdev.git` |
+| `go`   | `timeout` | `go test -timeout` value             | go tool default                 |
 
 ### Environment variables
 
@@ -270,7 +293,8 @@ directly to exercise lint configuration.
 - **`GOMAKE_GOLINT_CONFIG_FORCE`** (`:go:lint:config`) — re-download the config
   file even if it already exists.
 - **`GOMAKE_GOLINT_CONFIG_REPO`** (`:go:lint:config`) — source repo for the
-  config (default `git@github.com:ctx42/xdev.git`).
+  config; overrides the `repo` configuration above (default
+  `git@github.com:ctx42/xdev.git`).
 - **`BUILD_ID`** (`:go:test`) — appended to the coverage and run log filenames
   in CI.
 - **`GOMAKE_CCID`** (`:go:build`) — CI/CD job id injected as the `ccid` value.
