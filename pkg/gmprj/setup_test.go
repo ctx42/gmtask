@@ -407,8 +407,8 @@ func Test_Setup_Setup(t *testing.T) {
 	})
 }
 
-func Test_Setup_addImgSrc(t *testing.T) {
-	t.Run("appends image source when repo set", func(t *testing.T) {
+func Test_Setup_addScmRepo(t *testing.T) {
+	t.Run("appends scm repo when repo set", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t).WetStdout()
 
@@ -422,13 +422,13 @@ func Test_Setup_addImgSrc(t *testing.T) {
 		rng := tst.Ring()
 
 		// --- When ---
-		err := sup.addImgSrc(rng)
+		err := sup.addScmRepo(rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		have := prj.ReadFileStr(CfgPath)
-		assert.Equal(t, "OCI_IMAGE_SOURCE=my.nexus.dev:5000/repo\n", have)
-		assert.Contain(t, "added OCI_IMAGE_SOURCE to:", tst.Stdout())
+		assert.Equal(t, "C42_SCM_REPO=my.nexus.dev:5000/repo\n", have)
+		assert.Contain(t, "added C42_SCM_REPO to:", tst.Stdout())
 	})
 
 	t.Run("no-op when no repo", func(t *testing.T) {
@@ -442,7 +442,7 @@ func Test_Setup_addImgSrc(t *testing.T) {
 		rng := tst.Ring()
 
 		// --- When ---
-		err := sup.addImgSrc(rng)
+		err := sup.addScmRepo(rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -461,7 +461,7 @@ func Test_Setup_addImgSrc(t *testing.T) {
 		rng := tst.Ring()
 
 		// --- When ---
-		err := sup.addImgSrc(rng)
+		err := sup.addScmRepo(rng)
 
 		// --- Then ---
 		var e *os.PathError

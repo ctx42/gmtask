@@ -67,14 +67,12 @@ targets:
             # `names` block Just Works if your version package uses these names.
             #
             #   Field         Default var   Value injected
-            #   build date    buildDate     OCI_IMAGE_CREATED env, else build time
+            #   build date    bldDate       C42_BLD_DATE env, else build time
             #   SCM revision  scmRev        `git describe`, else v0.0.0
             #   SCM hash      scmHash       latest commit hash, else 0000000
             #   SCM state     scmState      clean/dirty, else unknown
-            #   CI/CD id      ccid          GOMAKE_CCID env, else unknown
             names:
-              buildDate: BuildDate
+              bldDate: BuildDate
               scmRev: Version
               scmHash: Commit
               scmState: State
-              ccid: CIJob

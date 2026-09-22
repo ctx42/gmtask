@@ -39,8 +39,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-sock")
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -66,12 +65,12 @@ func Test_DockerCmd_Init(t *testing.T) {
 		assert.Equal(t, "ssh-sock", dc.Config.ssh)
 		assert.Equal(t, "linux/amd64", dc.Config.platform)
 		wArgs := map[string]string{
-			EnvSSHSock:        "ssh-sock",
-			xdef.EnvBuildDate: "2000-01-02T03:04:05.6Z",
-			xdef.EnvCCID:      xdef.PhUnknown,
-			xdef.EnvScmRepo:   prjkit.GitOrigin,
-			xdef.EnvScmHash:   cm.Hash,
-			xdef.EnvScmRev:    "v1.1.1",
+			EnvSSHSock:      "ssh-sock",
+			xdef.EnvBldDate: "2000-01-02T03:04:05.600Z",
+			xdef.EnvPrjName: "project",
+			xdef.EnvScmRepo: prjkit.GitOrigin,
+			xdef.EnvScmHash: cm.Hash,
+			xdef.EnvScmRev:  "v1.1.1",
 		}
 		assert.Equal(t, wArgs, dc.Config.args)
 		assert.True(t, dc.Config.kit)
@@ -89,8 +88,8 @@ func Test_DockerCmd_Init(t *testing.T) {
 			" --ssh default=ssh-sock" +
 			" -t dki-project:v1.1.1" +
 			" -t dki-project:latest" +
-			" --build-arg C42_BUILD_DATE=2000-01-02T03:04:05.6Z" +
-			" --build-arg C42_CCID=unknown" +
+			" --build-arg C42_BLD_DATE=2000-01-02T03:04:05.600Z" +
+			" --build-arg C42_PRJ_NAME=project" +
 			" --build-arg C42_SCM_HASH=%s" +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
 			" --build-arg C42_SCM_REV=v1.1.1" +
@@ -106,8 +105,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-sock")
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -134,13 +132,13 @@ func Test_DockerCmd_Init(t *testing.T) {
 		assert.Equal(t, "ssh-sock", dc.Config.ssh)
 		assert.Equal(t, "linux/amd64", dc.Config.platform)
 		wArgs := map[string]string{
-			EnvSSHSock:        "ssh-sock",
-			xdef.EnvBuildDate: "2000-01-02T03:04:05.6Z",
-			xdef.EnvCCID:      xdef.PhUnknown,
-			xdef.EnvBldTargets:     "first,second,third",
-			xdef.EnvScmRepo:   prjkit.GitOrigin,
-			xdef.EnvScmHash:   cm.Hash,
-			xdef.EnvScmRev:    "v1.1.1",
+			EnvSSHSock:            "ssh-sock",
+			xdef.EnvBldDate:       "2000-01-02T03:04:05.600Z",
+			xdef.EnvPrjName:       "project",
+			xdef.EnvBldImgTargets: "first,second,third",
+			xdef.EnvScmRepo:       prjkit.GitOrigin,
+			xdef.EnvScmHash:       cm.Hash,
+			xdef.EnvScmRev:        "v1.1.1",
 		}
 		assert.Equal(t, wArgs, dc.Config.args)
 		assert.True(t, dc.Config.kit)
@@ -165,9 +163,9 @@ func Test_DockerCmd_Init(t *testing.T) {
 			" -t dki-project-first:v1.1.1" +
 			" -t dki-project-first:latest" +
 			" --target first" +
-			" --build-arg C42_BLD_TARGETS=first,second,third" +
-			" --build-arg C42_BUILD_DATE=2000-01-02T03:04:05.6Z" +
-			" --build-arg C42_CCID=unknown" +
+			" --build-arg C42_BLD_DATE=2000-01-02T03:04:05.600Z" +
+			" --build-arg C42_BLD_IMG_TARGETS=first,second,third" +
+			" --build-arg C42_PRJ_NAME=project" +
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
 			" --build-arg C42_SCM_REV=v1.1.1" +
@@ -182,9 +180,9 @@ func Test_DockerCmd_Init(t *testing.T) {
 			" -t dki-project-second:v1.1.1" +
 			" -t dki-project-second:latest" +
 			" --target second" +
-			" --build-arg C42_BLD_TARGETS=first,second,third" +
-			" --build-arg C42_BUILD_DATE=2000-01-02T03:04:05.6Z" +
-			" --build-arg C42_CCID=unknown" +
+			" --build-arg C42_BLD_DATE=2000-01-02T03:04:05.600Z" +
+			" --build-arg C42_BLD_IMG_TARGETS=first,second,third" +
+			" --build-arg C42_PRJ_NAME=project" +
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
 			" --build-arg C42_SCM_REV=v1.1.1" +
@@ -199,9 +197,9 @@ func Test_DockerCmd_Init(t *testing.T) {
 			" -t dki-project-third:v1.1.1" +
 			" -t dki-project-third:latest" +
 			" --target third" +
-			" --build-arg C42_BLD_TARGETS=first,second,third" +
-			" --build-arg C42_BUILD_DATE=2000-01-02T03:04:05.6Z" +
-			" --build-arg C42_CCID=unknown" +
+			" --build-arg C42_BLD_DATE=2000-01-02T03:04:05.600Z" +
+			" --build-arg C42_BLD_IMG_TARGETS=first,second,third" +
+			" --build-arg C42_PRJ_NAME=project" +
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
 			" --build-arg C42_SCM_REV=v1.1.1" +
@@ -216,8 +214,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-sock")
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -245,13 +242,13 @@ func Test_DockerCmd_Init(t *testing.T) {
 		assert.Equal(t, "ssh-sock", dc.Config.ssh)
 		assert.Equal(t, "linux/amd64", dc.Config.platform)
 		wArgs := map[string]string{
-			EnvSSHSock:        "ssh-sock",
-			xdef.EnvBuildDate: "2000-01-02T03:04:05.6Z",
-			xdef.EnvCCID:      xdef.PhUnknown,
-			xdef.EnvBldTargets:     "first,second,third",
-			xdef.EnvScmRepo:   prjkit.GitOrigin,
-			xdef.EnvScmHash:   cm.Hash,
-			xdef.EnvScmRev:    "v1.1.1",
+			EnvSSHSock:            "ssh-sock",
+			xdef.EnvBldDate:       "2000-01-02T03:04:05.600Z",
+			xdef.EnvPrjName:       "project",
+			xdef.EnvBldImgTargets: "first,second,third",
+			xdef.EnvScmRepo:       prjkit.GitOrigin,
+			xdef.EnvScmHash:       cm.Hash,
+			xdef.EnvScmRev:        "v1.1.1",
 		}
 		assert.Equal(t, wArgs, dc.Config.args)
 		assert.True(t, dc.Config.kit)
@@ -273,9 +270,9 @@ func Test_DockerCmd_Init(t *testing.T) {
 			" -t dki-project-second:v1.1.1" +
 			" -t dki-project-second:latest" +
 			" --target second" +
-			" --build-arg C42_BLD_TARGETS=first,second,third" +
-			" --build-arg C42_BUILD_DATE=2000-01-02T03:04:05.6Z" +
-			" --build-arg C42_CCID=unknown" +
+			" --build-arg C42_BLD_DATE=2000-01-02T03:04:05.600Z" +
+			" --build-arg C42_BLD_IMG_TARGETS=first,second,third" +
+			" --build-arg C42_PRJ_NAME=project" +
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
 			" --build-arg C42_SCM_REV=v1.1.1" +
@@ -290,9 +287,9 @@ func Test_DockerCmd_Init(t *testing.T) {
 			" -t dki-project-third:v1.1.1" +
 			" -t dki-project-third:latest" +
 			" --target third" +
-			" --build-arg C42_BLD_TARGETS=first,second,third" +
-			" --build-arg C42_BUILD_DATE=2000-01-02T03:04:05.6Z" +
-			" --build-arg C42_CCID=unknown" +
+			" --build-arg C42_BLD_DATE=2000-01-02T03:04:05.600Z" +
+			" --build-arg C42_BLD_IMG_TARGETS=first,second,third" +
+			" --build-arg C42_PRJ_NAME=project" +
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
 			" --build-arg C42_SCM_REV=v1.1.1" +
@@ -397,8 +394,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -422,27 +418,26 @@ func Test_DockerCmd_Build(t *testing.T) {
 		ref, refLatest := prj.ImgRef(), prj.ImgRefLatest()
 		eoutS := tst.Stderr()
 
-		// Test build log.
+		// Test build log. A project outside a git repository is never a
+		// release, so "latest" is withheld even though the flag asks for it.
 		assert.Contain(t, ref, eoutS)
-		assert.Contain(t, refLatest, eoutS)
+		assert.NotContain(t, refLatest, eoutS)
 		assert.Count(t, 1, "#gomake INFO# DOCKER_BUILDKIT=1 docker build", eoutS)
 
 		// Test image exist.
 		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(ref))
-		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(refLatest))
+		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(refLatest))
 
-		// Run images and test output.
+		// Run image and test output.
 		assert.Equal(t, "third image", dkrkit.NewT(t).CtrRun(ref))
-		assert.Equal(t, "third image", dkrkit.NewT(t).CtrRun(refLatest))
 	})
 
-	t.Run("env-labels when no SCM no cc-tag", func(t *testing.T) {
+	t.Run("env-labels when no SCM", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
-		rng.EnvUnset(xdef.EnvCCID)
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.CfgBldTargets("first,second,third")
@@ -468,33 +463,31 @@ func Test_DockerCmd_Build(t *testing.T) {
 		assert.Equal(t, "third image", dkrkit.NewT(t).CtrRun(ref))
 
 		wEnv := map[string]string{
-			xdef.EnvImgCreated: "2000-01-02T03:04:05.6Z",
-			xdef.EnvImgRefName: xdef.PhUnknown,
-			xdef.EnvImgSrc:     xdef.PhUnknown,
-			xdef.EnvImgRev:     xdef.PhHash,
-			xdef.EnvImgVer:     xdef.PhRev,
-			xdef.EnvImgTitle:   "third",
+			xdef.EnvBldDate:      "2000-01-02T03:04:05.600Z",
+			xdef.EnvPrjName:      "project",
+			xdef.EnvScmHash:      xdef.PhHash,
+			xdef.EnvScmRev:       xdef.PhTag,
+			xdef.EnvScmState:     xdef.PhUnknown,
+			xdef.EnvBldImgTarget: "third",
 		}
 		assert.MapSubset(t, wEnv, dkrkit.NewT(t).Envs(ref))
 
 		wLabel := map[string]string{
-			xdef.LabImgCreated: "2000-01-02T03:04:05.6Z",
-			xdef.LabImgRefName: xdef.PhUnknown,
-			xdef.LabImgSrc:     xdef.PhUnknown,
-			xdef.LabImgRev:     xdef.PhHash,
-			xdef.LabImgVer:     xdef.PhRev,
-			xdef.LabImgTitle:   "third",
+			xdef.LabImgCreated:  "2000-01-02T03:04:05.600Z",
+			xdef.LabImgSrc:      xdef.PhUnknown,
+			xdef.LabImgRev:      xdef.PhHash,
+			xdef.LabImgVer:      xdef.PhTag,
+			dkrkit.LabImgTarget: "third",
 		}
 		assert.MapSubset(t, wLabel, dkrkit.NewT(t).Labels(ref))
 	})
 
-	t.Run("env-labels with SCM and cc-tag", func(t *testing.T) {
+	t.Run("env-labels with SCM", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
-		rng.EnvSet(xdef.EnvCCID, "cc-tag")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.CfgBldTargets("first,second,third")
@@ -522,22 +515,21 @@ func Test_DockerCmd_Build(t *testing.T) {
 		assert.Equal(t, "third image", dkrkit.NewT(t).CtrRun(ref))
 
 		wEnv := map[string]string{
-			xdef.EnvImgCreated: "2000-01-02T03:04:05.6Z",
-			xdef.EnvImgRefName: "cc-tag",
-			xdef.EnvImgSrc:     prjkit.GitOrigin,
-			xdef.EnvImgRev:     cm.Hash,
-			xdef.EnvImgVer:     "v1.2.3",
-			xdef.EnvImgTitle:   "third",
+			xdef.EnvBldDate:      "2000-01-02T03:04:05.600Z",
+			xdef.EnvPrjName:      "project",
+			xdef.EnvScmHash:      cm.Hash,
+			xdef.EnvScmRev:       "v1.2.3",
+			xdef.EnvScmState:     xdef.PhUnknown,
+			xdef.EnvBldImgTarget: "third",
 		}
 		assert.MapSubset(t, wEnv, dkrkit.NewT(t).Envs(ref))
 
 		wLabel := map[string]string{
-			xdef.LabImgCreated: "2000-01-02T03:04:05.6Z",
-			xdef.LabImgRefName: "cc-tag",
-			xdef.LabImgSrc:     prjkit.GitOrigin,
-			xdef.LabImgRev:     cm.Hash,
-			xdef.LabImgVer:     "v1.2.3",
-			xdef.LabImgTitle:   "third",
+			xdef.LabImgCreated:  "2000-01-02T03:04:05.600Z",
+			xdef.LabImgSrc:      prjkit.GitOrigin,
+			xdef.LabImgRev:      cm.Hash,
+			xdef.LabImgVer:      "v1.2.3",
+			dkrkit.LabImgTarget: "third",
 		}
 		assert.MapSubset(t, wLabel, dkrkit.NewT(t).Labels(ref))
 	})
@@ -548,8 +540,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-sock")
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -576,8 +567,8 @@ func Test_DockerCmd_Build(t *testing.T) {
 			" --ssh default=ssh-sock" +
 			" -t dki-project:v1.1.1" +
 			" -t dki-project:latest" +
-			" --build-arg C42_BUILD_DATE=2000-01-02T03:04:05.6Z" +
-			" --build-arg C42_CCID=unknown" +
+			" --build-arg C42_BLD_DATE=2000-01-02T03:04:05.600Z" +
+			" --build-arg C42_PRJ_NAME=project" +
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
 			" --build-arg C42_SCM_REV=v1.1.1" +
@@ -599,6 +590,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		prj := gmtest.NewProject(t)
 		prj.CfgBldTargets("first,second,third")
 		prj.WithDockerfile()
+		prj.GitInitAddAll("v1.2.3")
 		prj.Close()
 		prj.Chdir()
 
@@ -655,6 +647,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		prj := gmtest.NewProject(t)
 		prj.CfgBldTargets("first,second")
 		prj.WithDockerfile()
+		prj.GitInitAddAll("v1.2.3")
 		prj.Close()
 		prj.Chdir()
 
@@ -709,6 +702,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		prj := gmtest.NewProject(t)
 		prj.CfgBldTargets("first,second")
 		prj.WithDockerfile()
+		prj.GitInitAddAll("v1.2.3")
 		prj.Close()
 		prj.Chdir()
 
@@ -757,6 +751,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		prj := gmtest.NewProject(t)
 		prj.CfgBldTargets("first,second,third")
 		prj.WithDockerfile()
+		prj.GitInitAddAll("v1.2.3")
 		prj.Close()
 		prj.Chdir()
 
@@ -813,6 +808,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
 		prj.WithDockerfile()
+		prj.GitInitAddAll("v1.2.3")
 		prj.Close()
 		prj.Chdir()
 
@@ -943,7 +939,7 @@ func Test_DockerCmd_Push(t *testing.T) {
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
 		prj.CfgRegRepoDef()
-		prj.CfgAdd(xdef.EnvBldTargets, "first,second,third")
+		prj.CfgAdd(xdef.EnvBldImgTargets, "first,second,third")
 		prj.WithDockerfile()
 		prj.GitInitAddAll("v1.1.1")
 		prj.Close()
@@ -1094,8 +1090,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-sock")
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -1119,18 +1114,18 @@ func Test_DockerCmd_Run(t *testing.T) {
 			"#gomake INFO# DOCKER_BUILDKIT=1 docker build" +
 			" --platform linux/amd64" +
 			" --ssh default=ssh-sock" +
-			" -t dki-project:" + cm.Hash +
-			" --build-arg C42_BUILD_DATE=2000-01-02T03:04:05.6Z" +
-			" --build-arg C42_CCID=unknown" +
+			" -t dki-project:v0.0.1-dev.1_g" + cm.Hash +
+			" --build-arg C42_BLD_DATE=2000-01-02T03:04:05.600Z" +
+			" --build-arg C42_PRJ_NAME=project" +
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
-			" --build-arg C42_SCM_REV=" + cm.Hash +
+			" --build-arg C42_SCM_REV=v0.0.1-dev.1+g" + cm.Hash +
 			" --build-arg SSH_AUTH_SOCK=ssh-sock" +
 			" --file Dockerfile .\n" +
 			"" +
 			"#gomake INFO# docker run --rm" +
 			" -v %s:/ctx42/project:ro" +
-			" dki-project:" + cm.Hash +
+			" dki-project:v0.0.1-dev.1_g" + cm.Hash +
 			"\n"
 		want = fmt.Sprintf(want, prj.Root())
 		assert.Equal(t, want, tst.Stderr())
@@ -1417,8 +1412,7 @@ func Test_DockerCmd_Sh(t *testing.T) {
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-sock")
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -1442,12 +1436,12 @@ func Test_DockerCmd_Sh(t *testing.T) {
 			"#gomake INFO# DOCKER_BUILDKIT=1 docker build" +
 			" --platform linux/amd64" +
 			" --ssh default=ssh-sock" +
-			" -t dki-project:" + cm.Hash +
-			" --build-arg C42_BUILD_DATE=2000-01-02T03:04:05.6Z" +
-			" --build-arg C42_CCID=unknown" +
+			" -t dki-project:v0.0.1-dev.1_g" + cm.Hash +
+			" --build-arg C42_BLD_DATE=2000-01-02T03:04:05.600Z" +
+			" --build-arg C42_PRJ_NAME=project" +
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
-			" --build-arg C42_SCM_REV=" + cm.Hash +
+			" --build-arg C42_SCM_REV=v0.0.1-dev.1+g" + cm.Hash +
 			" --build-arg SSH_AUTH_SOCK=ssh-sock" +
 			" --file Dockerfile .\n" +
 			"" +
@@ -1455,7 +1449,7 @@ func Test_DockerCmd_Sh(t *testing.T) {
 			" -v %s:/ctx42/project:ro" +
 			" -v ssh-sock:/ssh-sock" +
 			" -e SSH_AUTH_SOCK=/ssh-sock" +
-			" dki-project:%s /bin/sh --login\n"
+			" dki-project:v0.0.1-dev.1_g%s /bin/sh --login\n"
 		want = fmt.Sprintf(want, prj.Root(), cm.Hash)
 		assert.Equal(t, want, tst.Stderr())
 	})

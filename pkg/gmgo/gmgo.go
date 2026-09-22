@@ -39,6 +39,13 @@ var expLintVer = semver.MustParse("v2.12.2")
 // configuration.
 const goDevRepo = "git@github.com:ctx42/xdev.git"
 
+// bldDateLayout is the layout [BldDateFmt] renders a build date with: an
+// RFC3339 timestamp whose fractional second is always three digits. It is the
+// layout xdef renders [xdef.EnvBldDate] with, so a date written here and one
+// written by xdef are the same width. [time.RFC3339Nano] drops trailing
+// zeros, which makes the width vary with the value.
+const bldDateLayout = "2006-01-02T15:04:05.000Z07:00"
+
 // Environment variable keys recognized by gmgo targets.
 const (
 	// GoTestTimeoutEnvKey is the environment variable overriding the
@@ -401,11 +408,10 @@ func waitForServer(ctx context.Context, url string) bool {
 // in the order they are emitted. Each is defined in xdef so the names never
 // drift from the ones gomake injects into its own binary.
 var buildVarNames = []string{
-	xdef.VarBuildDate,
+	xdef.VarBldDate,
 	xdef.VarScmRev,
 	xdef.VarScmHash,
 	xdef.VarScmState,
-	xdef.VarCCID,
 }
 
 // Build runs "go build", injecting build metadata via "-ldflags -X" when the
@@ -458,32 +464,26 @@ func (Go) Build(ctx context.Context, rng *ring.Ring) error {
 }
 
 // buildValues collects the build-metadata values to inject, keyed by canonical
-// field name. A missing source falls back to the matching xdef placeholder (or,
-// for the build date, the current time), so a build outside a git work tree or
-// without CI metadata still succeeds.
+// field name. The revision is the one [ProjectVersion] derives, so a binary
+// reports the same version as the image wrapping it. A missing source falls
+// back to the matching xdef placeholder (or, for the build date, the current
+// time), so a build outside a git work tree still succeeds.
 func buildValues(ctx context.Context, rng *ring.Ring) map[string]string {
-	rev, revErr := gitaid.Describe(ctx, "")
-	hash, hashErr := gitaid.LatestHash(ctx, "")
+	ver, verErr := ProjectVersion(ctx, rng, "", "")
 	state, stateErr := gitaid.WorkTreeStatus(ctx, "")
 
-	buildDate := rfc3339Milli(time.Now())
-	if val, ok := rng.EnvLookup(xdef.EnvImgCreated); ok && val != "" {
+	buildDate := BldDateFmt(time.Now())
+	if val, ok := rng.EnvLookup(xdef.EnvBldDate); ok && val != "" {
 		if tim, err := time.Parse(time.RFC3339Nano, val); err == nil {
-			buildDate = rfc3339Milli(tim)
+			buildDate = BldDateFmt(tim)
 		}
 	}
 
-	ccid := xdef.PhUnknown
-	if val := rng.EnvGet(gomake.CCIDEnvKey); val != "" {
-		ccid = val
-	}
-
 	return map[string]string{
-		xdef.VarBuildDate: buildDate,
-		xdef.VarScmRev:    gitOr(rev, revErr, xdef.PhRev),
-		xdef.VarScmHash:   gitOr(hash, hashErr, xdef.PhHash),
-		xdef.VarScmState:  gitOr(state, stateErr, xdef.PhUnknown),
-		xdef.VarCCID:      ccid,
+		xdef.VarBldDate:  buildDate,
+		xdef.VarScmRev:   gitOr(ver.Rev, verErr, xdef.PhTag),
+		xdef.VarScmHash:  gitOr(ver.Hash, verErr, xdef.PhHash),
+		xdef.VarScmState: gitOr(state, stateErr, xdef.PhUnknown),
 	}
 }
 

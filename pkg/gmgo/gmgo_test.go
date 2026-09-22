@@ -1065,17 +1065,15 @@ func Test_Go_Build(t *testing.T) {
 		prj.Chdir()
 
 		rng := tst.Ring("cmd/project.go")
-		rng.EnvSet(xdef.EnvImgCreated, tim.Format(time.RFC3339Nano))
-		rng.EnvSet(gomake.CCIDEnvKey, "job-42")
+		rng.EnvSet(xdef.EnvBldDate, tim.Format(time.RFC3339Nano))
 		setBuildConfig(t, rng, map[string]any{
 			"example.com/comp/project": map[string]any{
 				"package": "example.com/comp/project",
 				"names": map[string]any{
-					xdef.VarBuildDate: "BuildDate",
-					xdef.VarScmRev:    "ScmRev",
-					xdef.VarScmHash:   "ScmHash",
-					xdef.VarScmState:  "ScmWDState",
-					xdef.VarCCID:      "CCTag",
+					xdef.VarBldDate:  "BuildDate",
+					xdef.VarScmRev:   "ScmRev",
+					xdef.VarScmHash:  "ScmHash",
+					xdef.VarScmState: "ScmWDState",
 				},
 			},
 		})
@@ -1088,21 +1086,19 @@ func Test_Go_Build(t *testing.T) {
 
 		want := "" +
 			"#gomake INFO# go build -ldflags=" +
-			"-X 'example.com/comp/project.BuildDate=2000-01-02T03:04:05Z' " +
+			"-X 'example.com/comp/project.BuildDate=2000-01-02T03:04:05.000Z' " +
 			"-X 'example.com/comp/project.ScmRev=v1.2.3' " +
 			"-X 'example.com/comp/project.ScmHash=%s' " +
 			"-X 'example.com/comp/project.ScmWDState=clean' " +
-			"-X 'example.com/comp/project.CCTag=job-42' " +
 			"cmd/project.go\n"
 		want = fmt.Sprintf(want, cm.Hash)
 		assert.Equal(t, want, tst.Stderr())
 
 		want = "" +
-			"BuildDate: 2000-01-02T03:04:05Z\n" +
+			"BuildDate: 2000-01-02T03:04:05.000Z\n" +
 			"ScmRev: v1.2.3\n" +
 			"ScmHash: %s\n" +
-			"ScmWDState: clean\n" +
-			"CCTag: job-42\n"
+			"ScmWDState: clean\n"
 		want = fmt.Sprintf(want, cm.Hash)
 		assert.Equal(t, want, prj.ExeStdout("./project"))
 	})
@@ -1121,7 +1117,6 @@ func Test_Go_Build(t *testing.T) {
 		prj.Chdir()
 
 		rng := tst.Ring("cmd/project.go")
-		rng.EnvSet(gomake.CCIDEnvKey, "job-7")
 		setBuildConfig(t, rng, map[string]any{
 			"example.com/comp/project": map[string]any{
 				"package": "example.com/comp/project",
@@ -1134,11 +1129,10 @@ func Test_Go_Build(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		out := tst.Stderr()
-		assert.Contain(t, "-X 'example.com/comp/project.buildDate=", out)
+		assert.Contain(t, "-X 'example.com/comp/project.bldDate=", out)
 		assert.Contain(t, "-X 'example.com/comp/project.scmRev=v2.0.0'", out)
 		assert.Contain(t, "-X 'example.com/comp/project.scmHash="+cm.Hash+"'", out)
 		assert.Contain(t, "-X 'example.com/comp/project.scmState=clean'", out)
-		assert.Contain(t, "-X 'example.com/comp/project.ccid=job-7'", out)
 	})
 
 	t.Run("no matching config injects nothing", func(t *testing.T) {
@@ -1187,7 +1181,6 @@ func Test_Go_Build(t *testing.T) {
 					xdef.VarScmRev:   "ScmRev",
 					xdef.VarScmHash:  "ScmHash",
 					xdef.VarScmState: "ScmWDState",
-					xdef.VarCCID:     "CCTag",
 				},
 			},
 		})
@@ -1198,14 +1191,13 @@ func Test_Go_Build(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		serr := tst.Stderr()
-		assert.Contain(t, "ScmRev="+xdef.PhRev, serr)
+		assert.Contain(t, "ScmRev="+xdef.PhTag, serr)
 		assert.Contain(t, "ScmHash="+xdef.PhHash, serr)
 
 		out := prj.ExeStdout("./project")
-		assert.Contain(t, "ScmRev: "+xdef.PhRev+"\n", out)
+		assert.Contain(t, "ScmRev: "+xdef.PhTag+"\n", out)
 		assert.Contain(t, "ScmHash: "+xdef.PhHash+"\n", out)
 		assert.Contain(t, "ScmWDState: "+xdef.PhUnknown+"\n", out)
-		assert.Contain(t, "CCTag: "+xdef.PhUnknown+"\n", out)
 	})
 
 	t.Run("error - invalid config missing package", func(t *testing.T) {
@@ -1252,7 +1244,7 @@ func Test_Go_Build(t *testing.T) {
 		setBuildConfig(t, rng, map[string]any{
 			"example.com/comp/project": map[string]any{
 				"package": "example.com/comp/project",
-				"names":   map[string]any{xdef.VarBuildDate: 5},
+				"names":   map[string]any{xdef.VarBldDate: 5},
 			},
 		})
 
@@ -1415,7 +1407,6 @@ func main() {
 	fmt.Printf("ScmRev: %s\n", project.ScmRev)
 	fmt.Printf("ScmHash: %s\n", project.ScmHash)
 	fmt.Printf("ScmWDState: %s\n", project.ScmWDState)
-	fmt.Printf("CCTag: %s\n", project.CCTag)
 }
 `
 
@@ -1428,7 +1419,6 @@ var (
 	ScmRev     = "<not set>"
 	ScmHash    = "<not set>"
 	ScmWDState = "<not set>"
-	CCTag      = "<not set>"
 )
 `
 
@@ -1453,20 +1443,18 @@ func Test_buildValues(t *testing.T) {
 		have := buildValues(ctx, rng)
 
 		// --- Then ---
-		assert.Equal(t, xdef.PhRev, have[xdef.VarScmRev])
+		assert.Equal(t, xdef.PhTag, have[xdef.VarScmRev])
 		assert.Equal(t, xdef.PhHash, have[xdef.VarScmHash])
 		assert.Equal(t, xdef.PhUnknown, have[xdef.VarScmState])
-		assert.Equal(t, xdef.PhUnknown, have[xdef.VarCCID])
-		assert.NotEmpty(t, have[xdef.VarBuildDate])
+		assert.NotEmpty(t, have[xdef.VarBldDate])
 	})
 
-	t.Run("git repo with environment overrides", func(t *testing.T) {
+	t.Run("git repo with build date override", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
 		rng := ringtest.New(t).Ring()
 		tim := time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC)
-		rng.EnvSet(xdef.EnvImgCreated, tim.Format(time.RFC3339Nano))
-		rng.EnvSet(gomake.CCIDEnvKey, "job-42")
+		rng.EnvSet(xdef.EnvBldDate, tim.Format(time.RFC3339Nano))
 
 		prj := gmtest.NewProject(t)
 		prj.CreateFileWith("file0 1", "file0.txt")
@@ -1478,8 +1466,7 @@ func Test_buildValues(t *testing.T) {
 		have := buildValues(ctx, rng)
 
 		// --- Then ---
-		assert.Equal(t, "2000-01-02T03:04:05Z", have[xdef.VarBuildDate])
-		assert.Equal(t, "job-42", have[xdef.VarCCID])
+		assert.Equal(t, "2000-01-02T03:04:05.000Z", have[xdef.VarBldDate])
 		assert.Equal(t, "v1.2.3", have[xdef.VarScmRev])
 		assert.Equal(t, cm.Hash, have[xdef.VarScmHash])
 		assert.Equal(t, "clean", have[xdef.VarScmState])

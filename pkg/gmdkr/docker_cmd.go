@@ -52,7 +52,7 @@ func (dc *DockerCmd) Init(
 	}
 
 	var wantTgs []string
-	haveTgs := splitTargets(dc.Info.CfgGet(xdef.EnvBldTargets))
+	haveTgs := splitTargets(dc.Info.CfgGet(xdef.EnvBldImgTargets))
 	if wantTgs, err = pickTargets(haveTgs, dc.Flags.Targets); err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func (dc *DockerCmd) Run(ctx context.Context, rng *ring.Ring) error {
 	}
 
 	args := []string{"run", "--rm"}
-	volume := dc.Info.Get(xdef.EnvProjRootDir) + ":/ctx42/project:ro"
+	volume := dc.Info.Root + ":" + ctrPrjRoot + ":ro"
 	args = append(args, "-v", volume, ref)
 	args = append(args, dc.Flags.Args...)
 	_, _ = fmt.Fprintf(
@@ -184,7 +184,7 @@ func (dc *DockerCmd) Sh(ctx context.Context, rng *ring.Ring) error {
 	}
 
 	args := []string{"run", "--rm", "-it"}
-	volume := dc.Info.Get(xdef.EnvProjRootDir) + ":/ctx42/project:ro"
+	volume := dc.Info.Root + ":" + ctrPrjRoot + ":ro"
 	args = append(args, "-v", volume)
 
 	if dc.Config.ssh != "" {

@@ -23,7 +23,6 @@ func Test_NewBuild(t *testing.T) {
 		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -77,6 +76,7 @@ func Test_NewBuild(t *testing.T) {
 		cfg := Config{
 			name: "project",
 			tag:  "v1.2.3",
+			args: nil,
 		}
 
 		// --- When ---
@@ -392,8 +392,7 @@ func Test_Build_Cmd(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-socket")
-		rng.EnvSet(xdef.EnvCCID, "cicd-tag")
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -415,8 +414,8 @@ func Test_Build_Cmd(t *testing.T) {
 			"--ssh", "default=ssh-socket",
 			"-t", "dki-project:v1.2.3",
 			"-t", "dki-project:latest",
-			"--build-arg", "C42_BUILD_DATE=2000-01-02T03:04:05.6Z",
-			"--build-arg", "C42_CCID=cicd-tag",
+			"--build-arg", "C42_BLD_DATE=2000-01-02T03:04:05.600Z",
+			"--build-arg", "C42_PRJ_NAME=project",
 			"--build-arg", "C42_SCM_HASH=" + cm.Hash,
 			"--build-arg", "C42_SCM_REPO=" + prjkit.GitOrigin,
 			"--build-arg", "C42_SCM_REV=v1.2.3",
@@ -433,8 +432,7 @@ func Test_Build_Cmd(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-socket")
-		rng.EnvSet(xdef.EnvCCID, "cicd-tag")
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -456,8 +454,8 @@ func Test_Build_Cmd(t *testing.T) {
 			"--platform", "linux/amd64",
 			"--ssh", "default=ssh-socket",
 			"-t", "dki-project:v1.2.3",
-			"--build-arg", "C42_BUILD_DATE=2000-01-02T03:04:05.6Z",
-			"--build-arg", "C42_CCID=cicd-tag",
+			"--build-arg", "C42_BLD_DATE=2000-01-02T03:04:05.600Z",
+			"--build-arg", "C42_PRJ_NAME=project",
 			"--build-arg", "C42_SCM_HASH=" + cm.Hash,
 			"--build-arg", "C42_SCM_REPO=" + prjkit.GitOrigin,
 			"--build-arg", "C42_SCM_REV=v1.2.3",
@@ -474,8 +472,7 @@ func Test_Build_Cmd(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-socket")
-		rng.EnvSet(xdef.EnvCCID, "cicd-tag")
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -500,8 +497,8 @@ func Test_Build_Cmd(t *testing.T) {
 			"-t", "dki-project:v1.2.3",
 			"-t", "dki-project:latest",
 			"--no-cache",
-			"--build-arg", "C42_BUILD_DATE=2000-01-02T03:04:05.6Z",
-			"--build-arg", "C42_CCID=cicd-tag",
+			"--build-arg", "C42_BLD_DATE=2000-01-02T03:04:05.600Z",
+			"--build-arg", "C42_PRJ_NAME=project",
 			"--build-arg", "C42_SCM_HASH=" + cm.Hash,
 			"--build-arg", "C42_SCM_REPO=" + prjkit.GitOrigin,
 			"--build-arg", "C42_SCM_REV=v1.2.3",
@@ -518,8 +515,7 @@ func Test_Build_Cmd(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-socket")
-		rng.EnvSet(xdef.EnvCCID, "cicd-tag")
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.CfgRegRepoDef()
@@ -541,8 +537,8 @@ func Test_Build_Cmd(t *testing.T) {
 			"--ssh", "default=ssh-socket",
 			"-t", "my.nexus.dev/repo/dki-project:v1.2.3",
 			"-t", "my.nexus.dev/repo/dki-project:latest",
-			"--build-arg", "C42_BUILD_DATE=2000-01-02T03:04:05.6Z",
-			"--build-arg", "C42_CCID=cicd-tag",
+			"--build-arg", "C42_BLD_DATE=2000-01-02T03:04:05.600Z",
+			"--build-arg", "C42_PRJ_NAME=project",
 			"--build-arg", "C42_REG_HOST=my.nexus.dev",
 			"--build-arg", "C42_REG_REPO=my.nexus.dev/repo",
 			"--build-arg", "C42_SCM_HASH=" + cm.Hash,
@@ -561,8 +557,7 @@ func Test_Build_Cmd(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHSock)
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.CfgAdd("KEY0", "VAL0")
@@ -584,8 +579,8 @@ func Test_Build_Cmd(t *testing.T) {
 			"--platform", "linux/amd64",
 			"-t", "dki-project:v1.2.3",
 			"-t", "dki-project:latest",
-			"--build-arg", "C42_BUILD_DATE=2000-01-02T03:04:05.6Z",
-			"--build-arg", "C42_CCID=unknown",
+			"--build-arg", "C42_BLD_DATE=2000-01-02T03:04:05.600Z",
+			"--build-arg", "C42_PRJ_NAME=project",
 			"--build-arg", "C42_SCM_HASH=" + cm.Hash,
 			"--build-arg", "C42_SCM_REPO=" + prjkit.GitOrigin,
 			"--build-arg", "C42_SCM_REV=v1.2.3",
@@ -603,8 +598,7 @@ func Test_Build_Cmd(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHSock)
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -628,8 +622,8 @@ func Test_Build_Cmd(t *testing.T) {
 			"-t", "dki-project-target:v1.2.3",
 			"-t", "dki-project-target:latest",
 			"--target", "target",
-			"--build-arg", "C42_BUILD_DATE=2000-01-02T03:04:05.6Z",
-			"--build-arg", "C42_CCID=unknown",
+			"--build-arg", "C42_BLD_DATE=2000-01-02T03:04:05.600Z",
+			"--build-arg", "C42_PRJ_NAME=project",
 			"--build-arg", "C42_SCM_HASH=" + cm.Hash,
 			"--build-arg", "C42_SCM_REPO=" + prjkit.GitOrigin,
 			"--build-arg", "C42_SCM_REV=v1.2.3",
@@ -647,8 +641,7 @@ func Test_Build_String(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-socket")
-		rng.EnvSet(xdef.EnvCCID, "cicd-tag")
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -672,8 +665,8 @@ func Test_Build_String(t *testing.T) {
 			" --ssh default=ssh-socket" +
 			" -t dki-project:v1.2.3" +
 			" -t dki-project:latest" +
-			" --build-arg C42_BUILD_DATE=2000-01-02T03:04:05.6Z" +
-			" --build-arg C42_CCID=cicd-tag" +
+			" --build-arg C42_BLD_DATE=2000-01-02T03:04:05.600Z" +
+			" --build-arg C42_PRJ_NAME=project" +
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=" + prjkit.GitOrigin +
 			" --build-arg C42_SCM_REV=v1.2.3" +
@@ -688,8 +681,7 @@ func Test_Build_String(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-socket")
-		rng.EnvSet(xdef.EnvCCID, "cicd-tag")
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -713,8 +705,8 @@ func Test_Build_String(t *testing.T) {
 			" --ssh default=ssh-socket" +
 			" -t dki-project:v1.2.3" +
 			" -t dki-project:latest" +
-			" --build-arg C42_BUILD_DATE=2000-01-02T03:04:05.6Z" +
-			" --build-arg C42_CCID=cicd-tag" +
+			" --build-arg C42_BLD_DATE=2000-01-02T03:04:05.600Z" +
+			" --build-arg C42_PRJ_NAME=project" +
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=" + prjkit.GitOrigin +
 			" --build-arg C42_SCM_REV=v1.2.3" +

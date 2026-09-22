@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ctx42/dotenv/pkg/dotenv"
+	"github.com/ctx42/gitaid/pkg/gitaid"
 	"github.com/ctx42/ring/pkg/ring/ringtest"
 	"github.com/ctx42/testing/pkg/assert"
 	"github.com/ctx42/testing/pkg/must"
@@ -26,7 +27,7 @@ func Test_NewInfo(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvUnset(xdef.EnvBuildDate)
+		rng.EnvUnset(xdef.EnvBldDate)
 
 		// --- When ---
 		inf := NewInfo(rng.EnvAll())
@@ -44,7 +45,7 @@ func Test_NewInfo(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHAuthSock, "socket")
-		rng.EnvUnset(xdef.EnvBuildDate)
+		rng.EnvUnset(xdef.EnvBldDate)
 
 		// --- When ---
 		inf := NewInfo(rng.EnvAll())
@@ -63,8 +64,7 @@ func Test_NewInfo(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		// --- When ---
 		inf := NewInfo(rng.EnvAll())
@@ -82,8 +82,7 @@ func Test_NewInfo(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "invalid")
+		rng.EnvSet(xdef.EnvBldDate, "invalid")
 
 		// --- When ---
 		inf := NewInfo(rng.EnvAll())
@@ -104,8 +103,7 @@ func Test_GetInfo(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -116,19 +114,18 @@ func Test_GetInfo(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
+		assert.Equal(t, prj.Root(), inf.Root)
+		assert.Equal(t, gitaid.Version{}, inf.Version)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
 		assert.False(t, inf.HasDockerfile)
 		assert.Empty(t, inf.LDFlags)
 		want := []string{
-			ev(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z"),
-			ev(xdef.EnvCCID, xdef.PhUnknown),
-			ev(xdef.EnvProjDistDir, prj.Path("dist")),
-			ev(xdef.EnvProjName, "project"),
-			ev(xdef.EnvProjRootDir, prj.Root()),
+			ev(xdef.EnvBldDate, "2000-01-02T03:04:05.600Z"),
+			ev(xdef.EnvPrjName, "project"),
 			ev(xdef.EnvScmState, ScmNo),
 		}
 		assert.Equal(t, want, inf.Env())
-		assert.Fields(t, 5, Info{})
+		assert.Fields(t, 7, Info{})
 	})
 
 	t.Run("build date set from environment", func(t *testing.T) {
@@ -137,8 +134,7 @@ func Test_GetInfo(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -149,19 +145,17 @@ func Test_GetInfo(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
+		assert.Equal(t, prj.Root(), inf.Root)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
 		assert.False(t, inf.HasDockerfile)
 		assert.Empty(t, inf.LDFlags)
 		want := []string{
-			ev(xdef.EnvBuildDate, inf.BuildDateFmt()),
-			ev(xdef.EnvCCID, xdef.PhUnknown),
-			ev(xdef.EnvProjDistDir, prj.Path("dist")),
-			ev(xdef.EnvProjName, "project"),
-			ev(xdef.EnvProjRootDir, prj.Root()),
+			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
+			ev(xdef.EnvPrjName, "project"),
 			ev(xdef.EnvScmState, ScmNo),
 		}
 		assert.Equal(t, want, inf.Env())
-		assert.Fields(t, 5, Info{})
+		assert.Fields(t, 7, Info{})
 	})
 
 	t.Run("SSH socket set from environment", func(t *testing.T) {
@@ -170,8 +164,7 @@ func Test_GetInfo(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHAuthSock, "socket")
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -182,20 +175,18 @@ func Test_GetInfo(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
+		assert.Equal(t, prj.Root(), inf.Root)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
 		assert.False(t, inf.HasDockerfile)
 		assert.Empty(t, inf.LDFlags)
 		want := []string{
-			ev(xdef.EnvBuildDate, inf.BuildDateFmt()),
-			ev(xdef.EnvCCID, xdef.PhUnknown),
-			ev(xdef.EnvProjDistDir, prj.Path("dist")),
-			ev(xdef.EnvProjName, "project"),
-			ev(xdef.EnvProjRootDir, prj.Root()),
+			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
+			ev(xdef.EnvPrjName, "project"),
 			ev(xdef.EnvScmState, ScmNo),
 			ev(EnvSSHAuthSock, "socket"),
 		}
 		assert.Equal(t, want, inf.Env())
-		assert.Fields(t, 5, Info{})
+		assert.Fields(t, 7, Info{})
 	})
 
 	t.Run("config file loaded", func(t *testing.T) {
@@ -203,8 +194,7 @@ func Test_GetInfo(t *testing.T) {
 		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.CfgAdd("KEY", "VAL")
@@ -215,6 +205,7 @@ func Test_GetInfo(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
+		assert.Equal(t, prj.Root(), inf.Root)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
 		assert.False(t, inf.HasDockerfile)
 		assert.Empty(t, inf.LDFlags)
@@ -228,8 +219,7 @@ func Test_GetInfo(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvSet(xdef.EnvCCID, "cicd-tag")
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -240,15 +230,13 @@ func Test_GetInfo(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
+		assert.Equal(t, prj.Root(), inf.Root)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
 		assert.False(t, inf.HasDockerfile)
 		assert.Empty(t, inf.LDFlags)
 		want := []string{
-			ev(xdef.EnvBuildDate, inf.BuildDateFmt()),
-			ev(xdef.EnvCCID, "cicd-tag"),
-			ev(xdef.EnvProjDistDir, prj.Path("dist")),
-			ev(xdef.EnvProjName, "project"),
-			ev(xdef.EnvProjRootDir, prj.Root()),
+			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
+			ev(xdef.EnvPrjName, "project"),
 			ev(xdef.EnvScmState, ScmNo),
 		}
 		assert.Equal(t, want, inf.Env())
@@ -260,8 +248,7 @@ func Test_GetInfo(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvSet(xdef.EnvCCID, "jenkins-tag")
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -272,15 +259,13 @@ func Test_GetInfo(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
+		assert.Equal(t, prj.Root(), inf.Root)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
 		assert.False(t, inf.HasDockerfile)
 		assert.Empty(t, inf.LDFlags)
 		want := []string{
-			ev(xdef.EnvBuildDate, inf.BuildDateFmt()),
-			ev(xdef.EnvCCID, "jenkins-tag"),
-			ev(xdef.EnvProjDistDir, prj.Path("dist")),
-			ev(xdef.EnvProjName, "project"),
-			ev(xdef.EnvProjRootDir, prj.Root()),
+			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
+			ev(xdef.EnvPrjName, "project"),
 			ev(xdef.EnvScmState, ScmNo),
 		}
 		assert.Equal(t, want, inf.Env())
@@ -292,8 +277,7 @@ func Test_GetInfo(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -305,15 +289,13 @@ func Test_GetInfo(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
+		assert.Equal(t, prj.Root(), inf.Root)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
 		assert.False(t, inf.HasDockerfile)
 		assert.Empty(t, inf.LDFlags)
 		want := []string{
-			ev(xdef.EnvBuildDate, inf.BuildDateFmt()),
-			ev(xdef.EnvCCID, xdef.PhUnknown),
-			ev(xdef.EnvProjDistDir, prj.Path("dist")),
-			ev(xdef.EnvProjName, "project"),
-			ev(xdef.EnvProjRootDir, prj.Root()),
+			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
+			ev(xdef.EnvPrjName, "project"),
 			ev(xdef.EnvScmState, ScmNo),
 		}
 		assert.Equal(t, want, inf.Env())
@@ -325,8 +307,7 @@ func Test_GetInfo(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -339,15 +320,13 @@ func Test_GetInfo(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
+		assert.Equal(t, prj.Root(), inf.Root)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
 		assert.False(t, inf.HasDockerfile)
 		assert.Empty(t, inf.LDFlags)
 		want := []string{
-			ev(xdef.EnvBuildDate, inf.BuildDateFmt()),
-			ev(xdef.EnvCCID, xdef.PhUnknown),
-			ev(xdef.EnvProjDistDir, prj.Path("dist")),
-			ev(xdef.EnvProjName, "project"),
-			ev(xdef.EnvProjRootDir, prj.Root()),
+			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
+			ev(xdef.EnvPrjName, "project"),
 			ev(xdef.EnvScmState, ScmNo),
 		}
 		assert.Equal(t, want, inf.Env())
@@ -359,8 +338,7 @@ func Test_GetInfo(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -372,18 +350,16 @@ func Test_GetInfo(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
+		assert.Equal(t, prj.Root(), inf.Root)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
 		assert.False(t, inf.HasDockerfile)
 		assert.Empty(t, inf.LDFlags)
 		want := []string{
-			ev(xdef.EnvBuildDate, inf.BuildDateFmt()),
-			ev(xdef.EnvCCID, xdef.PhUnknown),
-			ev(xdef.EnvProjDistDir, prj.Path("dist")),
-			ev(xdef.EnvProjName, "project"),
-			ev(xdef.EnvProjRootDir, prj.Root()),
+			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
+			ev(xdef.EnvPrjName, "project"),
 			ev(xdef.EnvScmHash, cm.Hash),
-			ev(xdef.EnvScmRev, cm.Hash),
-			ev(xdef.EnvScmState, ScmClean),
+			ev(xdef.EnvScmRev, "v0.0.1-dev.1+g"+cm.Hash),
+			ev(xdef.EnvScmState, gitaid.StateClean),
 		}
 		assert.Equal(t, want, inf.Env())
 	})
@@ -394,8 +370,7 @@ func Test_GetInfo(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -407,18 +382,16 @@ func Test_GetInfo(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
+		assert.Equal(t, prj.Root(), inf.Root)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
 		assert.False(t, inf.HasDockerfile)
 		assert.Empty(t, inf.LDFlags)
 		want := []string{
-			ev(xdef.EnvBuildDate, inf.BuildDateFmt()),
-			ev(xdef.EnvCCID, xdef.PhUnknown),
-			ev(xdef.EnvProjDistDir, prj.Path("dist")),
-			ev(xdef.EnvProjName, "project"),
-			ev(xdef.EnvProjRootDir, prj.Root()),
+			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
+			ev(xdef.EnvPrjName, "project"),
 			ev(xdef.EnvScmHash, cm.Hash),
 			ev(xdef.EnvScmRev, "v1.2.3"),
-			ev(xdef.EnvScmState, ScmClean),
+			ev(xdef.EnvScmState, gitaid.StateClean),
 		}
 		assert.Equal(t, want, inf.Env())
 	})
@@ -429,8 +402,7 @@ func Test_GetInfo(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -443,19 +415,17 @@ func Test_GetInfo(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
+		assert.Equal(t, prj.Root(), inf.Root)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
 		assert.False(t, inf.HasDockerfile)
 		assert.Empty(t, inf.LDFlags)
 		want := []string{
-			ev(xdef.EnvBuildDate, inf.BuildDateFmt()),
-			ev(xdef.EnvCCID, xdef.PhUnknown),
-			ev(xdef.EnvProjDistDir, prj.Path("dist")),
-			ev(xdef.EnvProjName, "project"),
-			ev(xdef.EnvProjRootDir, prj.Root()),
+			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
+			ev(xdef.EnvPrjName, "project"),
 			ev(xdef.EnvScmHash, cm.Hash),
 			ev(xdef.EnvScmRepo, prjkit.GitOrigin),
-			ev(xdef.EnvScmRev, cm.Hash),
-			ev(xdef.EnvScmState, ScmClean),
+			ev(xdef.EnvScmRev, "v0.0.1-dev.1+g"+cm.Hash),
+			ev(xdef.EnvScmState, gitaid.StateClean),
 		}
 		assert.Equal(t, want, inf.Env())
 	})
@@ -466,8 +436,7 @@ func Test_GetInfo(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -484,22 +453,17 @@ func Test_GetInfo(t *testing.T) {
 		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
 		assert.False(t, inf.HasDockerfile)
 		wantLDFlags := "" +
-			"-X 'example.com/comp/project.buildDate=2000-01-02T03:04:05.6Z'" +
-			" -X 'example.com/comp/project.scmRev=" + cm.Hash + "'" +
+			"-X 'example.com/comp/project.bldDate=2000-01-02T03:04:05.600Z'" +
+			" -X 'example.com/comp/project.scmRev=v0.0.1-dev.1+g" + cm.Hash + "'" +
 			" -X 'example.com/comp/project.scmHash=" + cm.Hash + "'" +
-			" -X 'example.com/comp/project.scmState=" + ScmClean + "'" +
-			" -X 'example.com/comp/project.ccid=" + xdef.PhUnknown + "'"
+			" -X 'example.com/comp/project.scmState=" + gitaid.StateClean + "'"
 		assert.Equal(t, wantLDFlags, inf.LDFlags)
 		want := []string{
-			ev(xdef.EnvBuildDate, inf.BuildDateFmt()),
-			ev(xdef.EnvCCID, xdef.PhUnknown),
-			ev(xdef.EnvProjDistDir, prj.Path("dist")),
-			ev(xdef.EnvProjGoImpSpec, prjkit.GoModName),
-			ev(xdef.EnvProjName, "project"),
-			ev(xdef.EnvProjRootDir, prj.Root()),
+			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
+			ev(xdef.EnvPrjName, "project"),
 			ev(xdef.EnvScmHash, cm.Hash),
-			ev(xdef.EnvScmRev, cm.Hash),
-			ev(xdef.EnvScmState, ScmClean),
+			ev(xdef.EnvScmRev, "v0.0.1-dev.1+g"+cm.Hash),
+			ev(xdef.EnvScmState, gitaid.StateClean),
 		}
 		assert.Equal(t, want, inf.Env())
 	})
@@ -510,8 +474,7 @@ func Test_GetInfo(t *testing.T) {
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvSet(xdef.EnvCCID, "jenkins-tag")
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -528,22 +491,18 @@ func Test_GetInfo(t *testing.T) {
 		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
 		assert.False(t, inf.HasDockerfile)
 		wantLDFlags := "" +
-			"-X 'example.com/comp/project.buildDate=2000-01-02T03:04:05.6Z'" +
+			"-X 'example.com/comp/project.bldDate=2000-01-02T03:04:05.600Z'" +
 			" -X 'example.com/comp/project.scmRev=v1.2.3'" +
 			" -X 'example.com/comp/project.scmHash=" + cm.Hash + "'" +
-			" -X 'example.com/comp/project.scmState=" + ScmClean + "'" +
-			" -X 'example.com/comp/project.ccid=jenkins-tag'"
+			" -X 'example.com/comp/project.scmState=" + gitaid.StateClean + "'" +
+			""
 		assert.Equal(t, wantLDFlags, inf.LDFlags)
 		want := []string{
-			ev(xdef.EnvBuildDate, inf.BuildDateFmt()),
-			ev(xdef.EnvCCID, "jenkins-tag"),
-			ev(xdef.EnvProjDistDir, prj.Path("dist")),
-			ev(xdef.EnvProjGoImpSpec, prjkit.GoModName),
-			ev(xdef.EnvProjName, "project"),
-			ev(xdef.EnvProjRootDir, prj.Root()),
+			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
+			ev(xdef.EnvPrjName, "project"),
 			ev(xdef.EnvScmHash, cm.Hash),
 			ev(xdef.EnvScmRev, "v1.2.3"),
-			ev(xdef.EnvScmState, ScmClean),
+			ev(xdef.EnvScmState, gitaid.StateClean),
 		}
 		assert.Equal(t, want, inf.Env())
 	})
@@ -697,7 +656,7 @@ func Test_Info_CfgGet(t *testing.T) {
 		}
 
 		// --- When ---
-		have := inf.CfgGet(xdef.EnvProjName)
+		have := inf.CfgGet(xdef.EnvPrjName)
 
 		// --- Then ---
 		assert.Equal(t, "", have)
@@ -749,7 +708,7 @@ func Test_Info_CfgLookup(t *testing.T) {
 		}
 
 		// --- When ---
-		haveVal, haveExist := inf.CfgLookup(xdef.EnvProjName)
+		haveVal, haveExist := inf.CfgLookup(xdef.EnvPrjName)
 
 		// --- Then ---
 		assert.Equal(t, "", haveVal)
@@ -843,7 +802,7 @@ func Test_Info_Lookup(t *testing.T) {
 		inf.Set("EXTRA", "")
 
 		// --- When ---
-		haveVal, haveExist := inf.Lookup(xdef.EnvProjName)
+		haveVal, haveExist := inf.Lookup(xdef.EnvPrjName)
 
 		// --- Then ---
 		assert.Equal(t, "", haveVal)

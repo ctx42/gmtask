@@ -35,6 +35,17 @@ func ImgName(projectName string) string {
 	return "dki-" + projectName
 }
 
+// ImgTag returns rev in a form a container registry accepts. A Docker tag
+// matches [a-zA-Z0-9_][a-zA-Z0-9._-]{0,127} and so cannot hold the "+" that
+// opens SemVer build metadata; "_" is legal in a tag and illegal in SemVer,
+// which makes the substitution unambiguous and reversible.
+//
+// The untouched version stays in [xdef.EnvScmRev] and the version label. The
+// tag is only an address a registry will accept.
+func ImgTag(rev string) string {
+	return strings.ReplaceAll(rev, "+", "_")
+}
+
 // splitTargets splits list of comma separated target names.
 func splitTargets(targets string) []string {
 	split := strings.Split(targets, ",")

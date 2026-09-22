@@ -9,6 +9,7 @@ import (
 
 	"github.com/ctx42/xdef/pkg/xdef"
 
+	"github.com/ctx42/gmtask/pkg/gmgo"
 	"github.com/ctx42/gmtask/pkg/gmprj"
 )
 
@@ -65,7 +66,11 @@ func NewConfig(name, tag string) *Config {
 // ConfigFrom instantiates Config based on data in project information and
 // gomake target arguments.
 func ConfigFrom(inf *gmprj.Info, fls *Flags) *Config {
-	cfg := NewConfig(ImgName(inf.Get(xdef.EnvProjName)), inf.Get(xdef.EnvScmRev))
+	// The Dockerfiles stamp C42_SCM_REV and the version label from the build
+	// argument unchanged, so the assembled revision is what reaches the
+	// build. The image tag cannot be that same string - a Docker tag rejects
+	// the "+" opening SemVer build metadata - so it takes the sanitized form.
+	cfg := NewConfig(ImgName(inf.Get(xdef.EnvPrjName)), ImgTag(inf.Version.Rev))
 	if !inf.BuildDate.IsZero() {
 		cfg.buildDate = inf.BuildDate
 	}
@@ -74,10 +79,10 @@ func ConfigFrom(inf *gmprj.Info, fls *Flags) *Config {
 	if inf.Config != nil {
 		cfg.args = maps.Clone(inf.Config)
 	}
+	cfg.fromInfo(inf, xdef.EnvPrjName)
 	cfg.fromInfo(inf, xdef.EnvScmRepo)
 	cfg.fromInfo(inf, xdef.EnvScmHash)
 	cfg.fromInfo(inf, xdef.EnvScmRev)
-	cfg.fromInfo(inf, xdef.EnvCCID)
 	cfg.fromInfo(inf, xdef.EnvRegRepo)
 	cfg.fromInfo(inf, EnvSSHSock)
 	if val, ok := cfg.args[EnvSSHSock]; ok && val != "" {
@@ -91,11 +96,13 @@ func ConfigFrom(inf *gmprj.Info, fls *Flags) *Config {
 		if fls.ImgTag != "" {
 			cfg.tag = fls.ImgTag
 		}
-		cfg.latest = fls.ImgLatest
+		// Only a release may move "latest". A dirty tree or a commit past the
+		// tag is not the version the tag names, whatever the flag asks for.
+		cfg.latest = fls.ImgLatest && inf.Version.Release
 		cfg.noCache = fls.Rebuild
 	}
 
-	cfg.args[xdef.EnvBuildDate] = cfg.buildDate.Format(time.RFC3339Nano)
+	cfg.args[xdef.EnvBldDate] = gmgo.BldDateFmt(cfg.buildDate)
 	return cfg
 }
 

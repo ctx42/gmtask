@@ -33,23 +33,27 @@ var shim string
 // socket exposed to "docker build".
 const EnvSSHSock = "SSH_AUTH_SOCK"
 
-// Environment variable names. The variables are set based on the project state.
+// Environment variable names for the images a build produces. The variables
+// are set based on the project state. They live here rather than in xdef
+// because xdef names a project's build inputs, while these report what the
+// build produced, which is this package's own concern.
 const (
-	// EnvDkrImgNameStem holds stem of Docker image file. The value is the
-	// image name stem used as a prefix for image names when
-	// [xdef.EnvBldTargets] is set in the project configuration file.
-	EnvDkrImgNameStem = "C42_DKI_NAME_STEM"
-
-	// EnvDkrImgName holds Docker image name. Set when project builds only one
-	// image.
+	// EnvDkrImgName holds Docker image name. Set when project builds only
+	// one image.
 	EnvDkrImgName = "C42_DKI_NAME"
 
+	// EnvDkrImgNameStem holds stem of Docker image file. The value is the
+	// image name stem used as a prefix for image names when
+	// [xdef.EnvBldImgTargets] is set in the project configuration file.
+	EnvDkrImgNameStem = "C42_DKI_NAME_STEM"
+
 	// EnvDkrImgNames holds comma-delimited list of Docker images. Set when
-	// [xdef.EnvBldTargets] is used and project builds more than one image.
+	// [xdef.EnvBldImgTargets] is used and project builds more than one
+	// image.
 	EnvDkrImgNames = "C42_DKI_NAMES"
 
-	// EnvDkrImgTag is an environment variable name representing Docker image tag.
-	// In the docker image reference:
+	// EnvDkrImgTag is an environment variable name representing Docker
+	// image tag. In the docker image reference:
 	//
 	//   my.nexus.dev:5000/repo/image:1.2.3
 	//
@@ -64,9 +68,25 @@ const (
 	EnvDkrImgRef = "C42_DKI_REF"
 
 	// EnvDkrImgRefs is environment variable name representing comma delimited
-	// list of Docker images references. Set when [xdef.EnvBldTargets] is used in
-	// the project configuration file and project builds more than one image.
+	// list of Docker images references. Set when [xdef.EnvBldImgTargets]
+	// is used in the project configuration file and project builds more
+	// than one image.
 	EnvDkrImgRefs = "C42_DKI_REFS"
+)
+
+// Paths inside the images the targets run. They are the layout the ctx42 base
+// images provide, which [xdef.EnvCtrRoot] and [xdef.EnvCtrPrjRoot] name for
+// the programs running in there; the values are spelled here because a mount
+// has to be built before any container exists to read them from.
+const (
+	// ctrPrjRoot is where a project is mounted. It must equal the WORKDIR of
+	// the base image, because "docker run" is issued with no -w flag and the
+	// container is expected to start in the project.
+	ctrPrjRoot = "/ctx42/project"
+
+	// ctrSSHSock is where the SSH agent socket is mounted. The OCI Image
+	// Spec names nothing for it, so it hangs off the image root.
+	ctrSSHSock = "/ctx42/ssh-auth-sock"
 )
 
 // goImageLatest is the latest Docker image reference with Go and test tools
@@ -80,7 +100,8 @@ var (
 	ErrNoTargets = errors.New("no targets defined")
 
 	// ErrNoTarget is returned when --targets/-T names a target that is not
-	// defined by [xdef.EnvBldTargets] (CLI selection before docker runs).
+	// defined by [xdef.EnvBldImgTargets] (CLI selection before docker
+	// runs).
 	ErrNoTarget = errors.New("unknown target")
 
 	// ErrNoDockerfile is returned when no Dockerfile is found.
@@ -249,7 +270,7 @@ func (Image) RunProj(ctx context.Context, rng *ring.Ring) error {
 		return err
 	}
 
-	cfg := NewConfig(inf.Get(xdef.EnvProjName), "latest")
+	cfg := NewConfig(inf.Get(xdef.EnvPrjName), "latest")
 	cfg.latest = false
 	cfg.args[xdef.EnvBldImgBase] = goImageLatest
 	cfg.args["C42_USR_UID"] = strconv.Itoa(usrUID)
@@ -278,7 +299,7 @@ func (Image) RunProj(ctx context.Context, rng *ring.Ring) error {
 	}
 
 	user := fmt.Sprintf("%d:%d", usrUID, usrGID)
-	volume := inf.Get(xdef.EnvProjRootDir) + ":/ctx42/project:rw,z"
+	volume := inf.Root + ":" + ctrPrjRoot + ":rw,z"
 
 	args = []string{"run", "--rm", "-it", "-u", user}
 	args = append(
@@ -289,14 +310,14 @@ func (Image) RunProj(ctx context.Context, rng *ring.Ring) error {
 	if sock := sshAuthSock(rng.EnvAll()); sock != "" {
 		args = append(
 			args,
-			"-v", sock+":/ctx42/ssh-auth-sock",
-			"-e", "SSH_AUTH_SOCK=/ctx42/ssh-auth-sock",
+			"-v", sock+":"+ctrSSHSock,
+			"-e", EnvSSHSock+"="+ctrSSHSock,
 		)
 	}
 	args = append(
 		args,
 		"--group-add", strconv.Itoa(dkrGID),
-		inf.Get(xdef.EnvProjName)+":latest",
+		inf.Get(xdef.EnvPrjName)+":latest",
 	)
 	cmd := fls.Cmd
 	if cmd == "" {

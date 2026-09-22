@@ -121,7 +121,7 @@ func (sup *Setup) Setup(ctx context.Context, rng *ring.Ring) error {
 		return err
 	}
 
-	if err = sup.addImgSrc(rng); err != nil {
+	if err = sup.addScmRepo(rng); err != nil {
 		return err
 	}
 
@@ -144,9 +144,10 @@ func (sup *Setup) Setup(ctx context.Context, rng *ring.Ring) error {
 	return nil
 }
 
-// addImgSrc appends the image source variable to the project configuration file
-// when a Docker repository is configured; it is a no-op when none is set.
-func (sup *Setup) addImgSrc(rng *ring.Ring) error {
+// addScmRepo appends the source repository variable to the project
+// configuration file when a Docker repository is configured; it is a no-op
+// when none is set.
+func (sup *Setup) addScmRepo(rng *ring.Ring) error {
 	if sup.repo == "" {
 		return nil
 	}
@@ -157,11 +158,11 @@ func (sup *Setup) addImgSrc(rng *ring.Ring) error {
 	}
 	defer func() { _ = fil.Close() }()
 
-	line := fmt.Sprintf("%s=%s\n", xdef.EnvImgSrc, sup.repo)
+	line := fmt.Sprintf("%s=%s\n", xdef.EnvScmRepo, sup.repo)
 	if _, err = fil.WriteString(line); err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintf(rng.Stdout(), "added %s to: %s\n", xdef.EnvImgSrc, pth)
+	_, _ = fmt.Fprintf(rng.Stdout(), "added %s to: %s\n", xdef.EnvScmRepo, pth)
 	return nil
 }
 

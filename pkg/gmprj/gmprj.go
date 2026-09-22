@@ -57,14 +57,15 @@ const (
 	CfgPath = "configs" + string(os.PathSeparator) + CfgFile //nolint:gocritic
 )
 
-// Working directory state values reported through [xdef.EnvScmState].
-const (
-	// ScmNo marks a project that is not part of a git repository.
-	ScmNo = "no-scm"
-
-	// ScmClean marks a git working directory with no uncommitted changes.
-	ScmClean = "clean"
-)
+// ScmNo is the [xdef.EnvScmState] value of a project that is not part of a
+// git repository. The other two states are gitaid's [gitaid.StateClean] and
+// [gitaid.StateDirty], and gitaid reports an error rather than a state for
+// this one, so it is named here.
+//
+// It is project information only: the version [gitaid.Derive] assembles
+// carries the tree state in its own identifier, so this value never reaches
+// a version string and the "-" in it is free to stay.
+const ScmNo = "no-scm"
 
 // Project collects project scaffolding and information targets.
 type Project struct{} //gomake:ns_root

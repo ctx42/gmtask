@@ -5,9 +5,9 @@ package gmprj
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
+	"github.com/ctx42/gitaid/pkg/gitaid"
 	"github.com/ctx42/ring/pkg/ring/ringtest"
 	"github.com/ctx42/testing/pkg/assert"
 	"github.com/ctx42/testkit/pkg/oskit"
@@ -30,8 +30,7 @@ func Test_Project_Env(t *testing.T) {
 
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		// --- When ---
 		err := Project{}.Env(ctx, rng)
@@ -39,13 +38,9 @@ func Test_Project_Env(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		want := "" +
-			"C42_BUILD_DATE=2000-01-02T03:04:05.6Z\n" +
-			"C42_CCID=unknown\n" +
-			"C42_PROJ_DIST_DIR=%s/dist\n" +
-			"C42_PROJ_NAME=project\n" +
-			"C42_PROJ_ROOT_DIR=%s\n" +
+			"C42_BLD_DATE=2000-01-02T03:04:05.600Z\n" +
+			"C42_PRJ_NAME=project\n" +
 			"C42_SCM_STATE=no-scm\n"
-		want = fmt.Sprintf(want, prj.Root(), prj.Root())
 		assert.Equal(t, want, tst.Stdout())
 	})
 
@@ -61,8 +56,7 @@ func Test_Project_Env(t *testing.T) {
 
 		rng := tst.Ring("--export")
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		// --- When ---
 		err := Project{}.Env(ctx, rng)
@@ -70,13 +64,9 @@ func Test_Project_Env(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		want := "" +
-			"export C42_BUILD_DATE=2000-01-02T03:04:05.6Z\n" +
-			"export C42_CCID=unknown\n" +
-			"export C42_PROJ_DIST_DIR=%s/dist\n" +
-			"export C42_PROJ_NAME=project\n" +
-			"export C42_PROJ_ROOT_DIR=%s\n" +
+			"export C42_BLD_DATE=2000-01-02T03:04:05.600Z\n" +
+			"export C42_PRJ_NAME=project\n" +
 			"export C42_SCM_STATE=no-scm\n"
-		want = fmt.Sprintf(want, prj.Root(), prj.Root())
 		assert.Equal(t, want, tst.Stdout())
 	})
 
@@ -95,8 +85,7 @@ func Test_Project_Env(t *testing.T) {
 
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHAuthSock, "socket")
-		rng.EnvSet(xdef.EnvCCID, "cicd-000")
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		// --- When ---
 		err := Project{}.Env(ctx, rng)
@@ -104,16 +93,12 @@ func Test_Project_Env(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		want := "" +
-			ev(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z") + "\n" +
-			ev(xdef.EnvCCID, "cicd-000") + "\n" +
-			ev(xdef.EnvProjDistDir, prj.Path("dist")) + "\n" +
-			ev(xdef.EnvProjGoImpSpec, prjkit.GoModName) + "\n" +
-			ev(xdef.EnvProjName, "project") + "\n" +
-			ev(xdef.EnvProjRootDir, prj.Root()) + "\n" +
+			ev(xdef.EnvBldDate, "2000-01-02T03:04:05.600Z") + "\n" +
+			ev(xdef.EnvPrjName, "project") + "\n" +
 			ev(xdef.EnvScmHash, cm.Hash) + "\n" +
 			ev(xdef.EnvScmRepo, prjkit.GitOrigin) + "\n" +
 			ev(xdef.EnvScmRev, "v0.1.0") + "\n" +
-			ev(xdef.EnvScmState, ScmClean) + "\n" +
+			ev(xdef.EnvScmState, gitaid.StateClean) + "\n" +
 			ev(EnvSSHAuthSock, "socket") + "\n"
 		assert.Equal(t, want, tst.Stdout())
 	})
@@ -129,14 +114,14 @@ func Test_Project_Env(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring(xdef.EnvProjDistDir)
+		rng := tst.Ring(xdef.EnvScmState)
 
 		// --- When ---
 		err := Project{}.Env(ctx, rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, prj.Path("dist"), tst.Stdout())
+		assert.Equal(t, ScmNo, tst.Stdout())
 	})
 
 	t.Run("single variable with export flag", func(t *testing.T) {
@@ -150,14 +135,14 @@ func Test_Project_Env(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("-e", xdef.EnvProjDistDir)
+		rng := tst.Ring("-e", xdef.EnvScmState)
 
 		// --- When ---
 		err := Project{}.Env(ctx, rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, prj.Path("dist"), tst.Stdout())
+		assert.Equal(t, ScmNo, tst.Stdout())
 	})
 
 	t.Run("print not existing environment variable", func(t *testing.T) {
@@ -189,7 +174,7 @@ func Test_Project_Env(t *testing.T) {
 		prj := gmtest.NewProject(t)
 		prj.Close()
 
-		rng := tst.Ring(xdef.EnvProjDistDir, xdef.EnvProjGoImpSpec)
+		rng := tst.Ring(xdef.EnvScmState, xdef.EnvPrjName)
 
 		// --- When ---
 		err := Project{}.Env(ctx, rng)
@@ -271,8 +256,7 @@ func Test_Project_Info(t *testing.T) {
 
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
-		rng.EnvUnset(xdef.EnvCCID)
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		// --- When ---
 		err := Project{}.Info(ctx, rng)
@@ -280,11 +264,8 @@ func Test_Project_Info(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		want := []string{
-			ev(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z"),
-			ev(xdef.EnvCCID, xdef.PhUnknown),
-			ev(xdef.EnvProjDistDir, prj.Path("dist")),
-			ev(xdef.EnvProjName, "project"),
-			ev(xdef.EnvProjRootDir, prj.Root()),
+			ev(xdef.EnvBldDate, "2000-01-02T03:04:05.600Z"),
+			ev(xdef.EnvPrjName, "project"),
 			ev(xdef.EnvScmState, ScmNo),
 		}
 		assert.Equal(t, want, toEnv(tst.Stdout()))
@@ -305,8 +286,7 @@ func Test_Project_Info(t *testing.T) {
 
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHAuthSock, "socket")
-		rng.EnvSet(xdef.EnvCCID, "cicd-000")
-		rng.EnvSet(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z")
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		// --- When ---
 		err := Project{}.Info(ctx, rng)
@@ -314,16 +294,12 @@ func Test_Project_Info(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		want := []string{
-			ev(xdef.EnvBuildDate, "2000-01-02T03:04:05.6Z"),
-			ev(xdef.EnvCCID, "cicd-000"),
-			ev(xdef.EnvProjDistDir, prj.Path("dist")),
-			ev(xdef.EnvProjGoImpSpec, prjkit.GoModName),
-			ev(xdef.EnvProjName, "project"),
-			ev(xdef.EnvProjRootDir, prj.Root()),
+			ev(xdef.EnvBldDate, "2000-01-02T03:04:05.600Z"),
+			ev(xdef.EnvPrjName, "project"),
 			ev(xdef.EnvScmHash, cm.Hash),
 			ev(xdef.EnvScmRepo, prjkit.GitOrigin),
 			ev(xdef.EnvScmRev, "v0.1.0"),
-			ev(xdef.EnvScmState, ScmClean),
+			ev(xdef.EnvScmState, gitaid.StateClean),
 			ev(EnvSSHAuthSock, "socket"),
 		}
 		assert.Equal(t, want, toEnv(tst.Stdout()))
@@ -339,14 +315,14 @@ func Test_Project_Info(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring(xdef.EnvProjDistDir)
+		rng := tst.Ring(xdef.EnvScmState)
 
 		// --- When ---
 		err := Project{}.Info(ctx, rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, prj.Path("dist"), tst.Stdout())
+		assert.Equal(t, ScmNo, tst.Stdout())
 	})
 
 	t.Run("print unknown field value", func(t *testing.T) {
@@ -377,7 +353,7 @@ func Test_Project_Info(t *testing.T) {
 		prj := gmtest.NewProject(t)
 		prj.Close()
 
-		rng := tst.Ring(xdef.EnvProjDistDir, xdef.EnvProjGoImpSpec)
+		rng := tst.Ring(xdef.EnvScmState, xdef.EnvPrjName)
 
 		// --- When ---
 		err := Project{}.Info(ctx, rng)

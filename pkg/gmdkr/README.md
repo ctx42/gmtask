@@ -36,7 +36,7 @@ project — no per-project `makefile.go` required.
 
 Given a `Dockerfile` and a project configuration file, `gmdkr` derives the image
 name from the project name, the tag from the SCM revision (`git describe`), and
-injects build metadata (build date, commit, repo, CI id) as `--build-arg`s. It
+injects build metadata (build date, commit, repo, state) as `--build-arg`s. It
 supports both single-image projects and multi-stage projects that build several
 named target images at once. The exported types (`DockerCmd`, `Config`,
 `Build`, `ImageInfos`) are also usable as a plain library.
@@ -116,14 +116,14 @@ Run any target from the project root. Every build, run, and push target accepts
 
 ```shell
 gomake :docker:image:build            # build the project image
-gomake :docker:image:build -l         # also tag it :latest
+gomake :docker:image:build -l         # also tag a release :latest
 gomake :docker:image:build -r         # rebuild with --no-cache
 gomake :docker:image:build -d         # print the docker build, run nothing
 ```
 
 For a project name `app` with no private registry this builds `dki-app:<rev>`,
 where `<rev>` comes from `git describe`. When the config lists targets
-(`C42_BLD_TARGETS`), one image is built per target
+(`C42_BLD_IMG_TARGETS`), one image is built per target
 (`dki-app-api`, `dki-app-worker`, …); restrict the set with `-T`:
 
 ```shell
@@ -243,54 +243,63 @@ fmt.Println(bld.String()) // DOCKER_BUILDKIT=1 docker build --platform ... .
 # configs/project.conf
 C42_REG_HOST=my.nexus.dev            # registry host
 C42_REG_REPO=my.nexus.dev/repo       # private repository the image lives in
-C42_BLD_TARGETS=api,worker,migrate   # Dockerfile stages to build (optional)
+C42_BLD_IMG_TARGETS=api,worker,migrate  # Dockerfile stages to build (optional)
 ```
 
-| Key               | Meaning                                                        | Required |
-|-------------------|----------------------------------------------------------------|----------|
-| `C42_REG_HOST`    | Private registry host.                                         | push     |
-| `C42_REG_REPO`    | Private repository the image is built from and pushed to.      | push     |
-| `C42_BLD_TARGETS` | Comma-separated `Dockerfile` stage names to build as images.   | no       |
+| Key                   | Meaning                                 | Required |
+|-----------------------|-----------------------------------------|----------|
+| `C42_REG_HOST`        | Private registry host.                  | push     |
+| `C42_REG_REPO`        | Private repo to build from and push to. | push     |
+| `C42_BLD_IMG_TARGETS` | Comma-separated `Dockerfile` stages.    | no       |
 
 `C42_REG_HOST` and `C42_REG_REPO` together mark the remote as configured;
-`:push` and `:login` need both. `C42_BLD_TARGETS` switches a project from a
-single image to one image per listed stage — each stage must exist in the
+`:push` and `:login` need both. `C42_BLD_IMG_TARGETS` switches a project from
+a single image to one image per listed stage — each stage must exist in the
 `Dockerfile`.
 
 ### Image naming
 
 The image name is derived from the project name with a `dki-` prefix (added
 unless the name already contains `dki-`), optionally qualified by the private
-repository and the target stage, and tagged with the SCM revision:
+repository and the target stage, and tagged with the derived version:
 
 ```text
 <repo>/dki-<project>-<target>:<tag>
 └──────────────┬───────────────┘ └┬┘
-        image name               git describe (override with -t)
+        image name               derived version (override -t)
 ```
 
+The version comes from `gitaid.Derive`, which yields the bare release tag only
+when `HEAD` is a clean checkout of a semver tag, and a pre-release of the next
+release otherwise. A Docker tag cannot hold the `+` that opens SemVer
+build metadata, so the tag is the version with `+` replaced by `_`; the
+untouched version stays in `C42_SCM_REV` and the version label.
+
 Examples: `dki-app:v1.2.3`, `my.nexus.dev/repo/dki-app:v1.2.3`,
-`my.nexus.dev/repo/dki-app-api:v1.2.3`. With `-l` the image is additionally
-tagged `:latest`.
+`my.nexus.dev/repo/dki-app-api:v1.2.4-dev.3_ga2f04ae`. With `-l` the image is
+additionally tagged `:latest` — but only a release is tagged that way, so a
+dirty tree or a commit past the tag never moves `latest`.
 
 ### Build arguments
 
 Every build passes the project's metadata to the `Dockerfile` as
 `--build-arg`s, so a stage can `ARG` and consume them:
 
-| Build arg        | Value                                            |
-|------------------|--------------------------------------------------|
-| `C42_BUILD_DATE` | RFC-3339 build date.                             |
-| `C42_SCM_REV`    | SCM revision (`git describe`).                   |
-| `C42_SCM_HASH`   | Commit hash.                                     |
-| `C42_SCM_REPO`   | Remote repository URL.                           |
-| `C42_CCID`       | CI/CD job id, or `unknown`.                      |
-| `C42_REG_HOST`   | Registry host, when configured.                  |
-| `C42_REG_REPO`   | Private repository, when configured.             |
-| `SSH_AUTH_SOCK`  | SSH agent socket, when set in the environment.   |
+| Build arg       | Value                                          |
+|-----------------|------------------------------------------------|
+| `C42_BLD_DATE`  | RFC-3339 build date, millisecond precision.    |
+| `C42_PRJ_NAME`  | Project name.                                  |
+| `C42_SCM_REV`   | Version derived by `gitaid`.                   |
+| `C42_SCM_HASH`  | Commit hash.                                   |
+| `C42_SCM_REPO`  | Remote repository URL.                         |
+| `C42_REG_HOST`  | Registry host, when configured.                |
+| `C42_REG_REPO`  | Private repository, when configured.           |
+| `SSH_AUTH_SOCK` | SSH agent socket, when set in the environment. |
 
 Any additional keys present in `configs/project.conf` are forwarded as
-`--build-arg`s as well.
+`--build-arg`s as well. `C42_SCM_STATE` is deliberately not passed: the
+`.dirty` identifier in `C42_SCM_REV` already carries the tree state, and two
+sources for one fact drift.
 
 ### Environment variables
 
@@ -318,9 +327,13 @@ Targets take only the flags relevant to them; all support `-h`/`--help`.
 | `--targets` | `-T`  | build, push, run, sh, reference | Comma-separated targets to act on.     |
 | `--name`    | `-n`  | build, push, run, sh            | Override the derived image name.       |
 | `--tag`     | `-t`  | build, push, run, sh            | Override the derived image tag.        |
-| `--latest`  | `-l`  | build, run                      | Also tag the image `:latest`.          |
+| `--latest`  | `-l`  | build, run                      | Also tag a release `:latest`.          |
 | `--rebuild` | `-r`  | build, run                      | Force a rebuild (build: `--no-cache`). |
 | `--cmd`     | `-c`  | sh                              | Command to run inside the container.   |
 | `--export`  | `-e`  | env                             | Prefix each line with `export`.        |
 | `--dry-run` | `-d`  | build, push, run, sh            | Print the `docker` command only.       |
 | `--help`    | `-h`  | all                             | Show the target's help.                |
+
+`--latest` is a request, not a guarantee: only a release — a clean checkout
+sitting exactly on a semver tag — is tagged `:latest`, so a dirty tree or a
+commit past the tag never moves it.

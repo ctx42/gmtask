@@ -45,6 +45,39 @@ func Test_ImgName_tabular(t *testing.T) {
 	}
 }
 
+func Test_ImgTag_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		rev  string
+		want string
+	}{
+		{"release tag is untouched", "v1.2.3", "v1.2.3"},
+		{
+			"build metadata separator",
+			"v0.4.1-dev.3+g7f93fb4",
+			"v0.4.1-dev.3_g7f93fb4",
+		},
+		{
+			"dirty development version",
+			"v0.4.1-dev.3.dirty+g7f93fb4",
+			"v0.4.1-dev.3.dirty_g7f93fb4",
+		},
+		{"pre-release without metadata", "v1.0.0-rc.1", "v1.0.0-rc.1"},
+		{"empty", "", ""},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			have := ImgTag(tc.rev)
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
+		})
+	}
+}
+
 func Test_splitTargets_tabular(t *testing.T) {
 	tt := []struct {
 		testN string

@@ -111,6 +111,7 @@ func Test_Image_Build(t *testing.T) {
 		prj := gmtest.NewProject(t)
 		prj.CfgRegRepoDef()
 		prj.WithDockerfile()
+		prj.GitInitAddAll("v1.2.3")
 		prj.Close()
 		prj.Chdir()
 
@@ -141,6 +142,37 @@ func Test_Image_Build(t *testing.T) {
 		// Run images and test output.
 		assert.Equal(t, "third image", dkrkit.NewT(t).CtrRun(ref))
 		assert.Equal(t, "third image", dkrkit.NewT(t).CtrRun(refLatest))
+	})
+
+	t.Run("latest flag on a non-release is ignored", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t).WetStderr()
+
+		prj := gmtest.NewProject(t)
+		prj.WithConfig()
+		prj.WithDockerfile()
+		prj.GitInitAddAll()
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring(
+			"--name", prj.ImgName(),
+			"--tag", prj.ImgTag(),
+			"-l",
+		)
+
+		// --- When ---
+		err := Image{}.Build(ctx, rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		ref, refLatest := prj.ImgRef(), prj.ImgRefLatest()
+		assert.Contain(t, ref, tst.Stderr())
+		assert.NotContain(t, refLatest, tst.Stderr())
+
+		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(ref))
+		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(refLatest))
 	})
 
 	t.Run("show help", func(t *testing.T) {
@@ -712,7 +744,8 @@ func Test_Image_Reference(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, "dki-project:"+prj.GitHash(), tst.Stdout())
+		want := "dki-project:v0.0.1-dev.1_g" + prj.GitHash()
+		assert.Equal(t, want, tst.Stdout())
 	})
 
 	t.Run("error - no project config", func(t *testing.T) {

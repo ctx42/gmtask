@@ -18,8 +18,10 @@ import (
 	"github.com/ctx42/gomake/pkg/gomake"
 	"github.com/ctx42/ring/pkg/ring/ringtest"
 	"github.com/ctx42/testing/pkg/assert"
+	"github.com/ctx42/testing/pkg/must"
 	"github.com/ctx42/testkit/pkg/oskit"
 	"github.com/ctx42/testkit/pkg/prjkit"
+	"github.com/ctx42/xdef/pkg/xdef"
 
 	"github.com/ctx42/gmtask/internal/gmtest"
 )
@@ -340,17 +342,41 @@ func Test_freeAddr(t *testing.T) {
 	})
 }
 
-func Test_rfc3339Milli(t *testing.T) {
+func Test_BldDateFmt(t *testing.T) {
 	t.Run("truncates to millisecond and normalizes to UTC", func(t *testing.T) {
 		// --- Given ---
 		loc := time.FixedZone("CET", 2*60*60)
 		tim := time.Date(2026, 7, 9, 12, 0, 0, 123_456_789, loc)
 
 		// --- When ---
-		have := rfc3339Milli(tim)
+		have := BldDateFmt(tim)
 
 		// --- Then ---
 		assert.Equal(t, "2026-07-09T10:00:00.123Z", have)
+	})
+
+	t.Run("keeps a trailing zero xdef also keeps", func(t *testing.T) {
+		// --- Given ---
+		tim := time.Date(2000, 1, 2, 3, 4, 5, 600_000_000, time.UTC)
+
+		// --- When ---
+		have := BldDateFmt(tim)
+
+		// --- Then ---
+		assert.Equal(t, "2000-01-02T03:04:05.600Z", have)
+	})
+
+	t.Run("agrees with the xdef rendering", func(t *testing.T) {
+		// --- Given ---
+		want := xdef.BldDateStr()
+		tim := must.Value(time.Parse(time.RFC3339Nano, want))
+
+		// --- When ---
+		have := BldDateFmt(tim)
+
+		// --- Then ---
+		assert.Equal(t, want, have)
+		assert.Regexp(t, `\.\d{3}Z$`, want)
 	})
 }
 

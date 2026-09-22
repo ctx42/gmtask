@@ -24,6 +24,12 @@ import (
 
 // Info represents project configuration and environment.
 type Info struct {
+	// Absolute path to the project root directory. It is not reported as
+	// an environment variable: nothing outside this module consumes it,
+	// and the paths the images use are the C42_CTR_* ones, which name
+	// locations inside the image rather than on the host.
+	Root string
+
 	// Parsed content of the project's configuration file.
 	Config map[string]string
 
@@ -31,8 +37,12 @@ type Info struct {
 	Other map[string]string
 
 	// By default set to the current date in UTC, but may be overwritten by the
-	// [xdef.EnvBuildDate] environment variable which must be in RFC3339 format.
+	// [xdef.EnvBldDate] environment variable which must be in RFC3339 format.
 	BuildDate time.Time
+
+	// Version derived from the git working tree. It is the zero value when
+	// the project is not a git repository or the repository is empty.
+	Version gitaid.Version
 
 	// True when the project has a Dockerfile in its root directory.
 	HasDockerfile bool
@@ -46,14 +56,14 @@ type Info struct {
 }
 
 // NewInfo returns an Info seeded from env. BuildDate defaults to the current
-// UTC time, overridden by [xdef.EnvBuildDate] (RFC3339) when it is set.
+// UTC time, overridden by [xdef.EnvBldDate] (RFC3339) when it is set.
 func NewInfo(env []string) *Info {
 	inf := &Info{
 		Config:    make(map[string]string),
 		Other:     make(map[string]string),
 		BuildDate: time.Now().UTC().Truncate(time.Millisecond),
 	}
-	if ev, ok := ring.EnvLookup(env, xdef.EnvBuildDate); ok {
+	if ev, ok := ring.EnvLookup(env, xdef.EnvBldDate); ok {
 		if et, err := time.Parse(time.RFC3339Nano, ev); err == nil {
 			inf.BuildDate = et
 		}
@@ -73,10 +83,9 @@ func GetInfo(ctx context.Context, env []string, root string) (*Info, error) {
 	}
 
 	inf := NewInfo(env)
-	inf.Set(xdef.EnvProjRootDir, root)
-	inf.Set(xdef.EnvProjDistDir, filepath.Join(root, "dist"))
+	inf.Root = root
 	inf.Set(xdef.EnvScmState, ScmNo)
-	inf.Set(xdef.EnvBuildDate, inf.BuildDate.Format(time.RFC3339Nano))
+	inf.Set(xdef.EnvBldDate, inf.BuildDateFmt())
 
 	spec, err := inf.setProjectName(ctx, env, root)
 	if err != nil {
@@ -85,18 +94,18 @@ func GetInfo(ctx context.Context, env []string, root string) (*Info, error) {
 	if err = inf.setConfig(filepath.Join(root, CfgPath)); err != nil {
 		return nil, err
 	}
-	if err = inf.setScm(ctx, root); err != nil {
+	if err = inf.setScm(ctx, root, ring.New(ring.WithEnv(env))); err != nil {
 		return nil, err
 	}
-	inf.setCCTag(env)
 	inf.setLDFlags(spec)
 	inf.HasDockerfile = gomake.FileExists(filepath.Join(root, "Dockerfile"))
 	return inf, nil
 }
 
-// BuildDateFmt returns the RFC3339Nano formatted build date.
+// BuildDateFmt returns the build date rendered the way [gmgo.BldDateFmt]
+// renders it.
 func (inf *Info) BuildDateFmt() string {
-	return inf.BuildDate.Format(time.RFC3339Nano)
+	return gmgo.BldDateFmt(inf.BuildDate)
 }
 
 // CfgGet retrieves the value of the configuration variable by name. It returns
@@ -166,13 +175,10 @@ func (inf *Info) setProjectName(
 	root string,
 ) (string, error) {
 
-	inf.Set(xdef.EnvProjName, ProjectName(root))
+	inf.Set(xdef.EnvPrjName, ProjectName(root))
 	spec, err := getGoSpec(ctx, env, root)
 	if err != nil {
 		return "", err
-	}
-	if spec != "" {
-		inf.Set(xdef.EnvProjGoImpSpec, spec)
 	}
 	return spec, nil
 }
@@ -187,17 +193,14 @@ func (inf *Info) setConfig(pth string) error {
 	return nil
 }
 
-// setCCTag sets [xdef.EnvCCID] based on the environment.
-func (inf *Info) setCCTag(env []string) {
-	if val, ok := ring.EnvLookup(env, xdef.EnvCCID); ok && val != "" {
-		inf.Set(xdef.EnvCCID, val)
-		return
-	}
-	inf.Set(xdef.EnvCCID, xdef.PhUnknown)
-}
+// setScm sets values related to source control management. The rng carries
+// the environment [gmgo.ProjectVersion] reads the bump override from.
+func (inf *Info) setScm(
+	ctx context.Context,
+	root string,
+	rng *ring.Ring,
+) error {
 
-// setScm sets values related to source control management.
-func (inf *Info) setScm(ctx context.Context, root string) error {
 	empty, err := gitaid.IsEmpty(ctx, root)
 	if err != nil {
 		if errors.Is(err, gitaid.ErrNotRepo) {
@@ -223,11 +226,12 @@ func (inf *Info) setScm(ctx context.Context, root string) error {
 	}
 	inf.Set(xdef.EnvScmHash, value)
 
-	value, err = gitaid.Describe(ctx, root)
-	if err != nil && !errors.Is(err, gitaid.ErrEmptyRepo) {
-		return err
+	if inf.Version, err = gmgo.ProjectVersion(ctx, rng, root, ""); err != nil {
+		if !errors.Is(err, gitaid.ErrEmptyRepo) {
+			return err
+		}
 	}
-	inf.Set(xdef.EnvScmRev, value)
+	inf.Set(xdef.EnvScmRev, inf.Version.Rev)
 
 	value, err = gitaid.WorkTreeStatus(ctx, root)
 	if err != nil {
@@ -246,16 +250,11 @@ func (inf *Info) setLDFlags(spec string) {
 	if spec == "" {
 		return
 	}
-	ccid := inf.Get(xdef.EnvCCID)
-	if ccid == "" {
-		ccid = xdef.PhUnknown
-	}
 	vars := []gmgo.LDVar{
-		{Name: xdef.VarBuildDate, Value: inf.BuildDateFmt()},
+		{Name: xdef.VarBldDate, Value: inf.BuildDateFmt()},
 		{Name: xdef.VarScmRev, Value: inf.Get(xdef.EnvScmRev)},
 		{Name: xdef.VarScmHash, Value: inf.Get(xdef.EnvScmHash)},
 		{Name: xdef.VarScmState, Value: inf.Get(xdef.EnvScmState)},
-		{Name: xdef.VarCCID, Value: ccid},
 	}
 	inf.LDFlags = gmgo.LDFlags(spec, vars)
 }

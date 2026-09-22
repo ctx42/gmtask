@@ -17,7 +17,7 @@ import (
 
 // setStructure injects a minimal project structure config block into the ring,
 // so [Setup.Setup] can load it. The go-test-all.run.xml content templates the
-// project name, and configs/project.conf is declared so addImgSrc can append.
+// project name, and configs/project.conf is declared so addScmRepo can append.
 func setStructure(t tester.T, rng *ring.Ring) {
 	t.Helper()
 	block := map[string]any{

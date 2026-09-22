@@ -239,10 +239,12 @@ func freeAddr() (string, error) {
 	return addr, nil
 }
 
-// rfc3339Milli formats t in UTC, truncated to millisecond precision, using the
-// RFC 3339 layout.
-func rfc3339Milli(t time.Time) string {
-	return t.UTC().Truncate(time.Millisecond).Format(time.RFC3339Nano)
+// BldDateFmt renders tim as a build date: RFC3339 in UTC with millisecond
+// precision, for example "2000-01-02T03:04:05.600Z". The fractional second is
+// always three digits, so every date it returns is the same width as the ones
+// xdef writes.
+func BldDateFmt(tim time.Time) string {
+	return tim.UTC().Format(bldDateLayout)
 }
 
 // extractGolangCiVersion extracts and parses semantic version from output given

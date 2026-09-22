@@ -137,7 +137,7 @@ targets:
             package: github.com/acme/app/internal/version
             names:            # optional; omitted fields keep the defaults
               scmRev: Version
-              ccid: CIJob
+              scmHash: Commit
 ```
 
 `package` (required) is the import path whose variables receive the values.
@@ -145,15 +145,18 @@ Declare a package-level `string` in it for each field, named as below:
 
 | Field        | Default name | Value                              |
 |--------------|--------------|------------------------------------|
-| build date   | `buildDate`  | `OCI_IMAGE_CREATED` env, else now  |
-| SCM revision | `scmRev`     | `git describe`, else `v0.0.0`      |
+| build date   | `bldDate`    | `C42_BLD_DATE` env, else now       |
+| SCM revision | `scmRev`     | derived version, else `v0.0.0`     |
 | SCM hash     | `scmHash`    | latest commit hash, else `0000000` |
 | SCM state    | `scmState`   | `clean`/`dirty`, else `unknown`    |
-| CI/CD id     | `ccid`       | `GOMAKE_CCID` env, else `unknown`  |
 
 `names` overrides the variable name for any field; the defaults match the names
 gomake injects into its own binary. A module with no entry is built without
 injection.
+
+The revision is the one `gitaid.Derive` builds, so a binary reports the same
+version as the image wrapping it. The bump it advances the last tag by is read
+off the Conventional Commits since that tag; `C42_BLD_BUMP` overrides it.
 
 ### Test reports
 
@@ -297,6 +300,6 @@ not applied during a check. Run `:go:lint`, `:go:lint:install`, or
   `git@github.com:ctx42/xdev.git`).
 - **`BUILD_ID`** (`:go:test`) — appended to the coverage and run log filenames
   in CI.
-- **`GOMAKE_CCID`** (`:go:build`) — CI/CD job id injected as the `ccid` value.
-- **`OCI_IMAGE_CREATED`** (`:go:build`) — RFC-3339 build date injected as
-  `buildDate`; the current time is used when unset.
+- **`C42_BLD_DATE`** (`:go:build`) — RFC-3339 build date injected as
+  `bldDate`; the current time is used when unset. The injected value is
+  re-rendered in UTC with millisecond precision, matching `xdef`.
