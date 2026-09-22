@@ -18,6 +18,7 @@ import (
 	"github.com/ctx42/testkit/pkg/oskit"
 
 	"github.com/ctx42/gmtask/internal/gmtest"
+	"github.com/ctx42/gmtask/pkg/gmgo"
 	"github.com/ctx42/gmtask/pkg/lib/gmclog"
 )
 
@@ -45,17 +46,17 @@ func Test_Bump(t *testing.T) {
 
 		want := "" +
 			"Current tag: \n" +
-			"Enter a version number [v0.0.0]: " +
+			"Enter a version number [v0.0.1]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
 			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
-		assert.Equal(t, "v0.0.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+		assert.Equal(t, "v0.0.1", oskit.ReadFileStr(t, prj.Root(), "VER"))
 
 		cl := must.Value(gmclog.ReadReleases(prj.Root(), "CHANGELOG.md"))
 		assert.Len(t, 1, cl.Releases)
-		assert.Equal(t, "v0.0.0", cl.Releases[0].Version.Original())
+		assert.Equal(t, "v0.0.1", cl.Releases[0].Version.Original())
 	})
 }
 
@@ -176,19 +177,19 @@ func Test_BumpTarget(t *testing.T) {
 		want := "" +
 			"Skipping tag: \"not-sem-ver\"\n" +
 			"Current tag: \n" +
-			"Enter a version number [v0.0.0]: " +
+			"Enter a version number [v0.0.1]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
 			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
-		assert.Equal(t, "v0.0.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+		assert.Equal(t, "v0.0.1", oskit.ReadFileStr(t, prj.Root(), "VER"))
 
 		cl := must.Value(gmclog.ReadReleases(prj.Root(), "CHANGELOG.md"))
 		assert.Len(t, 1, cl.Releases)
 
 		rel := cl.Releases[0]
-		assert.Equal(t, "v0.0.0", rel.Version.Original())
+		assert.Equal(t, "v0.0.1", rel.Version.Original())
 		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 1, rel.Changes)
 		assert.Equal(t, "- Initial commit.", rel.Changes[0])
@@ -220,27 +221,27 @@ func Test_BumpTarget(t *testing.T) {
 		want := "" +
 			"Skipping tag: \"not-sem-ver\"\n" +
 			"Current tag: v0.5.0\n" +
-			"Enter a version number [v0.6.0]: " +
+			"Enter a version number [v0.5.1]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
 			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
-		assert.Equal(t, "v0.6.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+		assert.Equal(t, "v0.5.1", oskit.ReadFileStr(t, prj.Root(), "VER"))
 		assert.Equal(t,
-			"Bump version to v0.6.0.",
+			"Bump version to v0.5.1.",
 			prj.GitCommitLog().Latest().Summary,
 		)
 		assert.Equal(t,
-			"Tag version v0.6.0.\n\n",
-			prj.ExeStdout("git", "tag", "-l", "--format=%(contents)", "v0.6.0"),
+			"Tag version v0.5.1.\n\n",
+			prj.ExeStdout("git", "tag", "-l", "--format=%(contents)", "v0.5.1"),
 		)
 
 		cl := must.Value(gmclog.ReadReleases(prj.Root(), "CHANGELOG.md"))
 		assert.Len(t, 1, cl.Releases)
 
 		rel := cl.Releases[0]
-		assert.Equal(t, "v0.6.0", rel.Version.Original())
+		assert.Equal(t, "v0.5.1", rel.Version.Original())
 		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 1, rel.Changes)
 		assert.Equal(t, "- test commit 2.", rel.Changes[0])
@@ -267,19 +268,19 @@ func Test_BumpTarget(t *testing.T) {
 
 		want := "" +
 			"Current tag: \n" +
-			"Enter a version number [v0.0.0]: " +
+			"Enter a version number [v0.0.1]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
 			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
-		assert.Equal(t, "v0.0.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+		assert.Equal(t, "v0.0.1", oskit.ReadFileStr(t, prj.Root(), "VER"))
 
 		cl := must.Value(gmclog.ReadReleases(prj.Root(), "CHANGELOG.md"))
 		assert.Len(t, 1, cl.Releases)
 
 		rel := cl.Releases[0]
-		assert.Equal(t, "v0.0.0", rel.Version.Original())
+		assert.Equal(t, "v0.0.1", rel.Version.Original())
 		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 1, rel.Changes)
 		assert.Equal(t, "- Initial commit.", rel.Changes[0])
@@ -307,19 +308,19 @@ func Test_BumpTarget(t *testing.T) {
 		assert.NoError(t, err)
 		want := "" +
 			"Current tag: \n" +
-			"Enter a version number [v0.0.0]: " +
+			"Enter a version number [v0.0.1]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
 			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
-		assert.Equal(t, "v0.0.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+		assert.Equal(t, "v0.0.1", oskit.ReadFileStr(t, prj.Root(), "VER"))
 
 		cl := must.Value(gmclog.ReadReleases(prj.Root(), "CHANGELOG.md"))
 		assert.Len(t, 1, cl.Releases)
 
 		rel := cl.Releases[0]
-		assert.Equal(t, "v0.0.0", rel.Version.Original())
+		assert.Equal(t, "v0.0.1", rel.Version.Original())
 		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 2, rel.Changes)
 		assert.Equal(t, "- Initial commit.", rel.Changes[0])
@@ -380,19 +381,19 @@ func Test_BumpTarget(t *testing.T) {
 		assert.NoError(t, err)
 		want := "" +
 			"Current tag: v0.0.1\n" +
-			"Enter a version number [v0.1.0]: " +
+			"Enter a version number [v0.0.2]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
 			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
-		assert.Equal(t, "v0.1.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+		assert.Equal(t, "v0.0.2", oskit.ReadFileStr(t, prj.Root(), "VER"))
 
 		cl := must.Value(gmclog.ReadReleases(prj.Root(), "CHANGELOG.md"))
 		assert.Len(t, 1, cl.Releases)
 
 		rel := cl.Releases[0]
-		assert.Equal(t, "v0.1.0", rel.Version.Original())
+		assert.Equal(t, "v0.0.2", rel.Version.Original())
 		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 1, rel.Changes)
 		assert.Equal(t, "- test commit 3.", rel.Changes[0])
@@ -424,23 +425,23 @@ func Test_BumpTarget(t *testing.T) {
 		assert.NoError(t, err)
 		want := "" +
 			"Current tag: v0.0.1\n" +
-			"Enter a version number [v0.1.0]: " +
+			"Enter a version number [v0.0.2]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
 			"No remote configured; skip push.\n" +
 			"Done.\n" +
 			"\n" +
 			"Use\n" +
-			"\tgo get example.com/comp/project@v0.1.0\n" +
+			"\tgo get example.com/comp/project@v0.0.2\n" +
 			"to update upstreams.\n"
 		assert.Equal(t, want, tst.Stdout())
-		assert.Equal(t, "v0.1.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+		assert.Equal(t, "v0.0.2", oskit.ReadFileStr(t, prj.Root(), "VER"))
 
 		cl := must.Value(gmclog.ReadReleases(prj.Root(), "CHANGELOG.md"))
 		assert.Len(t, 1, cl.Releases)
 
 		rel := cl.Releases[0]
-		assert.Equal(t, "v0.1.0", rel.Version.Original())
+		assert.Equal(t, "v0.0.2", rel.Version.Original())
 		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 1, rel.Changes)
 		assert.Equal(t, "- test commit 3.", rel.Changes[0])
@@ -510,7 +511,7 @@ func Test_BumpTarget(t *testing.T) {
 		assert.NoError(t, err)
 		want := "" +
 			"Current tag: v0.0.1\n" +
-			"Enter a version number [v0.1.0]: " +
+			"Enter a version number [v0.0.2]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
 			"No remote configured; skip push.\n" +
@@ -552,7 +553,7 @@ func Test_BumpTarget(t *testing.T) {
 		assert.NoError(t, err)
 		want := "" +
 			"Current tag: v0.0.1\n" +
-			"Enter a version number [v0.1.0]: " +
+			"Enter a version number [v0.0.2]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
 			"No remote configured; skip push.\n" +
@@ -591,7 +592,7 @@ func Test_BumpTarget(t *testing.T) {
 
 		want := "" +
 			"Current tag: \n" +
-			"Enter a version number [v0.0.0]: "
+			"Enter a version number [v0.0.1]: "
 		assert.Equal(t, want, tst.Stdout())
 	})
 
@@ -616,7 +617,7 @@ func Test_BumpTarget(t *testing.T) {
 
 		want := "" +
 			"Current tag: \n" +
-			"Enter a version number [v0.0.0]: "
+			"Enter a version number [v0.0.1]: "
 		assert.Equal(t, want, tst.Stdout())
 	})
 
@@ -641,7 +642,7 @@ func Test_BumpTarget(t *testing.T) {
 
 		want := "" +
 			"Current tag: \n" +
-			"Enter a version number [v0.0.0]: " +
+			"Enter a version number [v0.0.1]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n"
 		assert.Equal(t, want, tst.Stdout())
 	})
@@ -675,7 +676,7 @@ func Test_BumpTarget(t *testing.T) {
 		assert.Len(t, 2, cl.Releases)
 
 		rel := cl.Releases[0]
-		assert.Equal(t, "v0.1.0", rel.Version.Original())
+		assert.Equal(t, "v0.0.1", rel.Version.Original())
 		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 1, rel.Changes)
 		assert.Equal(t, "- test commit 2.", rel.Changes[0])
@@ -688,7 +689,7 @@ func Test_BumpTarget(t *testing.T) {
 
 		want := "" +
 			"Current tag: v0.0.0\n" +
-			"Enter a version number [v0.1.0]: " +
+			"Enter a version number [v0.0.1]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
 			"No remote configured; skip push.\n" +
@@ -697,167 +698,132 @@ func Test_BumpTarget(t *testing.T) {
 	})
 }
 
-func Test_getSemVer(t *testing.T) {
-	t.Run("error - not git repo", func(t *testing.T) {
+func Test_nextRelease(t *testing.T) {
+	t.Run("the core of a development version", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
-
-		prj := gmtest.NewProject(t)
-		prj.Close()
+		ver := gitaid.Version{Rev: "v0.4.1-dev.3.dirty+g7f93fb4"}
 
 		// --- When ---
-		curr, next, skipped, err := getSemVer(ctx, prj.Root(), "", false)
-
-		// --- Then ---
-		assert.ErrorIs(t, gitaid.ErrNotRepo, err)
-		assert.Nil(t, curr)
-		assert.Nil(t, next)
-		assert.Nil(t, skipped)
-	})
-
-	t.Run("empty git repo", func(t *testing.T) {
-		// --- Given ---
-		ctx := context.Background()
-
-		prj := gmtest.NewProject(t)
-		prj.Exe("git", "init")
-		prj.Close()
-
-		// --- When ---
-		curr, next, skipped, err := getSemVer(ctx, prj.Root(), "", false)
+		have, err := nextRelease(ver)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Nil(t, curr)
-		assert.Equal(t, StartSemVer, next.Original())
-		assert.Empty(t, skipped)
+		assert.Equal(t, "v0.4.1", have.Original())
 	})
 
-	t.Run("one commit no tags", func(t *testing.T) {
+	t.Run("a release is already a core", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
-
-		prj := gmtest.NewProject(t)
-		prj.CreateFileWith("file0 1", "file0.txt")
-		prj.GitInitAddAll()
-		prj.Close()
+		ver := gitaid.Version{Rev: "v1.2.3"}
 
 		// --- When ---
-		curr, next, skipped, err := getSemVer(ctx, prj.Root(), "", false)
+		have, err := nextRelease(ver)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Nil(t, curr)
-		assert.Equal(t, StartSemVer, next.Original())
-		assert.Empty(t, skipped)
+		assert.Equal(t, "v1.2.3", have.Original())
 	})
 
-	t.Run("one commit with invalid tag", func(t *testing.T) {
+	t.Run("error - not a version", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
-
-		prj := gmtest.NewProject(t)
-		prj.CreateFileWith("file0 1", "file0.txt")
-		prj.GitInitAddAll("not-sem-ver")
-		prj.Close()
+		ver := gitaid.Version{Rev: "nightly"}
 
 		// --- When ---
-		curr, next, skipped, err := getSemVer(ctx, prj.Root(), "", false)
+		have, err := nextRelease(ver)
 
 		// --- Then ---
-		assert.NoError(t, err)
-		assert.Nil(t, curr)
-		assert.Equal(t, StartSemVer, next.Original())
-		assert.Equal(t, []string{"not-sem-ver"}, skipped)
+		assert.ErrorIs(t, semver.ErrInvalidSemVer, err)
+		assert.Nil(t, have)
 	})
+}
 
-	t.Run("one commit after invalid tag", func(t *testing.T) {
+func Test_BumpTarget_proposal(t *testing.T) {
+	t.Run("a fix commit proposes a patch", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
+		rng := ringtest.New(t).Ring()
 
 		prj := gmtest.NewProject(t)
-		prj.CreateFileWith("file0 0", "file0.txt")
-		prj.GitInitAddAll()
 		prj.CreateFileWith("file0 1", "file0.txt")
-		prj.GitCommit("not-sem-ver")
+		prj.GitInitAddAll("v0.9.0")
 		prj.CreateFileWith("file0 2", "file0.txt")
-		prj.GitCommit("")
+		prj.GitCommit("", "fix: a defect")
 		prj.Close()
 
+		ver := must.Value(gmgo.ProjectVersion(ctx, rng, prj.Root(), ""))
+
 		// --- When ---
-		curr, next, skipped, err := getSemVer(ctx, prj.Root(), "", false)
+		have, err := nextRelease(ver)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Nil(t, curr)
-		assert.Equal(t, StartSemVer, next.Original())
-		assert.Equal(t, []string{"not-sem-ver"}, skipped)
+		assert.Equal(t, "v0.9.1", have.Original())
 	})
 
-	t.Run("HEAD tagged", func(t *testing.T) {
+	t.Run("a feat commit proposes a minor", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
+		rng := ringtest.New(t).Ring()
 
 		prj := gmtest.NewProject(t)
-		prj.CreateFileWith("file0 0", "file0.txt")
-		prj.GitInitAddAll()
 		prj.CreateFileWith("file0 1", "file0.txt")
-		prj.GitCommit("not-sem-ver")
+		prj.GitInitAddAll("v0.9.0")
 		prj.CreateFileWith("file0 2", "file0.txt")
-		prj.GitCommit("v0.1.0")
+		prj.GitCommit("", "feat: a feature")
 		prj.Close()
 
+		ver := must.Value(gmgo.ProjectVersion(ctx, rng, prj.Root(), ""))
+
 		// --- When ---
-		curr, next, skipped, err := getSemVer(ctx, prj.Root(), "", false)
+		have, err := nextRelease(ver)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, "v0.1.0", curr.Original())
-		assert.Equal(t, "v0.2.0", next.Original())
-		assert.Empty(t, skipped)
+		assert.Equal(t, "v0.10.0", have.Original())
 	})
 
-	t.Run("one commit after tag", func(t *testing.T) {
+	t.Run("the patch flag forces a patch", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
+		rng := ringtest.New(t).Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.CreateFileWith("file0 1", "file0.txt")
-		prj.GitInitAddAll()
+		prj.GitInitAddAll("v0.9.0")
 		prj.CreateFileWith("file0 2", "file0.txt")
-		prj.GitCommit("not-sem-ver")
-		prj.CreateFileWith("file0 3", "file0.txt")
-		prj.GitCommit("v0.1.0")
-		prj.CreateFileWith("file0 4", "file0.txt")
-		prj.GitCommit("")
+		prj.GitCommit("", "feat: a feature")
 		prj.Close()
 
+		bump := gitaid.BumpPatch
+		ver := must.Value(gmgo.ProjectVersion(ctx, rng, prj.Root(), bump))
+
 		// --- When ---
-		curr, next, skipped, err := getSemVer(ctx, prj.Root(), "", false)
+		have, err := nextRelease(ver)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, "v0.1.0", curr.Original())
-		assert.Equal(t, "v0.2.0", next.Original())
-		assert.Empty(t, skipped)
+		assert.Equal(t, "v0.9.1", have.Original())
 	})
 
-	t.Run("bump patch version", func(t *testing.T) {
+	t.Run("a tag that is not a version is passed over", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
+		rng := ringtest.New(t).Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.CreateFileWith("file0 1", "file0.txt")
-		prj.GitInitAddAll("v0.1.0")
+		prj.GitInitAddAll("v0.9.0")
+		prj.CreateFileWith("file0 2", "file0.txt")
+		prj.GitCommit("not-sem-ver", "fix: a defect")
 		prj.Close()
 
+		ver := must.Value(gmgo.ProjectVersion(ctx, rng, prj.Root(), ""))
+		assert.Equal(t, "v0.9.0", ver.Tag)
+
 		// --- When ---
-		curr, next, skipped, err := getSemVer(ctx, prj.Root(), "", true)
+		have, err := nextRelease(ver)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, "v0.1.0", curr.Original())
-		assert.Equal(t, "v0.1.1", next.Original())
-		assert.Empty(t, skipped)
+		assert.Equal(t, "v0.9.1", have.Original())
 	})
 }

@@ -3,8 +3,11 @@
 
 // Package gmbump provides the gomake ":bump" target for releasing Go projects.
 //
-// The target proposes the next semantic version from the repository's latest
-// tag (minor bump by default, patch with -p), lets you confirm or override it,
+// The target proposes the release the repository is already heading towards -
+// the same one [gitaid.Derive] stamps into development builds, so the tag cut
+// here can never name a different release than those builds pointed at. The
+// bump comes from the Conventional Commits since the latest version tag, or
+// from -p to force a patch. You confirm or override the proposal, and it then
 // prepends a CHANGELOG.md entry built from the commits since that tag, writes
 // the version to a VER file, then commits, tags, and pushes to origin.
 //
@@ -33,11 +36,6 @@ import (
 	"github.com/ctx42/gmtask/pkg/lib/gmclog"
 )
 
-// StartSemVer represents the first semantic version used to tag the repo.
-const StartSemVer = "v0.0.0"
-
-var _ = semver.MustParse(StartSemVer) // Ensure StartSemVer is a valid semver.
-
 // Bump runs the ":bump" target against the current working directory. It is the
 // entry point registered with gomake; see [BumpTarget] for the behavior.
 func Bump(ctx context.Context, rng *ring.Ring) error {
@@ -60,7 +58,7 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		_, _ = fmt.Fprint(rng.Stderr(), head+xflag.HelpOptions(fs))
 	}
 	fs.BoolSL("help", "h", false, "show help")
-	fs.BoolSL("patch", "p", false, "bump patch version")
+	fs.BoolSL("patch", "p", false, "force a patch version bump")
 	if err := fs.Parse(rng.Args()); err != nil {
 		return err
 	}
@@ -78,23 +76,43 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		return gitaid.ErrNotClean
 	}
 
-	curr, next, skipped, err := getSemVer(ctx, repo, "", fs.GetBool("patch"))
+	// The same derivation every other target uses, so the tag this offers to
+	// cut is the release the development builds were already heading to.
+	var bump string
+	if fs.GetBool("patch") {
+		bump = gitaid.BumpPatch
+	}
+	ver, err := gmgo.ProjectVersion(ctx, rng, repo, bump)
 	if err != nil {
 		return fmt.Errorf("resolve version: %w", err)
 	}
-	for _, tag := range skipped {
-		_, _ = fmt.Fprintf(rng.Stdout(), "Skipping tag: %q\n", tag)
+	next, err := nextRelease(ver)
+	if err != nil {
+		return fmt.Errorf("resolve version: %w", err)
 	}
-	var curStr string // String representation of the current semantic version.
-	if curr != nil {
-		curStr = curr.Original()
-	}
-	_, _ = fmt.Fprintf(rng.Stdout(), "Current tag: %s\n", curStr)
 
+	if closest, err := gitaid.ClosestTag(ctx, repo, ""); err == nil &&
+		closest != "" && closest != ver.Tag {
+
+		// Only version tags are considered, so say which one was passed
+		// over rather than leave the proposal looking wrong.
+		_, _ = fmt.Fprintf(rng.Stdout(), "Skipping tag: %q\n", closest)
+	}
+
+	curStr := ver.Tag
 	changes, err := gitaid.ChangeLog(ctx, repo, curStr)
+	if errors.Is(err, gitaid.ErrUnkTag) {
+		// The tag git does not know is the synthetic base gitaid falls back
+		// to when the repository has no version tag. Every commit is then a
+		// change, and there is no current tag to report.
+		curStr = ""
+		changes, err = gitaid.ChangeLog(ctx, repo, "")
+	}
 	if err != nil {
 		return fmt.Errorf("read changelog: %w", err)
 	}
+	_, _ = fmt.Fprintf(rng.Stdout(), "Current tag: %s\n", curStr)
+
 	if len(changes) == 0 {
 		_, _ = fmt.Fprint(rng.Stdout(), "HEAD on tag. Nothing to do.\n")
 		return nil
@@ -187,45 +205,15 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	return nil
 }
 
-// getSemVer proposes the next semver tag based on current repository status. It
-// returns the current SemVer tag (nil if none), the proposal for the next
-// SemVer, and the tags skipped because they are not valid semantic versions. In
-// most cases you want to set startRev to the empty string, but to start
-// searching from a specific revision set startRev.
-//
-// When bumpPatch is true the patch version is increased instead of the minor.
-func getSemVer(
-	ctx context.Context,
-	repo string,
-	startRev string,
-	bumpPatch bool,
-) (*semver.Version, *semver.Version, []string, error) {
-
-	rev, err := gitaid.ClosestTag(ctx, repo, startRev)
+// nextRelease returns the release ver heads towards. It is the version core
+// of the development version [gitaid.Derive] built, which is the last tag
+// already advanced by the bump - so the tag cut here and the one stamped into
+// a development build can never name different releases.
+func nextRelease(ver gitaid.Version) (*semver.Version, error) {
+	sem, err := semver.NewVersion(ver.Rev)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, fmt.Errorf("%s: %w", ver.Rev, err)
 	}
-	if rev == "" {
-		return nil, semver.MustParse(StartSemVer), nil, nil
-	}
-
-	ver, err := semver.NewVersion(rev)
-	if err != nil {
-		if rev == startRev {
-			// The [gitaid.ClosestTag] returned the same rev as the startRev
-			// which means this is the only (not valid semver) tagged commit
-			// in the repository.
-			return nil, semver.MustParse(StartSemVer), nil, nil
-		}
-		curr, next, skipped, err := getSemVer(ctx, repo, rev, bumpPatch)
-		return curr, next, append([]string{rev}, skipped...), err
-	}
-
-	var ret semver.Version
-	if bumpPatch {
-		ret = ver.IncPatch()
-	} else {
-		ret = ver.IncMinor()
-	}
-	return ver, &ret, nil, nil
+	core := fmt.Sprintf("v%d.%d.%d", sem.Major(), sem.Minor(), sem.Patch())
+	return semver.NewVersion(core)
 }

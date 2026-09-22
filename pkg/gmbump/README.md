@@ -29,11 +29,15 @@ exported `Bump` and `BumpTarget` functions are also usable as a plain library.
 
 ## Features
 
-- **Automatic version proposal** — the next minor, or patch with `-p`.
+- **Automatic version proposal** — the release the repository is already
+  heading towards, read off the Conventional Commits since the last tag.
 - **Interactive confirmation** — accept the proposal or type your own version.
 - **Changelog generation** — a dated release from commits, ready to edit.
 - **Clean-tree guard** — refuses to run when the working tree is dirty.
-- **Skips non-semver tags** — walks back past tags that aren't valid semver.
+- **Skips non-semver tags** — a `nightly` or a date stamp is never mistaken
+  for a release, and the one passed over is named.
+- **One version everywhere** — the tag it cuts is the release `gitaid.Derive`
+  stamps into development builds, so the two can never disagree.
 - **Go-module aware** — prints a `go get module@version` upgrade hint.
 
 ## Prerequisites
@@ -88,8 +92,8 @@ import (
 Run from the repository root:
 
 ```shell
-gomake :bump        # bump the minor version
-gomake :bump -p     # bump the patch version instead
+gomake :bump        # propose the release the commits imply
+gomake :bump -p     # force a patch bump instead
 gomake :bump -h     # show help
 ```
 
@@ -103,7 +107,7 @@ A run:
 4. Writes `VER`, commits `CHANGELOG.md` and `VER`, tags the commit, and pushes
    the tag to origin (a missing remote is not an error).
 
-A minor bump of a `v0.1.0` repository looks like:
+A `v0.1.0` repository with a `feat:` commit since the tag looks like:
 
 ```text
 Current tag: v0.1.0
