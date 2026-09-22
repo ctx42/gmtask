@@ -275,7 +275,7 @@ func Test_Go_TestV(t *testing.T) {
 
 		prj := gmtest.NewProject(t, prjkit.WithProjectEnv(os.Environ()))
 		prj.GoModInit()
-		prj.ProjectFrom("testdata/vet/success/project")
+		prj.ProjectFrom("testdata/timeout/project")
 		prj.Close()
 		prj.Chdir()
 
@@ -298,7 +298,7 @@ func Test_Go_TestV(t *testing.T) {
 
 		prj := gmtest.NewProject(t, prjkit.WithProjectEnv(os.Environ()))
 		prj.GoModInit()
-		prj.ProjectFrom("testdata/vet/success/project")
+		prj.ProjectFrom("testdata/timeout/project")
 		prj.Close()
 		prj.Chdir()
 
@@ -321,7 +321,7 @@ func Test_Go_TestV(t *testing.T) {
 
 		prj := gmtest.NewProject(t, prjkit.WithProjectEnv(os.Environ()))
 		prj.GoModInit()
-		prj.ProjectFrom("testdata/vet/success/project")
+		prj.ProjectFrom("testdata/timeout/project")
 		prj.Close()
 		prj.Chdir()
 
@@ -345,7 +345,7 @@ func Test_Go_TestV(t *testing.T) {
 
 		prj := gmtest.NewProject(t, prjkit.WithProjectEnv(os.Environ()))
 		prj.GoModInit()
-		prj.ProjectFrom("testdata/vet/success/project")
+		prj.ProjectFrom("testdata/timeout/project")
 		prj.Close()
 		prj.Chdir()
 
@@ -389,7 +389,7 @@ func Test_Go_TestV(t *testing.T) {
 
 		prj := gmtest.NewProject(t, prjkit.WithProjectEnv(os.Environ()))
 		prj.GoModInit()
-		prj.ProjectFrom("testdata/vet/success/project")
+		prj.ProjectFrom("testdata/timeout/project")
 		prj.Close()
 		prj.Chdir()
 
