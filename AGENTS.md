@@ -75,7 +75,36 @@ not the bare module path.
   `github.com/ctx42/testkit` (`oskit`, `pathkit`, `prjkit`). Structure test
   bodies with `// --- Given ---`, `// --- When ---`, `// --- Then ---` blocks.
 - Dependencies are the ctx42 ecosystem (`ring`, `gitaid`, `gomake`, `testing`,
-  `testkit`, `xdef`, `xflag`) plus `Masterminds/semver/v3`.
+  `testkit`, `xdef`, `xflag`) plus `Masterminds/semver/v3`. `xdef` owns the
+  shared `C42_*` names, `gitaid` owns git and version construction - see
+  [Versioning](#versioning). Editing either is a separate module and a
+  separate release: ask before doing it.
+
+## Versioning
+
+One derivation, in one place. `gitaid` is the authoritative source for how a
+version is built and what its parts mean; nothing here assembles one.
+
+- **Never construct a version.** Call `gmgo.ProjectVersion`, which wraps
+  `gitaid.Derive`. `gmprj.Info.Version`, `gmgo.buildValues` and `gmbump` all
+  go through it, which is what keeps the version a binary reports, the one
+  its image carries, and the one `:bump` offers to tag identical.
+- **Never bump or parse a version by hand.** `Masterminds/semver/v3` does the
+  arithmetic; a regex that ignored a tag's pre-release once turned
+  `v1.0.0-rc.1` plus a patch into `v1.0.1`, skipping the release the rc named.
+- **`dev` and `dirty` are different words.** `dev` marks a development build -
+  anything that is not a release - and `dirty` marks the working tree. Never
+  spell either as the other. A tree is dirty when `git status --porcelain`
+  reports anything at all, untracked files included.
+- The bump level is project policy, so `gitaid` takes it as an argument.
+  `gmgo.InferBump` reads it off the Conventional Commits, and
+  `gmgo.EnvBldBump` (`C42_BLD_BUMP`) overrides it. That name stays in this
+  module.
+- `C42_SCM_STATE` is deliberately not a Docker build argument: the `.dirty`
+  identifier in the version already carries the tree state, and two sources
+  for one fact drift.
+- Only a release may move the `latest` image tag - `gmdkr` gates it on
+  `Version.Release`, not on the `-l` flag alone.
 
 ## Documentation / README conventions
 
