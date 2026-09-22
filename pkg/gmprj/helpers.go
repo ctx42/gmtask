@@ -63,10 +63,7 @@ func Root(pth string, elem ...string) (string, error) {
 		return "", err
 	}
 	start := pth
-	for {
-		if gomake.FileExists(filepath.Join(pth, CfgPath)) {
-			break
-		}
+	for !gomake.FileExists(filepath.Join(pth, CfgPath)) {
 		parent := filepath.Dir(pth)
 		if parent == pth {
 			// Volume root (e.g. "/" or "C:\"); no config found above.
