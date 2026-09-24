@@ -1,3 +1,17 @@
+## v0.8.0 (Thu, 24 Sep 2026 11:26:48 UTC)
+- test(gmgo): stop the timeout tests racing the watchdog.
+- refactor(gmprj): lift the config lookup into the loop condition.
+- refactor!: derive versions through gitaid.
+- feat(gmbump)!: propose the release the commits imply.
+- docs: record the versioning conventions for agents.
+- feat(gmbump)!: ask before bumping off master or main.
+- chore: add an IDE test run configuration and project config.
+- test(gmbump): pin the clean check ahead of the branch gate.
+- refactor(gmbump): lift the release steps out of BumpTarget.
+- feat(gmprj)!: refuse to scaffold into a non-empty directory.
+- build(deps): bump gitaid to 0.6.1.
+- build(deps): bump gitaid to 0.6.2.
+
 ## v0.7.0 (Sun, 19 Jul 2026 20:10:49 UTC)
 - feat(gmgo): make lint config source repo configurable.
 
