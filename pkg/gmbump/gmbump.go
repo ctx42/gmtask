@@ -123,25 +123,16 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		return fmt.Errorf("resolve version: %w", err)
 	}
 
-	if closest, err := gitaid.ClosestTag(ctx, repo, ""); err == nil &&
-		closest != "" && closest != ver.Tag {
-
+	closest, err := gitaid.ClosestTag(ctx, repo, "")
+	if err == nil && closest != "" && closest != ver.Tag {
 		// Only version tags are considered, so say which one was passed
 		// over rather than leave the proposal looking wrong.
 		_, _ = fmt.Fprintf(rng.Stdout(), "Skipping tag: %q\n", closest)
 	}
 
-	curStr := ver.Tag
-	changes, err := gitaid.ChangeLog(ctx, repo, curStr)
-	if errors.Is(err, gitaid.ErrUnkTag) {
-		// The tag git does not know is the synthetic base gitaid falls back
-		// to when the repository has no version tag. Every commit is then a
-		// change, and there is no current tag to report.
-		curStr = ""
-		changes, err = gitaid.ChangeLog(ctx, repo, "")
-	}
+	changes, curStr, err := collectChanges(ctx, repo, ver.Tag)
 	if err != nil {
-		return fmt.Errorf("read changelog: %w", err)
+		return err
 	}
 	_, _ = fmt.Fprintf(rng.Stdout(), "Current tag: %s\n", curStr)
 
@@ -151,18 +142,8 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	}
 
 	rdr := bufio.NewReader(rng.Stdin())
-	if branch != branchMaster && branch != branchMain {
-		format := "Release from branch %q? [y/N]: "
-		_, _ = fmt.Fprintf(rng.Stdout(), format, branch)
-		txt, err := rdr.ReadString('\n')
-		if err != nil {
-			return fmt.Errorf("read approval input: %w", err)
-		}
-		ans := strings.ToLower(strings.TrimSpace(txt))
-		if ans != "y" && ans != "yes" {
-			format = "bump aborted: branch %q is %w (master, main)"
-			return fmt.Errorf(format, branch, ErrNotDefBranch)
-		}
+	if err = approveBranch(rng, rdr, branch); err != nil {
+		return err
 	}
 
 	format := "Enter a version number [%s]: "
@@ -184,19 +165,8 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		next = semver.MustParse("v" + nextStr)
 	}
 
-	rel := gmclog.NewSemVerRelease(next, time.Now())
-	rel.AddChange(changes...)
-	pth := filepath.Join(repo, "CHANGELOG.md")
-	if err = gmclog.CreateFile(pth); err != nil {
-		return fmt.Errorf("create changelog: %w", err)
-	}
-	cl, err := gmclog.ReadChangelog(pth)
-	if err != nil {
-		return fmt.Errorf("read changelog: %w", err)
-	}
-	cl.AddRelease(rel)
-	if err = cl.Save(); err != nil {
-		return fmt.Errorf("save changelog: %w", err)
+	if err = writeChangelog(repo, next, changes); err != nil {
+		return err
 	}
 
 	msg := "Now you may edit CHANGELOG.md. Then press ENTER to continue.\n"
@@ -206,7 +176,7 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	}
 	_, _ = fmt.Fprint(rng.Stdout(), "Continuing.\n")
 
-	pth = filepath.Join(repo, "VER")
+	pth := filepath.Join(repo, "VER")
 	if err = os.WriteFile(pth, []byte(next.Original()), 0o600); err != nil {
 		return fmt.Errorf("write VER file: %w", err)
 	}
@@ -249,6 +219,78 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	_, _ = fmt.Fprintf(rng.Stdout(), msg, mod, next.Original())
 
 	return nil
+}
+
+// writeChangelog prepends a release of the given version, dated now and built
+// from changes, to the CHANGELOG.md of the repository rooted at repo. The file
+// is created when it does not exist yet.
+func writeChangelog(
+	repo string,
+	next *semver.Version,
+	changes []string,
+) error {
+
+	rel := gmclog.NewSemVerRelease(next, time.Now())
+	rel.AddChange(changes...)
+
+	pth := filepath.Join(repo, "CHANGELOG.md")
+	if err := gmclog.CreateFile(pth); err != nil {
+		return fmt.Errorf("create changelog: %w", err)
+	}
+	cl, err := gmclog.ReadChangelog(pth)
+	if err != nil {
+		return fmt.Errorf("read changelog: %w", err)
+	}
+	cl.AddRelease(rel)
+	if err = cl.Save(); err != nil {
+		return fmt.Errorf("save changelog: %w", err)
+	}
+	return nil
+}
+
+// collectChanges returns the changes to release since tag, and the tag they
+// are measured from. That tag is the empty string when the repository carries
+// no version tag yet, and every commit is then a change.
+func collectChanges(
+	ctx context.Context,
+	repo, tag string,
+) ([]string, string, error) {
+
+	changes, err := gitaid.ChangeLog(ctx, repo, tag)
+	if errors.Is(err, gitaid.ErrUnkTag) {
+		// The tag git does not know is the synthetic base gitaid falls back
+		// to when the repository has no version tag.
+		tag = ""
+		changes, err = gitaid.ChangeLog(ctx, repo, "")
+	}
+	if err != nil {
+		return nil, "", fmt.Errorf("read changelog: %w", err)
+	}
+	return changes, tag, nil
+}
+
+// approveBranch asks to confirm a release cut from branch and returns nil when
+// it is approved. A default branch is approved without asking; anywhere else
+// only "y" or "yes", in any case, goes on, and any other answer yields an error
+// wrapping [ErrNotDefBranch].
+func approveBranch(rng *ring.Ring, rdr *bufio.Reader, branch string) error {
+	if branch == branchMaster || branch == branchMain {
+		return nil
+	}
+
+	format := "Release from branch %q? [y/N]: "
+	_, _ = fmt.Fprintf(rng.Stdout(), format, branch)
+	txt, err := rdr.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("read approval input: %w", err)
+	}
+	if ans := strings.ToLower(strings.TrimSpace(txt)); ans == "y" ||
+		ans == "yes" {
+
+		return nil
+	}
+	format = "bump aborted: branch %q is %w (master, main)"
+	return fmt.Errorf(format, branch, ErrNotDefBranch)
 }
 
 // nextRelease returns the release ver heads towards. It is the version core
