@@ -11,6 +11,11 @@
 // prepends a CHANGELOG.md entry built from the commits since that tag, writes
 // the version to a VER file, then commits, tags, and pushes to origin.
 //
+// A release needs a clean working tree and a branch to cut from. The target
+// refuses a detached HEAD outright, and on a branch other than "master" or
+// "main" it asks to confirm before releasing - after establishing there is
+// anything to release, so a no-op bump never asks.
+//
 // Import path:
 //
 //	import "github.com/ctx42/gmtask/pkg/gmbump"
@@ -36,6 +41,19 @@ import (
 	"github.com/ctx42/gmtask/pkg/lib/gmclog"
 )
 
+// Branches a release may be cut from without an approval.
+const (
+	// branchMaster is the primary default branch name.
+	branchMaster = "master"
+
+	// branchMain is the alternative default branch name.
+	branchMain = "main"
+)
+
+// ErrNotDefBranch is an error returned when a release from a branch other
+// than "master" or "main" was not approved.
+var ErrNotDefBranch = errors.New("not a default branch")
+
 // Bump runs the ":bump" target against the current working directory. It is the
 // entry point registered with gomake; see [BumpTarget] for the behavior.
 func Bump(ctx context.Context, rng *ring.Ring) error {
@@ -47,6 +65,10 @@ func Bump(ctx context.Context, rng *ring.Ring) error {
 // since the previous tag, writes the version to a VER file, then commits, tags,
 // and pushes to origin. The empty string for repo means the current working
 // directory.
+//
+// It returns [gitaid.ErrNotClean] for a dirty working tree,
+// [gitaid.ErrDetached] for a detached HEAD, and [ErrNotDefBranch] when a
+// release from a branch other than "master" or "main" is not approved.
 //
 //nolint:cyclop
 func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
@@ -74,6 +96,16 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	}
 	if !clean {
 		return gitaid.ErrNotClean
+	}
+
+	// A detached HEAD has no branch to release from: the commit this would
+	// make is reachable only through the tag, and git refuses to push it.
+	branch, err := gitaid.Branch(ctx, repo)
+	if errors.Is(err, gitaid.ErrDetached) {
+		return err
+	}
+	if err != nil {
+		return fmt.Errorf("check repository branch: %w", err)
 	}
 
 	// The same derivation every other target uses, so the tag this offers to
@@ -118,9 +150,23 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		return nil
 	}
 
+	rdr := bufio.NewReader(rng.Stdin())
+	if branch != branchMaster && branch != branchMain {
+		format := "Release from branch %q? [y/N]: "
+		_, _ = fmt.Fprintf(rng.Stdout(), format, branch)
+		txt, err := rdr.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("read approval input: %w", err)
+		}
+		ans := strings.ToLower(strings.TrimSpace(txt))
+		if ans != "y" && ans != "yes" {
+			format = "bump aborted: branch %q is %w (master, main)"
+			return fmt.Errorf(format, branch, ErrNotDefBranch)
+		}
+	}
+
 	format := "Enter a version number [%s]: "
 	_, _ = fmt.Fprintf(rng.Stdout(), format, next.Original())
-	rdr := bufio.NewReader(rng.Stdin())
 	txt, err := rdr.ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("read version input: %w", err)

@@ -16,6 +16,7 @@ import (
 	"github.com/ctx42/testing/pkg/assert"
 	"github.com/ctx42/testing/pkg/must"
 	"github.com/ctx42/testkit/pkg/oskit"
+	"github.com/ctx42/testkit/pkg/prjkit"
 
 	"github.com/ctx42/gmtask/internal/gmtest"
 	"github.com/ctx42/gmtask/pkg/gmgo"
@@ -152,6 +153,240 @@ func Test_BumpTarget(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, gitaid.ErrNotClean, err)
+	})
+
+	t.Run("error - detached head", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.GitDetach()
+		prj.Close()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := BumpTarget(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, gitaid.ErrDetached, err)
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "CHANGELOG.md"))
+		assert.Equal(t, "", prj.ExeStdout("git", "tag"))
+	})
+
+	t.Run("error - detached head on a version tag", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll("v0.0.1")
+		prj.GitDetach()
+		prj.Close()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := BumpTarget(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, gitaid.ErrDetached, err)
+	})
+
+	t.Run("releases from main without asking", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		sin := bytes.NewBufferString("\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+
+		prj := gmtest.NewProject(t, prjkit.WithGitBranch("main"))
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := BumpTarget(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+
+		want := "" +
+			"Current tag: \n" +
+			"Enter a version number [v0.0.1]: " +
+			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
+			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.Equal(t, "v0.0.1", oskit.ReadFileStr(t, prj.Root(), "VER"))
+	})
+
+	t.Run("approves a release from another branch", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		sin := bytes.NewBufferString("y\n\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+
+		prj := gmtest.NewProject(t, prjkit.WithGitBranch("feature/x"))
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := BumpTarget(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+
+		want := "" +
+			"Current tag: \n" +
+			"Release from branch \"feature/x\"? [y/N]: " +
+			"Enter a version number [v0.0.1]: " +
+			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
+			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.Equal(t, "v0.0.1", oskit.ReadFileStr(t, prj.Root(), "VER"))
+	})
+
+	t.Run("approval is case insensitive and takes yes", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		sin := bytes.NewBufferString("YES\n\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+
+		prj := gmtest.NewProject(t, prjkit.WithGitBranch("feature/x"))
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := BumpTarget(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "Release from branch \"feature/x\"? [y/N]: ",
+			tst.Stdout())
+		assert.Equal(t, "v0.0.1", oskit.ReadFileStr(t, prj.Root(), "VER"))
+	})
+
+	t.Run("nothing to do on another branch does not ask", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		tst := ringtest.New(t).WetStdout()
+
+		prj := gmtest.NewProject(t, prjkit.WithGitBranch("feature/x"))
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll("v0.0.1")
+		prj.Close()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := BumpTarget(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+
+		want := "" +
+			"Current tag: v0.0.1\n" +
+			"HEAD on tag. Nothing to do.\n"
+		assert.Equal(t, want, tst.Stdout())
+	})
+
+	t.Run("error - declines a release from another branch", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		sin := bytes.NewBufferString("n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+
+		prj := gmtest.NewProject(t, prjkit.WithGitBranch("feature/x"))
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := BumpTarget(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNotDefBranch, err)
+		want := "bump aborted: branch \"feature/x\" is not a default " +
+			"branch (master, main)"
+		assert.ErrorEqual(t, want, err)
+
+		want = "" +
+			"Current tag: \n" +
+			"Release from branch \"feature/x\"? [y/N]: "
+		assert.Equal(t, want, tst.Stdout())
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "CHANGELOG.md"))
+	})
+
+	t.Run("error - an empty answer declines", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		sin := bytes.NewBufferString("\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+
+		prj := gmtest.NewProject(t, prjkit.WithGitBranch("feature/x"))
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := BumpTarget(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNotDefBranch, err)
+
+		want := "" +
+			"Current tag: \n" +
+			"Release from branch \"feature/x\"? [y/N]: "
+		assert.Equal(t, want, tst.Stdout())
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+	})
+
+	t.Run("error - EOF reading approval", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		sin := bytes.NewBufferString("")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+
+		prj := gmtest.NewProject(t, prjkit.WithGitBranch("feature/x"))
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := BumpTarget(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, io.EOF, err)
+		assert.ErrorIsNot(t, ErrNotDefBranch, err)
+		assert.ErrorEqual(t, "read approval input: EOF", err)
+
+		want := "" +
+			"Current tag: \n" +
+			"Release from branch \"feature/x\"? [y/N]: "
+		assert.Equal(t, want, tst.Stdout())
 	})
 
 	t.Run("invalid semver tag", func(t *testing.T) {
