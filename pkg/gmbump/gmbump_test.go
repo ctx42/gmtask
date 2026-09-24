@@ -155,6 +155,27 @@ func Test_BumpTarget(t *testing.T) {
 		assert.ErrorIs(t, gitaid.ErrNotClean, err)
 	})
 
+	t.Run("error - dirty tree on another branch", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t, prjkit.WithGitBranch("feature/x"))
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.CreateFileWith("file0 2", "file0.txt")
+		prj.Close()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := BumpTarget(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, gitaid.ErrNotClean, err)
+		assert.ErrorIsNot(t, ErrNotDefBranch, err)
+	})
+
 	t.Run("error - detached head", func(t *testing.T) {
 		// --- Given ---
 		ctx := t.Context()
