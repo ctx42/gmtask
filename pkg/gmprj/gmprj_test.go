@@ -5,6 +5,7 @@ package gmprj
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/ctx42/gitaid/pkg/gitaid"
@@ -434,6 +435,76 @@ func Test_Project_Setup(t *testing.T) {
 		assert.Contain(t, `name="my-repo"`, have)
 	})
 
+	t.Run("error - directory is not empty", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring("--origin", "git@example.com:comp/acme.git")
+		setStructure(t, rng)
+
+		// --- When ---
+		err := Project{}.Setup(ctx, rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrDirNotEmpty, err)
+		assert.ErrorContain(t, "use --force to set up anyway", err)
+
+		assert.NoFileExist(t, prj.Path("go.mod"))
+		assert.NoDirExist(t, prj.Path(".git"))
+	})
+
+	t.Run("error - directory holds only a dot entry", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("ignored", ".hidden")
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring("--origin", "git@example.com:comp/acme.git")
+		setStructure(t, rng)
+
+		// --- When ---
+		err := Project{}.Setup(ctx, rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrDirNotEmpty, err)
+	})
+
+	t.Run("force sets up in a non-empty directory", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t).WetStdout()
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.Close()
+		prj.Chdir()
+
+		origin := "git@example.com:comp/acme.git"
+		rng := tst.Ring("--force", "--origin", origin)
+		setStructure(t, rng)
+
+		// --- When ---
+		err := Project{}.Setup(ctx, rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "done\n", tst.Stdout())
+
+		have := prj.ReadFileStr("go.mod")
+		assert.Contain(t, "module example.com/comp/acme\n", have)
+		assert.Equal(t, "file0 1", prj.ReadFileStr("file0.txt"))
+	})
+
 	t.Run("create directory with git origin", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
@@ -497,6 +568,7 @@ func Test_Project_Setup(t *testing.T) {
 		oskit.MkdirAll(t, prj.Root(), "my-repo")
 
 		rng := tst.Ring("--module", "example.com/comp/my-repo", "--mkdir")
+		setStructure(t, rng)
 
 		// --- When ---
 		err := Project{}.Setup(ctx, rng)
@@ -565,6 +637,7 @@ func Test_Project_Setup(t *testing.T) {
 		assert.NoError(t, err)
 		want := "" +
 			"Usage of :project:setup:\n" +
+			"  -f, --force     use the directory even if it has files\n" +
 			"  -h, --help      show help\n" +
 			"  -d, --mkdir     create project directory\n" +
 			"  -m, --module    go module name\n" +
@@ -597,6 +670,7 @@ func Test_Project_Setup(t *testing.T) {
 		want := "" +
 			"flag provided but not defined: -unknown\n" +
 			"Usage of :project:setup:\n" +
+			"  -f, --force     use the directory even if it has files\n" +
 			"  -h, --help      show help\n" +
 			"  -d, --mkdir     create project directory\n" +
 			"  -m, --module    go module name\n" +
@@ -608,6 +682,99 @@ func Test_Project_Setup(t *testing.T) {
 			"  # Set the Go module path explicitly.\n" +
 			"  gomake :project:setup --module github.com/prj/repo\n"
 		assert.Equal(t, want, tst.Stderr())
+	})
+
+	t.Run("mkdir on an existing directory needs force", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t)
+		prj.CreateDir("acme")
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring("--origin", "git@example.com:comp/acme.git", "--mkdir")
+		setStructure(t, rng)
+
+		// --- When ---
+		err := Project{}.Setup(ctx, rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, os.ErrExist, err)
+		assert.NoFileExist(t, prj.Path("acme", "go.mod"))
+	})
+
+	t.Run("force mkdir adopts an existing directory", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t).WetStdout()
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "acme", "file0.txt")
+		prj.Close()
+		prj.Chdir()
+
+		origin := "git@example.com:comp/acme.git"
+		rng := tst.Ring("--origin", origin, "--mkdir", "--force")
+		setStructure(t, rng)
+
+		// --- When ---
+		err := Project{}.Setup(ctx, rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "done\n", tst.Stdout())
+
+		have := prj.ReadFileStr("acme", "go.mod")
+		assert.Contain(t, "module example.com/comp/acme\n", have)
+		assert.Equal(t, "file0 1", prj.ReadFileStr("acme", "file0.txt"))
+	})
+
+	t.Run("error - force mkdir onto a file", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("not a dir", "acme")
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring(
+			"--origin", "git@example.com:comp/acme.git",
+			"--mkdir",
+			"--force",
+		)
+		setStructure(t, rng)
+
+		// --- When ---
+		err := Project{}.Setup(ctx, rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNotDir, err)
+		assert.Equal(t, "not a dir", prj.ReadFileStr("acme"))
+	})
+
+	t.Run("mkdir leaves nothing behind when a check fails", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		origin := "git@example.org:proj/acme.git"
+		module := "example.com/comp/acme"
+		rng := tst.Ring("-o", origin, "-m", module, "--mkdir")
+
+		// --- When ---
+		err := Project{}.Setup(ctx, rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrModuleOriginMismatch, err)
+		assert.NoDirExist(t, prj.Path("acme"))
 	})
 
 	t.Run("both origin and module set and incompatible", func(t *testing.T) {

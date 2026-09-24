@@ -25,8 +25,17 @@ so each team controls exactly what a fresh project looks like.
 ## Targets
 
 - **`:project:setup`** — scaffold a project from the `structure` block, init the
-  module, and init/commit/tag git. Flags: `-o/--origin`, `-m/--module`,
-  `-d/--mkdir`.
+  module, and init/commit/tag git. Refuses a target directory that already
+  holds entries, `.git` included, so a forgotten `-d/--mkdir` cannot scatter
+  the scaffold over an existing project. `-f/--force` says the directory was
+  meant: it lifts that check and lets `-d/--mkdir` adopt a directory that
+  already exists. Flags: `-o/--origin`, `-m/--module`, `-d/--mkdir`,
+  `-f/--force`.
+
+  The target only parses the flags — `Setup` owns the decisions, so the same
+  guards apply to `NewSetup(root, WithSetupMkdir(…), WithSetupForce(…))` used
+  as a library. Every check runs before the first write, so a rejected run
+  leaves no directory behind.
 - **`:project:env`** — print project information as `KEY=value` environment
   lines.
 - **`:project:info`** — print the same information in a readable form.

@@ -40,6 +40,14 @@ var (
 	// ErrMkdirNeedsName is returned when --mkdir is set without --origin or
 	// --module (or when those values yield no project directory name).
 	ErrMkdirNeedsName = errors.New("mkdir requires --origin or --module")
+
+	// ErrDirNotEmpty is returned when the directory to scaffold already holds
+	// entries and --force was not set.
+	ErrDirNotEmpty = errors.New("project directory is not empty")
+
+	// ErrNotDir is returned when the path to scaffold into exists but is not
+	// a directory.
+	ErrNotDir = errors.New("project path is not a directory")
 )
 
 // EnvSSHAuthSock holds the SSH agent socket path. It keeps the standard
@@ -160,6 +168,13 @@ func (Project) Info(ctx context.Context, rng *ring.Ring) error {
 
 // Setup creates a project scaffold.
 //
+// It refuses to scaffold into a directory that already holds entries, dot
+// entries included, and returns [ErrDirNotEmpty]. That is almost always a
+// forgotten --mkdir, so --force is what says the directory was meant: it
+// lifts the check, and makes --mkdir adopt the directory when it is already
+// there instead of failing. A --mkdir path that exists but is not a directory
+// returns [ErrNotDir].
+//
 // Example usage:
 //
 //	gomake :project:setup
@@ -181,6 +196,7 @@ func (Project) Setup(ctx context.Context, rng *ring.Ring) error {
 	fs.StringSL("origin", "o", "", "remote repository path")
 	fs.StringSL("module", "m", "", "go module name")
 	fs.BoolSL("mkdir", "d", false, "create project directory")
+	fs.BoolSL("force", "f", false, "use the directory even if it has files")
 	if err := fs.Parse(rng.Args()); err != nil {
 		return err
 	}
@@ -190,27 +206,13 @@ func (Project) Setup(ctx context.Context, rng *ring.Ring) error {
 		return nil
 	}
 
-	var root string
-	if fs.GetBool("mkdir") {
-		src := fs.GetString("origin")
-		mod := fs.GetString("module")
-		if mod != "" {
-			src = mod
-		}
-		root = ProjectName(src)
-		if root == "" {
-			return ErrMkdirNeedsName
-		}
-		if err := os.Mkdir(root, 0o755); err != nil { //nolint:gosec
-			return err
-		}
-	}
-
 	opts := []func(*Setup){
 		WithSetupGitOrigin(fs.GetString("origin")),
 		WithSetupGoModule(fs.GetString("module")),
+		WithSetupMkdir(fs.GetBool("mkdir")),
+		WithSetupForce(fs.GetBool("force")),
 	}
-	sup, err := NewSetup(root, opts...)
+	sup, err := NewSetup("", opts...)
 	if err != nil {
 		return err
 	}

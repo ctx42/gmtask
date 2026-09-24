@@ -6,6 +6,7 @@ package gmprj
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/ctx42/ring/pkg/ring/ringtest"
@@ -49,6 +50,28 @@ func Test_WithSetupGoModule(t *testing.T) {
 
 	// --- Then ---
 	assert.Equal(t, "module", sup.module)
+}
+
+func Test_WithSetupMkdir(t *testing.T) {
+	// --- Given ---
+	sup := &Setup{}
+
+	// --- When ---
+	WithSetupMkdir(true)(sup)
+
+	// --- Then ---
+	assert.True(t, sup.mkdir)
+}
+
+func Test_WithSetupForce(t *testing.T) {
+	// --- Given ---
+	sup := &Setup{}
+
+	// --- When ---
+	WithSetupForce(true)(sup)
+
+	// --- Then ---
+	assert.True(t, sup.force)
 }
 
 func Test_NewSetup(t *testing.T) {
@@ -116,6 +139,60 @@ func Test_NewSetup(t *testing.T) {
 		assert.Equal(t, "acme", sup.name)
 	})
 
+	t.Run("mkdir names the root after the project", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewNamedProject(t, "work")
+		prj.Close()
+		prj.Chdir()
+
+		origin := "git@example.com:comp/acme.git"
+		opts := []func(*Setup){
+			WithSetupGitOrigin(origin),
+			WithSetupMkdir(true),
+		}
+
+		// --- When ---
+		sup, err := NewSetup("", opts...)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, filepath.Join(prj.Root(), "acme"), sup.root)
+		assert.Equal(t, "acme", sup.name)
+	})
+
+	t.Run("mkdir with an explicit root uses it", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewNamedProject(t, "work")
+		prj.Close()
+		prj.Chdir()
+
+		opts := []func(*Setup){
+			WithSetupGoModule("example.com/comp/acme"),
+			WithSetupMkdir(true),
+		}
+
+		// --- When ---
+		sup, err := NewSetup(prj.Root(), opts...)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, prj.Root(), sup.root)
+	})
+
+	t.Run("error - mkdir without origin or module", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewNamedProject(t, "work")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		sup, err := NewSetup("", WithSetupMkdir(true))
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrMkdirNeedsName, err)
+		assert.Nil(t, sup)
+	})
+
 	t.Run("module does not match origin error", func(t *testing.T) {
 		// --- Given ---
 		prj := gmtest.NewNamedProject(t, "acme")
@@ -135,6 +212,66 @@ func Test_NewSetup(t *testing.T) {
 		// --- Then ---
 		assert.ErrorIs(t, ErrModuleOriginMismatch, err)
 		assert.Nil(t, sup)
+	})
+}
+
+func Test_checkSetupRoot(t *testing.T) {
+	t.Run("missing path is fine", func(t *testing.T) {
+		// --- Given ---
+		pth := filepath.Join(t.TempDir(), "not_existing")
+
+		// --- When ---
+		err := checkSetupRoot(pth, false)
+
+		// --- Then ---
+		assert.NoError(t, err)
+	})
+
+	t.Run("empty directory", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+
+		// --- When ---
+		err := checkSetupRoot(dir, false)
+
+		// --- Then ---
+		assert.NoError(t, err)
+	})
+
+	t.Run("force takes a non-empty directory", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		oskit.Write(t, []byte("content"), dir, "file0.txt")
+
+		// --- When ---
+		err := checkSetupRoot(dir, true)
+
+		// --- Then ---
+		assert.NoError(t, err)
+	})
+
+	t.Run("error - non-empty directory", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		oskit.Write(t, []byte("content"), dir, "file0.txt")
+
+		// --- When ---
+		err := checkSetupRoot(dir, false)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrDirNotEmpty, err)
+		assert.ErrorContain(t, "use --force to set up anyway", err)
+	})
+
+	t.Run("error - a file is never a root even with force", func(t *testing.T) {
+		// --- Given ---
+		pth := oskit.Write(t, []byte("content"), t.TempDir(), "file0.txt")
+
+		// --- When ---
+		err := checkSetupRoot(pth, true)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNotDir, err)
 	})
 }
 
@@ -238,7 +375,6 @@ func Test_Setup_Setup(t *testing.T) {
 		tst := ringtest.New(t).WetStdout()
 
 		prj := gmtest.NewProject(t)
-		prj.CreateDir("xyz")
 		prj.Close()
 		prj.Chdir()
 
@@ -266,7 +402,6 @@ func Test_Setup_Setup(t *testing.T) {
 		tst := ringtest.New(t).WetStdout()
 
 		prj := gmtest.NewProject(t)
-		prj.CreateDir("xyz")
 		prj.Close()
 		prj.Chdir()
 
@@ -333,6 +468,80 @@ func Test_Setup_Setup(t *testing.T) {
 		assert.NotEmpty(t, tst.Stdout())
 	})
 
+	t.Run("error - directory is not empty", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.Close()
+		prj.Chdir()
+
+		sup := must.Value(NewSetup("", WithSetupGoModule("project")))
+		rng := tst.Ring()
+		setStructure(t, rng)
+
+		// --- When ---
+		err := sup.Setup(ctx, rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrDirNotEmpty, err)
+		assert.NoFileExist(t, prj.Path("go.mod"))
+	})
+
+	t.Run("mkdir creates the project root", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t).WetStdout()
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		opts := []func(*Setup){
+			WithSetupGoModule("example.com/comp/acme"),
+			WithSetupMkdir(true),
+		}
+		sup := must.Value(NewSetup("", opts...))
+		rng := tst.Ring()
+		setStructure(t, rng)
+
+		// --- When ---
+		err := sup.Setup(ctx, rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "done\n", tst.Stdout())
+
+		have := prj.ReadFileStr("acme", "go.mod")
+		assert.Contain(t, "module example.com/comp/acme\n", have)
+	})
+
+	t.Run("error - no structure leaves the root uncreated", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		opts := []func(*Setup){
+			WithSetupGoModule("example.com/comp/acme"),
+			WithSetupMkdir(true),
+		}
+		sup := must.Value(NewSetup("", opts...))
+		rng := tst.Ring()
+
+		// --- When ---
+		err := sup.Setup(ctx, rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNoStructure, err)
+		assert.NoDirExist(t, prj.Path("acme"))
+	})
+
 	t.Run("go.mod file already exists", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
@@ -343,7 +552,11 @@ func Test_Setup_Setup(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		sup := must.Value(NewSetup("", WithSetupGoModule("project")))
+		sup := must.Value(NewSetup(
+			"",
+			WithSetupGoModule("project"),
+			WithSetupForce(true),
+		))
 		rng := tst.Ring()
 		setStructure(t, rng)
 
@@ -367,7 +580,11 @@ func Test_Setup_Setup(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		sup := must.Value(NewSetup("", WithSetupGoModule("project")))
+		sup := must.Value(NewSetup(
+			"",
+			WithSetupGoModule("project"),
+			WithSetupForce(true),
+		))
 		rng := tst.Ring()
 		setStructure(t, rng)
 
@@ -394,7 +611,11 @@ func Test_Setup_Setup(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		sup := must.Value(NewSetup("", WithSetupGoModule("project")))
+		sup := must.Value(NewSetup(
+			"",
+			WithSetupGoModule("project"),
+			WithSetupForce(true),
+		))
 		rng := tst.Ring()
 		setStructure(t, rng)
 

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ctx42/testing/pkg/assert"
+	"github.com/ctx42/testkit/pkg/oskit"
 
 	"github.com/ctx42/gmtask/internal/gmtest"
 )
@@ -127,6 +128,58 @@ func Test_Root(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, filepath.Join(root, "pkg", "gmprj"), have)
+	})
+}
+
+func Test_dirEmpty(t *testing.T) {
+	t.Run("empty directory", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+
+		// --- When ---
+		have, err := dirEmpty(dir)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.True(t, have)
+	})
+
+	t.Run("directory with a file", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		oskit.Write(t, []byte("content"), dir, "file0.txt")
+
+		// --- When ---
+		have, err := dirEmpty(dir)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.False(t, have)
+	})
+
+	t.Run("directory with only a dot entry", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		oskit.MkdirAll(t, dir, ".git")
+
+		// --- When ---
+		have, err := dirEmpty(dir)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.False(t, have)
+	})
+
+	t.Run("error - directory does not exist", func(t *testing.T) {
+		// --- Given ---
+		dir := filepath.Join(t.TempDir(), "not_existing")
+
+		// --- When ---
+		have, err := dirEmpty(dir)
+
+		// --- Then ---
+		assert.ErrorContain(t, "no such file or directory", err)
+		assert.False(t, have)
 	})
 }
 

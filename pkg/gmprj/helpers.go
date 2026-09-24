@@ -4,7 +4,10 @@
 package gmprj
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -72,6 +75,21 @@ func Root(pth string, elem ...string) (string, error) {
 		pth = parent
 	}
 	return filepath.Join(append([]string{pth}, elem...)...), nil
+}
+
+// dirEmpty reports whether the directory at pth holds no entries. Dot entries
+// count, so a directory holding only ".git" is not empty.
+func dirEmpty(pth string) (bool, error) {
+	dir, err := os.Open(pth) //nolint:gosec
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = dir.Close() }()
+
+	if _, err = dir.Readdirnames(1); errors.Is(err, io.EOF) {
+		return true, nil
+	}
+	return false, err
 }
 
 func toAlphabeticalEnv(m map[string]string) []string {
