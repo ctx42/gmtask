@@ -4,6 +4,7 @@
 package gmgo
 
 import (
+	"bytes"
 	"context"
 	"io/fs"
 	"os"
@@ -267,6 +268,9 @@ func Test_Lint_Install(t *testing.T) {
 
 		rng := tst.Ring()
 		rng.EnvSet("GOBIN", bin)
+		// "go install" reports each module it fetches on stderr, so what it
+		// writes there depends on the module cache, not on the target.
+		rng.SetStderr(&bytes.Buffer{})
 
 		// --- When ---
 		err := Lint{}.Install(ctx, rng)
@@ -295,6 +299,9 @@ func Test_Lint_Install(t *testing.T) {
 		want := semver.MustParse("v2.12.1")
 		rng := tst.Ring()
 		rng.EnvSet("GOBIN", bin)
+		// "go install" reports each module it fetches on stderr, so what it
+		// writes there depends on the module cache, not on the target.
+		rng.SetStderr(&bytes.Buffer{})
 		// The delivered block is the whole go.lint node ({version, file});
 		// Install must use "version" and ignore the sibling "file" key.
 		cfg := jsonkit.To(t, map[string]any{
