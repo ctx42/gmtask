@@ -18,6 +18,24 @@ import (
 	"github.com/ctx42/gmtask/internal/gmtest"
 )
 
+// TestMain gives git an author identity. [Setup] commits into a repository it
+// initializes itself, so no fixture configures one, and a CI runner has no
+// global identity to fall back on.
+func TestMain(m *testing.M) {
+	idt := map[string]string{
+		"GIT_AUTHOR_NAME":     "Test User",
+		"GIT_AUTHOR_EMAIL":    "test@example.com",
+		"GIT_COMMITTER_NAME":  "Test User",
+		"GIT_COMMITTER_EMAIL": "test@example.com",
+	}
+	for key, val := range idt {
+		if err := os.Setenv(key, val); err != nil {
+			panic(err)
+		}
+	}
+	os.Exit(m.Run())
+}
+
 func Test_Project_Env(t *testing.T) {
 	t.Run("minimal", func(t *testing.T) {
 		// --- Given ---
