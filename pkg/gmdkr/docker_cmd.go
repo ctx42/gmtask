@@ -79,6 +79,9 @@ func (dc *DockerCmd) Init(
 
 // Build builds docker image(s).
 func (dc *DockerCmd) Build(ctx context.Context, rng *ring.Ring) error {
+	if dc.Config.push && !isRemoteSet(dc.Info.Config) {
+		return ErrNoPrvRepo
+	}
 	if dc.Config.ssh == "" {
 		msg := "#gomake WARN# SSH_AUTH_SOCK not set in the environment\n"
 		_, _ = fmt.Fprint(rng.Stderr(), msg)
@@ -102,20 +105,32 @@ func (dc *DockerCmd) Build(ctx context.Context, rng *ring.Ring) error {
 	return nil
 }
 
-// Push pushes images to private docker repository.
+// Push pushes images to private docker repository. An image allowed to move
+// "latest" is tagged "latest" from the pushed reference first, so the pushed
+// "latest" is the version just pushed, never an older local one.
 func (dc *DockerCmd) Push(ctx context.Context, rng *ring.Ring) error {
 	if !isRemoteSet(dc.Info.Config) {
 		return ErrNoPrvRepo
 	}
 	for _, bld := range dc.Builds {
-		args := []string{"push", bld.ImgRef()}
-		_, _ = fmt.Fprintf(
-			rng.Stderr(),
-			"%s%s\n",
-			"#gomake INFO# docker ",
-			strings.Join(args, " "),
-		)
-		if !dc.Flags.DryRun {
+		cmds := [][]string{{"push", bld.ImgRef()}}
+		if bld.tagsLatest() {
+			cmds = append(
+				cmds,
+				[]string{"tag", bld.ImgRef(), bld.ImgRefLatest()},
+				[]string{"push", bld.ImgRefLatest()},
+			)
+		}
+		for _, args := range cmds {
+			_, _ = fmt.Fprintf(
+				rng.Stderr(),
+				"%s%s\n",
+				"#gomake INFO# docker ",
+				strings.Join(args, " "),
+			)
+			if dc.Flags.DryRun {
+				continue
+			}
 			rngDC := rng.Clone()
 			rngDC.SetArgs(args)
 			if _, _, err := runDockerCmd(ctx, rngDC); err != nil {

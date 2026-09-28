@@ -318,6 +318,34 @@ func Test_Build_ImgRefLatest(t *testing.T) {
 	})
 }
 
+func Test_Build_tagsLatest_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		tag    string
+		latest bool
+		want   bool
+	}{
+		{"latest allowed", "v1.2.3", true, true},
+		{"latest not allowed", "v1.2.3", false, false},
+		{"tag already latest", "latest", true, false},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- Given ---
+			cfg := Config{name: "project", tag: tc.tag, latest: tc.latest}
+			bld := must.Value(NewBuild(cfg))
+
+			// --- When ---
+			have := bld.tagsLatest()
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
+		})
+	}
+}
+
 func Test_Build_ImgTag(t *testing.T) {
 	t.Run("tag", func(t *testing.T) {
 		// --- Given ---
@@ -627,6 +655,64 @@ func Test_Build_Cmd(t *testing.T) {
 			"--build-arg", "C42_SCM_HASH=" + cm.Hash,
 			"--build-arg", "C42_SCM_REPO=" + prjkit.GitOrigin,
 			"--build-arg", "C42_SCM_REV=v1.2.3",
+			"--file", "Dockerfile",
+			".",
+		}
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("with cache and push", func(t *testing.T) {
+		// --- Given ---
+		cfg := Config{
+			name:      "project",
+			tag:       "v1.2.3",
+			target:    "base",
+			repo:      "example.com/repo",
+			platform:  "linux/amd64",
+			push:      true,
+			cacheFrom: "type=local,src=/cache/{image}",
+			cacheTo:   "type=local,dest=/cache/{image},mode=max",
+		}
+		bld := must.Value(NewBuild(cfg))
+
+		// --- When ---
+		have := bld.Cmd()
+
+		// --- Then ---
+		want := []string{
+			"build",
+			"--platform", "linux/amd64",
+			"-t", "example.com/repo/project-base:v1.2.3",
+			"--target", "base",
+			"--cache-from", "type=local,src=/cache/project-base",
+			"--cache-to",
+			"type=local,dest=/cache/project-base,mode=max",
+			"--push",
+			"--file", "Dockerfile",
+			".",
+		}
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("cache spec without placeholder is passed as given", func(t *testing.T) {
+		// --- Given ---
+		cfg := Config{
+			name:      "project",
+			tag:       "v1.2.3",
+			platform:  "linux/amd64",
+			cacheFrom: "type=local,src=/cache",
+		}
+		bld := must.Value(NewBuild(cfg))
+
+		// --- When ---
+		have := bld.Cmd()
+
+		// --- Then ---
+		want := []string{
+			"build",
+			"--platform", "linux/amd64",
+			"-t", "project:v1.2.3",
+			"--cache-from", "type=local,src=/cache",
 			"--file", "Dockerfile",
 			".",
 		}

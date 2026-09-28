@@ -386,9 +386,36 @@ func Test_DockerCmd_Init(t *testing.T) {
 		assert.ErrorIs(t, ErrNoTarget, err)
 		assert.ErrorContain(t, "[unknown]", err)
 	})
+
 }
 
 func Test_DockerCmd_Build(t *testing.T) {
+	t.Run("error - push without private repo", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.WithConfig()
+		prj.WithDockerfile()
+		prj.GitInitAddAll("v1.1.1")
+		prj.Close()
+		prj.Chdir()
+
+		fls := NewFlags("name")
+		fls.Push = true
+		fls.DryRun = true
+		dc := NewDockerCmd(fls)
+		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+
+		// --- When ---
+		err := dc.Build(ctx, rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNoPrvRepo, err)
+	})
+
 	t.Run("default target no SCM", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
@@ -926,7 +953,42 @@ func Test_DockerCmd_Push(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		want := "#gomake INFO# docker push my.nexus.dev/repo/dki-project:v1.1.1\n"
+		want := "" +
+			"#gomake INFO# docker push my.nexus.dev/repo/dki-project:v1.1.1\n" +
+			"#gomake INFO# docker tag my.nexus.dev/repo/dki-project:v1.1.1 " +
+			"my.nexus.dev/repo/dki-project:latest\n" +
+			"#gomake INFO# docker push my.nexus.dev/repo/dki-project:latest\n"
+		assert.Equal(t, want, tst.Stderr())
+	})
+
+	t.Run("dry run pre-release tag keeps latest", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.WithConfig()
+		prj.CfgRegRepoDef()
+		prj.WithDockerfile()
+		prj.GitInitAddAll("v1.0.0-rc.1")
+		prj.Close()
+		prj.Chdir()
+
+		fls := NewFlags("name")
+		fls.ImgLatest = true
+		fls.DryRun = true
+		dc := NewDockerCmd(fls)
+		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+
+		// --- When ---
+		err := dc.Push(ctx, rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"#gomake INFO# docker push " +
+			"my.nexus.dev/repo/dki-project:v1.0.0-rc.1\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
 

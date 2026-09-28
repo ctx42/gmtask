@@ -121,6 +121,20 @@ gomake :docker:image:build -r         # rebuild with --no-cache
 gomake :docker:image:build -d         # print the docker build, run nothing
 ```
 
+In CI, build and push in one step and keep the layer cache outside the
+builder. `--cache-from` and `--cache-to` take any `docker build` cache
+specification and pass it on as given, except that `{image}` is replaced with
+the image name without the registry (`dki-app-api`), so the targets of a
+multi-target build keep separate caches. Exporting a cache needs a buildx
+builder that supports it, and `--push` needs the private registry configured
+(see [Pushing](#pushing-to-a-private-registry)):
+
+```shell
+gomake :docker:image:build -l --push \
+    --cache-from 'type=registry,ref=my.nexus.dev/cache:{image}' \
+    --cache-to 'type=registry,ref=my.nexus.dev/cache:{image},mode=max'
+```
+
 For a project name `app` with no private registry this builds `dki-app:<rev>`,
 where `<rev>` comes from `git describe`. When the config lists targets
 (`C42_BLD_IMG_TARGETS`), one image is built per target
@@ -162,6 +176,7 @@ Pushing requires both `C42_REG_HOST` and `C42_REG_REPO` in the project config
 ```shell
 gomake :docker:login                  # authenticate to the registry
 gomake :docker:image:push             # push the image(s)
+gomake :docker:image:push -l          # also move a release's :latest
 gomake :docker:image:push -d          # print the docker push commands only
 ```
 
@@ -278,7 +293,8 @@ untouched version stays in `C42_SCM_REV` and the version label.
 Examples: `dki-app:v1.2.3`, `my.nexus.dev/repo/dki-app:v1.2.3`,
 `my.nexus.dev/repo/dki-app-api:v1.2.4-dev.3_ga2f04ae`. With `-l` the image is
 additionally tagged `:latest` — but only a release is tagged that way, so a
-dirty tree or a commit past the tag never moves `latest`.
+dirty tree, a commit past the tag, or a pre-release tag such as `v1.0.0-rc.1`
+never moves `latest`.
 
 ### Build arguments
 
@@ -322,18 +338,23 @@ current project:
 
 Targets take only the flags relevant to them; all support `-h`/`--help`.
 
-| Flag        | Short | Targets                         | Meaning                                |
-|-------------|-------|---------------------------------|----------------------------------------|
-| `--targets` | `-T`  | build, push, run, sh, reference | Comma-separated targets to act on.     |
-| `--name`    | `-n`  | build, push, run, sh            | Override the derived image name.       |
-| `--tag`     | `-t`  | build, push, run, sh            | Override the derived image tag.        |
-| `--latest`  | `-l`  | build, run                      | Also tag a release `:latest`.          |
-| `--rebuild` | `-r`  | build, run                      | Force a rebuild (build: `--no-cache`). |
-| `--cmd`     | `-c`  | sh                              | Command to run inside the container.   |
-| `--export`  | `-e`  | env                             | Prefix each line with `export`.        |
-| `--dry-run` | `-d`  | build, push, run, sh            | Print the `docker` command only.       |
-| `--help`    | `-h`  | all                             | Show the target's help.                |
+| Flag           | Short | Targets                         | Meaning                                |
+|----------------|-------|---------------------------------|----------------------------------------|
+| `--targets`    | `-T`  | build, push, run, sh, reference | Comma-separated targets to act on.     |
+| `--name`       | `-n`  | build, push, run, sh            | Override the derived image name.       |
+| `--tag`        | `-t`  | build, push, run, sh            | Override the derived image tag.        |
+| `--latest`     | `-l`  | build, push                     | Also tag and push a release `:latest`. |
+| `--rebuild`    | `-r`  | build, run                      | Force a rebuild (build: `--no-cache`). |
+| `--push`       | `-p`  | build                           | Push while building (`--push`).        |
+| `--cache-from` |       | build                           | `docker build --cache-from` spec.      |
+| `--cache-to`   |       | build                           | `docker build --cache-to` spec.        |
+| `--cmd`        | `-c`  | sh                              | Command to run inside the container.   |
+| `--export`     | `-e`  | env                             | Prefix each line with `export`.        |
+| `--dry-run`    | `-d`  | build, push, run, sh            | Print the `docker` command only.       |
+| `--help`       | `-h`  | all                             | Show the target's help.                |
 
 `--latest` is a request, not a guarantee: only a release — a clean checkout
-sitting exactly on a semver tag — is tagged `:latest`, so a dirty tree or a
-commit past the tag never moves it.
+sitting exactly on a semver tag that is not a pre-release — is tagged
+`:latest`, so a dirty tree, a commit past the tag, or a tag such as
+`v1.0.0-rc.1` never moves it. `:push -l` tags `:latest` from the image it
+pushes before pushing it, so the registry's `latest` is always that version.

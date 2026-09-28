@@ -189,13 +189,19 @@ func Test_Image_Build(t *testing.T) {
 
 		want := "" +
 			"Usage of :docker:image:build:\n" +
-			"  -d, --dry-run    dry run\n" +
-			"  -h, --help       show help\n" +
-			"  -l, --latest     add latest image tag\n" +
-			"  -n, --name       docker image name\n" +
-			"  -r, --rebuild    rebuild image\n" +
-			"  -t, --tag        docker image tag\n" +
-			"  -T, --targets    comma separated docker targets\n"
+			"      --cache-from    docker build " +
+			"--cache-from spec; {image} is the image name\n" +
+			"      --cache-to      docker build " +
+			"--cache-to spec; {image} is the image name\n" +
+			"  -d, --dry-run       dry run\n" +
+			"  -h, --help          show help\n" +
+			"  -l, --latest        add latest image tag\n" +
+			"  -n, --name          docker image name\n" +
+			"  -p, --push          push image(s) to the registry " +
+			"while building\n" +
+			"  -r, --rebuild       rebuild image\n" +
+			"  -t, --tag           docker image tag\n" +
+			"  -T, --targets       comma separated docker targets\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
 
@@ -213,13 +219,19 @@ func Test_Image_Build(t *testing.T) {
 		want := "" +
 			"flag provided but not defined: -unknown\n" +
 			"Usage of :docker:image:build:\n" +
-			"  -d, --dry-run    dry run\n" +
-			"  -h, --help       show help\n" +
-			"  -l, --latest     add latest image tag\n" +
-			"  -n, --name       docker image name\n" +
-			"  -r, --rebuild    rebuild image\n" +
-			"  -t, --tag        docker image tag\n" +
-			"  -T, --targets    comma separated docker targets\n"
+			"      --cache-from    docker build " +
+			"--cache-from spec; {image} is the image name\n" +
+			"      --cache-to      docker build " +
+			"--cache-to spec; {image} is the image name\n" +
+			"  -d, --dry-run       dry run\n" +
+			"  -h, --help          show help\n" +
+			"  -l, --latest        add latest image tag\n" +
+			"  -n, --name          docker image name\n" +
+			"  -p, --push          push image(s) to the registry " +
+			"while building\n" +
+			"  -r, --rebuild       rebuild image\n" +
+			"  -t, --tag           docker image tag\n" +
+			"  -T, --targets       comma separated docker targets\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
 
@@ -295,6 +307,7 @@ func Test_Image_Push(t *testing.T) {
 			"Usage of :docker:image:push:\n" +
 			"  -d, --dry-run    dry run\n" +
 			"  -h, --help       show help\n" +
+			"  -l, --latest     add latest image tag\n" +
 			"  -n, --name       docker image name\n" +
 			"  -t, --tag        docker image tag\n" +
 			"  -T, --targets    comma separated docker targets\n"
@@ -317,6 +330,7 @@ func Test_Image_Push(t *testing.T) {
 			"Usage of :docker:image:push:\n" +
 			"  -d, --dry-run    dry run\n" +
 			"  -h, --help       show help\n" +
+			"  -l, --latest     add latest image tag\n" +
 			"  -n, --name       docker image name\n" +
 			"  -t, --tag        docker image tag\n" +
 			"  -T, --targets    comma separated docker targets\n"

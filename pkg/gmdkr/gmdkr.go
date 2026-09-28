@@ -93,6 +93,11 @@ const (
 // installed.
 const goImageLatest = "ghcr.io/ctx42/dkigo-test:latest"
 
+// cacheImgVar is the placeholder --cache-from and --cache-to replace with the
+// name of the image being built, without the registry, so every image of a
+// multi-target build can keep a cache of its own.
+const cacheImgVar = "{image}"
+
 // Sentinel errors.
 var (
 	// ErrNoTargets is returned when --targets/-T names are given but the
@@ -197,6 +202,9 @@ func (Image) Build(ctx context.Context, rng *ring.Ring) error {
 		FlagImgLatest,
 		FlagDryRun,
 		FlagRebuild,
+		FlagPush,
+		FlagCacheFrom,
+		FlagCacheTo,
 	)
 	if dc == nil {
 		return err
@@ -215,6 +223,7 @@ func (Image) Push(ctx context.Context, rng *ring.Ring) error {
 		FlagTargets,
 		FlagImgName,
 		FlagImgTag,
+		FlagImgLatest,
 		FlagDryRun,
 	)
 	if dc == nil {

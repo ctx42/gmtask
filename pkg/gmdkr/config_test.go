@@ -37,7 +37,10 @@ func Test_NewConfig(t *testing.T) {
 	assert.Within(t, time.Now(), "5ms", cfg.buildDate)
 	assert.Len(t, 0, cfg.args)
 	assert.False(t, cfg.noCache)
-	assert.Fields(t, 11, Config{})
+	assert.False(t, cfg.push)
+	assert.Empty(t, cfg.cacheFrom)
+	assert.Empty(t, cfg.cacheTo)
+	assert.Fields(t, 14, Config{})
 }
 
 func Test_ConfigFrom(t *testing.T) {
@@ -70,7 +73,10 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.True(t, cfg.kit)
 		assert.Within(t, time.Now(), "1s", cfg.buildDate)
 		assert.False(t, cfg.noCache)
-		assert.Fields(t, 11, Config{})
+		assert.False(t, cfg.push)
+		assert.Empty(t, cfg.cacheFrom)
+		assert.Empty(t, cfg.cacheTo)
+		assert.Fields(t, 14, Config{})
 
 		have := must.Value(time.Parse(
 			time.RFC3339Nano,
@@ -109,7 +115,10 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.True(t, cfg.kit)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", cfg.buildDate)
 		assert.False(t, cfg.noCache)
-		assert.Fields(t, 11, Config{})
+		assert.False(t, cfg.push)
+		assert.Empty(t, cfg.cacheFrom)
+		assert.Empty(t, cfg.cacheTo)
+		assert.Fields(t, 14, Config{})
 
 		assert.HasKeyValue(t, xdef.EnvBldDate, "2000-01-02T03:04:05.600Z", cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
@@ -146,7 +155,10 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.True(t, cfg.kit)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", cfg.buildDate)
 		assert.False(t, cfg.noCache)
-		assert.Fields(t, 11, Config{})
+		assert.False(t, cfg.push)
+		assert.Empty(t, cfg.cacheFrom)
+		assert.Empty(t, cfg.cacheTo)
+		assert.Fields(t, 14, Config{})
 
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev,
@@ -187,7 +199,10 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.True(t, cfg.kit)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", cfg.buildDate)
 		assert.False(t, cfg.noCache)
-		assert.Fields(t, 11, Config{})
+		assert.False(t, cfg.push)
+		assert.Empty(t, cfg.cacheFrom)
+		assert.Empty(t, cfg.cacheTo)
+		assert.Fields(t, 14, Config{})
 
 		assert.HasKeyValue(t, xdef.EnvScmRepo, prjkit.GitOrigin, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
@@ -228,7 +243,10 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.True(t, cfg.kit)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", cfg.buildDate)
 		assert.False(t, cfg.noCache)
-		assert.Fields(t, 11, Config{})
+		assert.False(t, cfg.push)
+		assert.Empty(t, cfg.cacheFrom)
+		assert.Empty(t, cfg.cacheTo)
+		assert.Fields(t, 14, Config{})
 
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, cm.Rev, cfg.args)
@@ -274,7 +292,10 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.True(t, cfg.kit)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", cfg.buildDate)
 		assert.False(t, cfg.noCache)
-		assert.Fields(t, 11, Config{})
+		assert.False(t, cfg.push)
+		assert.Empty(t, cfg.cacheFrom)
+		assert.Empty(t, cfg.cacheTo)
+		assert.Fields(t, 14, Config{})
 
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, rev, cfg.args)
@@ -313,7 +334,10 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.True(t, cfg.kit)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", cfg.buildDate)
 		assert.False(t, cfg.noCache)
-		assert.Fields(t, 11, Config{})
+		assert.False(t, cfg.push)
+		assert.Empty(t, cfg.cacheFrom)
+		assert.Empty(t, cfg.cacheTo)
+		assert.Fields(t, 14, Config{})
 
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, "v1.2.3", cfg.args)
@@ -354,7 +378,10 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.True(t, cfg.kit)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", cfg.buildDate)
 		assert.False(t, cfg.noCache)
-		assert.Fields(t, 11, Config{})
+		assert.False(t, cfg.push)
+		assert.Empty(t, cfg.cacheFrom)
+		assert.Empty(t, cfg.cacheTo)
+		assert.Fields(t, 14, Config{})
 
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, "v1.2.3", cfg.args)
@@ -395,7 +422,10 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.True(t, cfg.kit)
 		assert.Time(t, "2000-01-02T03:04:05.6Z", cfg.buildDate)
 		assert.False(t, cfg.noCache)
-		assert.Fields(t, 11, Config{})
+		assert.False(t, cfg.push)
+		assert.Empty(t, cfg.cacheFrom)
+		assert.Empty(t, cfg.cacheTo)
+		assert.Fields(t, 14, Config{})
 
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, "v1.2.3", cfg.args)
@@ -487,6 +517,78 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, "my-tag", cfg.tag)
 	})
+	t.Run("flag latest on a release", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.WithConfig()
+		prj.GitInitAddAll("v1.2.3")
+		prj.Close()
+
+		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+
+		fls := NewFlags("name")
+		fls.ImgLatest = true
+
+		// --- When ---
+		cfg := ConfigFrom(inf, fls)
+
+		// --- Then ---
+		assert.True(t, cfg.latest)
+	})
+
+	t.Run("flag latest on a pre-release tag is ignored", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.WithConfig()
+		prj.GitInitAddAll("v1.0.0-rc.1")
+		prj.Close()
+
+		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+
+		fls := NewFlags("name")
+		fls.ImgLatest = true
+
+		// --- When ---
+		cfg := ConfigFrom(inf, fls)
+
+		// --- Then ---
+		assert.Equal(t, "v1.0.0-rc.1", cfg.tag)
+		assert.False(t, cfg.latest)
+	})
+
+	t.Run("flags push and cache set", func(t *testing.T) {
+		// --- Given ---
+		ctx := context.Background()
+		tst := ringtest.New(t)
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.WithConfig()
+		prj.Close()
+
+		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+
+		fls := NewFlags("name")
+		fls.Push = true
+		fls.CacheFrom = "from"
+		fls.CacheTo = "to"
+
+		// --- When ---
+		cfg := ConfigFrom(inf, fls)
+
+		// --- Then ---
+		assert.True(t, cfg.push)
+		assert.Equal(t, "from", cfg.cacheFrom)
+		assert.Equal(t, "to", cfg.cacheTo)
+	})
 }
 
 func Test_Config_ForTarget(t *testing.T) {
@@ -503,6 +605,9 @@ func Test_Config_ForTarget(t *testing.T) {
 		kit:       true,
 		buildDate: time.Date(2000, 1, 2, 3, 4, 5, 600_000_000, time.UTC),
 		noCache:   true,
+		push:      true,
+		cacheFrom: "from",
+		cacheTo:   "to",
 	}
 
 	// --- When ---
@@ -521,7 +626,10 @@ func Test_Config_ForTarget(t *testing.T) {
 	assert.True(t, have.kit)
 	assert.Time(t, "2000-01-02T03:04:05.6Z", have.buildDate)
 	assert.True(t, have.noCache)
-	assert.Fields(t, 11, Config{})
+	assert.True(t, have.push)
+	assert.Equal(t, "from", have.cacheFrom)
+	assert.Equal(t, "to", have.cacheTo)
+	assert.Fields(t, 14, Config{})
 
 	// Test it's independent.
 	cfg.target = "other"

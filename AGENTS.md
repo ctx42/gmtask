@@ -104,7 +104,9 @@ version is built and what its parts mean; nothing here assembles one.
   identifier in the version already carries the tree state, and two sources
   for one fact drift.
 - Only a release may move the `latest` image tag - `gmdkr` gates it on
-  `Version.Release`, not on the `-l` flag alone.
+  `Version.Release` and on the tag carrying no pre-release, not on the `-l`
+  flag alone. A `v1.0.0-rc.1` checkout is a release to `gitaid` but not to
+  `latest`.
 
 ## Documentation / README conventions
 

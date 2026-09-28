@@ -80,6 +80,9 @@ type Flags struct {
 	Rebuild   bool     // Force image rebuild.
 	Export    bool     // Add "export" when listing environment variables.
 	Cmd       string   // Command to run inside the container.
+	Push      bool     // Push image(s) to the registry while building.
+	CacheFrom string   // External cache source for "docker build".
+	CacheTo   string   // External cache destination for "docker build".
 }
 
 // NewFlags returns new instance of [Flags] with mandatory target name.
@@ -132,4 +135,26 @@ func FlagExport(fp *FlagParser) {
 // pick its own default command.
 func FlagCmd(fp *FlagParser) {
 	fp.bindStr("cmd", "c", "command to run inside the container", &fp.fls.Cmd)
+}
+
+// FlagPush adds `push` flag to the [FlagParser].
+func FlagPush(fp *FlagParser) {
+	usage := "push image(s) to the registry while building"
+	fp.bindBool("push", "p", usage, &fp.fls.Push)
+}
+
+// FlagCacheFrom adds `cache-from` flag to the [FlagParser]. The value is a
+// "docker build --cache-from" specification, passed on as given except that
+// "{image}" is replaced with the image name.
+func FlagCacheFrom(fp *FlagParser) {
+	usage := "docker build --cache-from spec; {image} is the image name"
+	fp.fs.StringVar(&fp.fls.CacheFrom, "cache-from", "", usage)
+}
+
+// FlagCacheTo adds `cache-to` flag to the [FlagParser]. The value is a
+// "docker build --cache-to" specification, passed on as given except that
+// "{image}" is replaced with the image name.
+func FlagCacheTo(fp *FlagParser) {
+	usage := "docker build --cache-to spec; {image} is the image name"
+	fp.fs.StringVar(&fp.fls.CacheTo, "cache-to", "", usage)
 }

@@ -6,6 +6,7 @@ package gmdkr
 import (
 	"errors"
 	"fmt"
+	"path"
 	"sort"
 	"strings"
 )
@@ -88,6 +89,11 @@ func (bld *Build) ImgRefLatest() string {
 	return bld.ImgName() + ":latest"
 }
 
+// tagsLatest returns true when the image is also tagged "latest".
+func (bld *Build) tagsLatest() bool {
+	return bld.tag != "latest" && bld.latest
+}
+
 // ImgTag returns Docker image tag.
 func (bld *Build) ImgTag() string {
 	return bld.tag
@@ -115,7 +121,7 @@ func (bld *Build) cmdArgs() []string {
 		cmd = append(cmd, "--ssh", fmt.Sprintf("default=%s", bld.ssh))
 	}
 	cmd = append(cmd, "-t", bld.ImgRef())
-	if bld.tag != "latest" && bld.latest {
+	if bld.tagsLatest() {
 		cmd = append(cmd, "-t", bld.ImgRefLatest())
 	}
 	if bld.target != "" {
@@ -123,6 +129,18 @@ func (bld *Build) cmdArgs() []string {
 	}
 	if bld.noCache {
 		cmd = append(cmd, "--no-cache")
+	}
+	img := path.Base(bld.ImgName())
+	if bld.cacheFrom != "" {
+		from := strings.ReplaceAll(bld.cacheFrom, cacheImgVar, img)
+		cmd = append(cmd, "--cache-from", from)
+	}
+	if bld.cacheTo != "" {
+		to := strings.ReplaceAll(bld.cacheTo, cacheImgVar, img)
+		cmd = append(cmd, "--cache-to", to)
+	}
+	if bld.push {
+		cmd = append(cmd, "--push")
 	}
 	names := make([]string, 0, len(bld.args))
 	for name := range bld.args {

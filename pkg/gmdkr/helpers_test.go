@@ -491,6 +491,33 @@ func Test_dockerErrorOr(t *testing.T) {
 	})
 }
 
+func Test_isFinal_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		tag  string
+		want bool
+	}{
+		{"release", "v1.2.3", true},
+		{"release without v", "1.2.3", true},
+		{"release with build metadata", "v1.2.3+meta", true},
+		{"pre-release", "v1.0.0-rc.1", false},
+		{"development version", "v1.2.4-dev.3+g7f93fb4", false},
+		{"not a version", "nightly", false},
+		{"empty", "", false},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			have := isFinal(tc.tag)
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
+		})
+	}
+}
+
 func Test_isRemoteSet_tabular(t *testing.T) {
 	tt := []struct {
 		testN string

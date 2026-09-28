@@ -48,6 +48,16 @@ type Config struct {
 
 	// Do not use cache when building images.
 	noCache bool
+
+	// Push the built image(s) to the registry instead of keeping them in the
+	// builder.
+	push bool
+
+	// External cache specifications "docker build" imports from and
+	// exports to, with [cacheImgVar] still unexpanded. Empty keeps only the
+	// builder's own cache.
+	cacheFrom string
+	cacheTo   string
 }
 
 // NewConfig returns new instance of Config with default field values.
@@ -97,9 +107,14 @@ func ConfigFrom(inf *gmprj.Info, fls *Flags) *Config {
 			cfg.tag = fls.ImgTag
 		}
 		// Only a release may move "latest". A dirty tree or a commit past the
-		// tag is not the version the tag names, whatever the flag asks for.
-		cfg.latest = fls.ImgLatest && inf.Version.Release
+		// tag is not the version the tag names, whatever the flag asks for,
+		// and a pre-release tag names a release that has not been cut yet.
+		rel := inf.Version.Release && isFinal(inf.Version.Tag)
+		cfg.latest = fls.ImgLatest && rel
 		cfg.noCache = fls.Rebuild
+		cfg.push = fls.Push
+		cfg.cacheFrom = fls.CacheFrom
+		cfg.cacheTo = fls.CacheTo
 	}
 
 	cfg.args[xdef.EnvBldDate] = gmgo.BldDateFmt(cfg.buildDate)

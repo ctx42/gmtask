@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/ctx42/gomake/pkg/gomake"
 	"github.com/ctx42/ring/pkg/ring"
 	"github.com/ctx42/xdef/pkg/xdef"
@@ -200,6 +201,13 @@ func dockerErrorOr(msg string, err error) error {
 	default:
 		return errors.New(msg)
 	}
+}
+
+// isFinal returns true if tag is a version without a pre-release, the only
+// kind that names a release already cut.
+func isFinal(tag string) bool {
+	ver, err := semver.NewVersion(tag)
+	return err == nil && ver.Prerelease() == ""
 }
 
 // isRemoteSet returns true if docker remote repository is set.
