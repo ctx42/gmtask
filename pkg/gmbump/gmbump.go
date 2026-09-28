@@ -195,11 +195,16 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		return fmt.Errorf("git tag: %w", err)
 	}
 
-	if err = gitaid.Push(ctx, repo); err != nil {
-		if !errors.Is(err, gitaid.ErrNoRemote) {
-			return fmt.Errorf("git push: %w", err)
-		}
+	// Ask for the remote rather than read it off a failed push: git words a
+	// missing "origin" differently depending on how the push names it.
+	origin, err := gitaid.ProjectOrigin(ctx, repo)
+	if err != nil {
+		return fmt.Errorf("check repository origin: %w", err)
+	}
+	if origin == "" {
 		_, _ = fmt.Fprint(rng.Stdout(), "No remote configured; skip push.\n")
+	} else if err = gitaid.Push(ctx, repo); err != nil {
+		return fmt.Errorf("git push: %w", err)
 	}
 
 	_, _ = fmt.Fprint(rng.Stdout(), "Done.\n")

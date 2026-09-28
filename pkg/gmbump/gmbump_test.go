@@ -249,6 +249,43 @@ func Test_BumpTarget(t *testing.T) {
 		assert.Equal(t, "v0.0.1", oskit.ReadFileStr(t, prj.Root(), "VER"))
 	})
 
+	t.Run("pushes the release to origin", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		sin := bytes.NewBufferString("\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+
+		prj := gmtest.NewProject(t, prjkit.WithGitBranch("main"))
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		origin := t.TempDir()
+		prj.Exe("git", "init", "--bare", origin)
+		prj.GitSetRemote(origin)
+		prj.Close()
+
+		rng := tst.Ring()
+
+		// --- When ---
+		err := BumpTarget(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+
+		want := "" +
+			"Current tag: \n" +
+			"Enter a version number [v0.0.1]: " +
+			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
+			"Continuing.\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
+
+		head := prj.ExeStdout("git", "rev-parse", "HEAD")
+		tags := prj.ExeStdout("git", "-C", origin, "tag")
+		branch := prj.ExeStdout("git", "-C", origin, "rev-parse", "main")
+		assert.Equal(t, "v0.0.1\n", tags)
+		assert.Equal(t, head, branch)
+	})
+
 	t.Run("approves a release from another branch", func(t *testing.T) {
 		// --- Given ---
 		ctx := t.Context()
