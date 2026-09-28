@@ -1,3 +1,11 @@
+## v0.9.0 (Mon, 28 Sep 2026 10:23:26 UTC)
+- build(deps): bump gomake to 0.27.1.
+- fix(gmbump): skip the push only when origin is unset.
+- feat(gmdkr): push and cache release images from the build.
+- chore: tidy go.sum.
+- test(gmprj): give git an identity for Setup commits.
+- test(gmgo): ignore go install download output.
+
 ## v0.8.0 (Thu, 24 Sep 2026 11:26:48 UTC)
 - test(gmgo): stop the timeout tests racing the watchdog.
 - refactor(gmprj): lift the config lookup into the loop condition.
