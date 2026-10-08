@@ -513,4 +513,19 @@ func Test_Changelog_Save(t *testing.T) {
 		// --- Then ---
 		assert.ErrorContain(t, "create temp changelog file", err)
 	})
+
+	t.Run("error - rename fails", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		pth := oskit.MkdirAll(t, dir, "CHANGELOG.md")
+		oskit.Create(t, "x", pth, "file")
+		clg := &Changelog{pth: pth}
+
+		// --- When ---
+		err := clg.Save()
+
+		// --- Then ---
+		assert.ErrorContain(t, "replace changelog file", err)
+		assert.Equal(t, []string{"CHANGELOG.md"}, oskit.Readdirnames(t, dir))
+	})
 }
