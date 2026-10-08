@@ -26,10 +26,7 @@ import (
 // Injection marker delimiters. A marker is an HTML comment of the form
 // "<!-- gmmce:path/Func -->" naming the example whose body follows it.
 const (
-	// markerPfx is the prefix opening a gmmce injection marker.
 	markerPfx = "<!-- gmmce:"
-
-	// markerSfx is the suffix closing a gmmce injection marker.
 	markerSfx = " -->"
 )
 
@@ -134,7 +131,8 @@ func (Doc) Mce(ctx context.Context, rng *ring.Ring) error {
 // names begin with "." or "_", except root itself.
 func findExamples(
 	ctx context.Context,
-	root, mdDir string,
+	root string,
+	mdDir string,
 ) (map[string]string, error) {
 
 	examples := make(map[string]string)
@@ -142,7 +140,7 @@ func findExamples(
 		root,
 		func(pth string, ent fs.DirEntry, err error) error {
 			if err != nil {
-				return err
+				return fmt.Errorf("walk: %w", err)
 			}
 			if err = ctx.Err(); err != nil {
 				return err
@@ -159,7 +157,7 @@ func findExamples(
 			pkgDir := filepath.Dir(pth)
 			relDir, err := filepath.Rel(mdDir, pkgDir)
 			if err != nil {
-				return err
+				return fmt.Errorf("relative example path: %w", err)
 			}
 			funcs, err := parseExamples(pth)
 			if err != nil {
@@ -168,7 +166,7 @@ func findExamples(
 			for name, body := range funcs {
 				key := name
 				if relDir != "." {
-					// Markers always use slash separators (Markdown is OS-agnostic).
+					// Markers use slash separators; Markdown is OS-agnostic.
 					key = filepath.ToSlash(relDir) + "/" + name
 				}
 				examples[key] = body
@@ -194,12 +192,12 @@ func skipDir(name string) bool {
 func parseExamples(filename string) (map[string]string, error) {
 	src, err := os.ReadFile(filename) //nolint:gosec
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read source: %w", err)
 	}
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, filename, src, 0)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parse source: %w", err)
 	}
 	examples := make(map[string]string)
 	for _, decl := range f.Decls {
