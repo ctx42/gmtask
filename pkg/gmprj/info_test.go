@@ -97,6 +97,22 @@ func Test_NewInfo(t *testing.T) {
 }
 
 func Test_GetInfo(t *testing.T) {
+	t.Run("error - invalid build date", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet(xdef.EnvBldDate, "2020-01-01")
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+
+		// --- When ---
+		inf, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
+
+		// --- Then ---
+		assert.ErrorContain(t, "invalid C42_BLD_DATE: \"2020-01-01\"", err)
+		assert.Nil(t, inf)
+	})
+
 	t.Run("minimal project structure", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()

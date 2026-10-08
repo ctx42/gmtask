@@ -56,7 +56,8 @@ type Info struct {
 }
 
 // NewInfo returns an Info seeded from env. BuildDate defaults to the current
-// UTC time, overridden by [xdef.EnvBldDate] (RFC3339) when it is set.
+// UTC time, overridden by [xdef.EnvBldDate] (RFC3339) when it is set to a
+// valid date; an invalid one is ignored here and rejected by [GetInfo].
 func NewInfo(env []string) *Info {
 	inf := &Info{
 		Config:    make(map[string]string),
@@ -75,11 +76,20 @@ func NewInfo(env []string) *Info {
 }
 
 // GetInfo retrieves information about a project at the root path. The root may
-// be set to the "." value to indicate the current working directory.
+// be set to the "." value to indicate the current working directory. It
+// returns an error when [xdef.EnvBldDate] is set to a value that is not an
+// RFC3339 date.
 func GetInfo(ctx context.Context, env []string, root string) (*Info, error) {
 	var err error
 	if root, err = filepath.Abs(root); err != nil {
 		return nil, err
+	}
+
+	if ev, ok := ring.EnvLookup(env, xdef.EnvBldDate); ok {
+		if _, err = time.Parse(time.RFC3339Nano, ev); err != nil {
+			format := "invalid %s: %q: %w"
+			return nil, fmt.Errorf(format, xdef.EnvBldDate, ev, err)
+		}
 	}
 
 	inf := NewInfo(env)

@@ -1525,9 +1525,10 @@ func Test_buildValues(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		have := buildValues(ctx, rng)
+		have, err := buildValues(ctx, rng)
 
 		// --- Then ---
+		assert.NoError(t, err)
 		assert.Equal(t, xdef.PhTag, have[xdef.VarScmRev])
 		assert.Equal(t, xdef.PhHash, have[xdef.VarScmHash])
 		assert.Equal(t, xdef.PhUnknown, have[xdef.VarScmState])
@@ -1548,14 +1549,32 @@ func Test_buildValues(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		have := buildValues(ctx, rng)
+		have, err := buildValues(ctx, rng)
 
 		// --- Then ---
+		assert.NoError(t, err)
 		assert.Equal(t, "2000-01-02T03:04:05.000Z", have[xdef.VarBldDate])
 		assert.Equal(t, "v1.2.3", have[xdef.VarScmRev])
 		assert.Equal(t, cm.Hash, have[xdef.VarScmHash])
 		assert.Equal(t, "clean", have[xdef.VarScmState])
 	})
+}
+
+func Test_buildValues_invalid_date(t *testing.T) {
+	// --- Given ---
+	rng := ringtest.New(t).Ring()
+	rng.EnvSet(xdef.EnvBldDate, "2020-01-01")
+
+	prj := gmtest.NewProject(t)
+	prj.Close()
+	prj.Chdir()
+
+	// --- When ---
+	have, err := buildValues(t.Context(), rng)
+
+	// --- Then ---
+	assert.ErrorContain(t, "invalid C42_BLD_DATE: \"2020-01-01\"", err)
+	assert.Nil(t, have)
 }
 
 func Test_gitOr_tabular(t *testing.T) {

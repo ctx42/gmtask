@@ -466,7 +466,10 @@ func (Go) Build(ctx context.Context, rng *ring.Ring) error {
 		if err != nil {
 			return fmt.Errorf("%w: module %q: %w", ErrConfig, module, err)
 		}
-		vals := buildValues(ctx, rng)
+		vals, err := buildValues(ctx, rng)
+		if err != nil {
+			return err
+		}
 		vars := make([]LDVar, 0, len(buildVarNames))
 		for _, field := range buildVarNames {
 			name, err := gomake.GetCfgDefault(cfg, base+".names."+field, field)
@@ -493,24 +496,31 @@ func (Go) Build(ctx context.Context, rng *ring.Ring) error {
 // field name. The revision is the one [ProjectVersion] derives, so a binary
 // reports the same version as the image wrapping it. A missing source falls
 // back to the matching xdef placeholder (or, for the build date, the current
-// time), so a build outside a git work tree still succeeds.
-func buildValues(ctx context.Context, rng *ring.Ring) map[string]string {
-	ver, verErr := ProjectVersion(ctx, rng, "", "")
-	state, stateErr := gitaid.WorkTreeStatus(ctx, "")
+// time), so a build outside a git work tree still succeeds. A build date set
+// in [xdef.EnvBldDate] that is not RFC3339 is an error.
+func buildValues(
+	ctx context.Context,
+	rng *ring.Ring,
+) (map[string]string, error) {
 
 	buildDate := BldDateFmt(time.Now())
 	if val, ok := rng.EnvLookup(xdef.EnvBldDate); ok && val != "" {
-		if tim, err := time.Parse(time.RFC3339Nano, val); err == nil {
-			buildDate = BldDateFmt(tim)
+		tim, err := time.Parse(time.RFC3339Nano, val)
+		if err != nil {
+			format := "invalid %s: %q: %w"
+			return nil, fmt.Errorf(format, xdef.EnvBldDate, val, err)
 		}
+		buildDate = BldDateFmt(tim)
 	}
 
+	ver, verErr := ProjectVersion(ctx, rng, "", "")
+	state, stateErr := gitaid.WorkTreeStatus(ctx, "")
 	return map[string]string{
 		xdef.VarBldDate:  buildDate,
 		xdef.VarScmRev:   gitOr(ver.Rev, verErr, xdef.PhTag),
 		xdef.VarScmHash:  gitOr(ver.Hash, verErr, xdef.PhHash),
 		xdef.VarScmState: gitOr(state, stateErr, xdef.PhUnknown),
-	}
+	}, nil
 }
 
 // gitOr returns s when err is nil and s is non-empty, otherwise the placeholder
