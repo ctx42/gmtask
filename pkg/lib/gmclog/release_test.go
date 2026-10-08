@@ -241,6 +241,17 @@ func Test_Release_AddChange(t *testing.T) {
 		// --- Then ---
 		assert.Equal(t, []string{"a", "b", "c", "d"}, rel.Changes)
 	})
+
+	t.Run("trims and skips blank", func(t *testing.T) {
+		// --- Given ---
+		rel := must.Value(NewRelease("v0.1.2", time.Now()))
+
+		// --- When ---
+		rel.AddChange("", " a ", "\t", "b\t")
+
+		// --- Then ---
+		assert.Equal(t, []string{"a", "b"}, rel.Changes)
+	})
 }
 
 func Test_Release_Compare(t *testing.T) {
@@ -326,6 +337,24 @@ func Test_Release_String(t *testing.T) {
 			"## v0.1.2 (Sun, 02 Jan 2000 03:04:06 UTC)\n" +
 			"- Change 1.\n" +
 			"- Change 2.\n" +
+			"\n"
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("keeps terminal punctuation", func(t *testing.T) {
+		// --- Given ---
+		date := time.Date(2000, 1, 2, 3, 4, 6, 0, time.UTC)
+		rel := must.Value(NewRelease("v0.1.2", date))
+		rel.Changes = []string{"Is it fixed?", "Yes!"}
+
+		// --- When ---
+		have := rel.String()
+
+		// --- Then ---
+		want := "" +
+			"## v0.1.2 (Sun, 02 Jan 2000 03:04:06 UTC)\n" +
+			"- Is it fixed?\n" +
+			"- Yes!\n" +
 			"\n"
 		assert.Equal(t, want, have)
 	})

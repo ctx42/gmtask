@@ -99,9 +99,14 @@ func ReleaseFromHeader(lin string, opts ...func(*Release)) (*Release, error) {
 	return NewRelease(parts[1], tim, opts...)
 }
 
-// AddChange adds new changes to the release.
+// AddChange adds new changes to the release. Each change is trimmed of
+// surrounding white space, and a change left empty is skipped.
 func (rel *Release) AddChange(changes ...string) {
-	rel.Changes = append(rel.Changes, changes...)
+	for _, chg := range changes {
+		if chg = strings.TrimSpace(chg); chg != "" {
+			rel.Changes = append(rel.Changes, chg)
+		}
+	}
 }
 
 // Compare compares two release versions. Returns -1, 0, or 1 if this version is
@@ -119,7 +124,8 @@ func (rel *Release) String() string {
 		prefix = "- "
 	}
 	for _, lin := range rel.Changes {
-		if rel.formatChanges && !strings.HasSuffix(lin, ".") {
+		if rel.formatChanges && !strings.HasSuffix(lin, ".") &&
+			!strings.HasSuffix(lin, "?") && !strings.HasSuffix(lin, "!") {
 			lin += "."
 		}
 		_, _ = fmt.Fprintf(&buf, "%s%s\n", prefix, lin)

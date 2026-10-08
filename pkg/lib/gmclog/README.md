@@ -43,7 +43,8 @@ youngest to oldest by semantic version; unparsed body text kept by
 - **Ordered on add** — `AddRelease` sorts structured releases youngest to
   oldest by semantic version; unparsed body text is not reordered.
 - **Automatic formatting** — change lines are prefixed with `- ` and get a
-  trailing period; disable with the `WithNoFormatting` option.
+  trailing period unless they end in `.`, `?` or `!`; `AddChange` trims
+  changes and skips blank ones. Disable formatting with `WithNoFormatting`.
 - **Flexible construction** — build a `Release` from a version string, a
   `*semver.Version`, or an existing header line.
 
