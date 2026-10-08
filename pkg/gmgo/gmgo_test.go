@@ -401,6 +401,42 @@ func Test_Go_TestV(t *testing.T) {
 		assert.Contain(t, "test timed out after 1ns", tst.Stdout())
 	})
 
+	t.Run("error - negative environment timeout", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet(GoTestTimeoutEnvKey, "-1s")
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Go{}.TestV(t.Context(), rng)
+
+		// --- Then ---
+		want := "gmgo: invalid GOMAKE_GO_TEST_TIMEOUT: negative duration: -1s"
+		assert.ErrorEqual(t, want, err)
+	})
+
+	t.Run("error - invalid environment timeout", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet(GoTestTimeoutEnvKey, "bogus")
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Go{}.TestV(t.Context(), rng)
+
+		// --- Then ---
+		assert.ErrorContain(t, "gmgo: invalid GOMAKE_GO_TEST_TIMEOUT", err)
+		assert.ErrorContain(t, "\"bogus\"", err)
+	})
+
 	t.Run("argument timeout overrides configuration", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t).WetStdout()

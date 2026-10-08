@@ -51,7 +51,8 @@ const (
 	// GoTestTimeoutEnvKey is the environment variable overriding the
 	// per-invocation `go test` timeout. When set, its value is parsed as a Go
 	// duration (e.g. "60s", "5m") and takes precedence over the configured
-	// timeout. Unset leaves the go tool default in effect.
+	// timeout; "0" disables the timeout and a negative value is an error.
+	// Unset leaves the configured timeout, or the go tool default, in effect.
 	GoTestTimeoutEnvKey = "GOMAKE_GO_TEST_TIMEOUT"
 
 	// GoLintConfigForceEnvKey is the environment variable that, when set to any
@@ -190,14 +191,21 @@ func (Go) test(ctx context.Context, rng *ring.Ring, verbose bool) error {
 	if err != nil {
 		return err
 	}
+	setTimeout := timeout > 0
 	if env := rng.EnvGet(GoTestTimeoutEnvKey); env != "" {
 		if timeout, err = time.ParseDuration(env); err != nil {
 			return fmt.Errorf("gmgo: invalid %s: %w", GoTestTimeoutEnvKey, err)
 		}
+		if timeout < 0 {
+			format := "gmgo: invalid %s: negative duration: %s"
+			return fmt.Errorf(format, GoTestTimeoutEnvKey, env)
+		}
+		// Zero is passed on: "go test -timeout=0" disables the timeout.
+		setTimeout = true
 	}
 	// "go test" takes the last -timeout it is given; one among the user's
 	// arguments must win over the configured default.
-	if timeout > 0 && !hasTimeoutArg(args) {
+	if setTimeout && !hasTimeoutArg(args) {
 		cmdArgs = append(cmdArgs, "-timeout="+timeout.String())
 	}
 	cmdArgs = append(cmdArgs, "./...")
