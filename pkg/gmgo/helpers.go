@@ -30,14 +30,16 @@ var (
 	ErrImpPath = errors.New("cannot determine Go module import path")
 )
 
-// ImpPath returns Go import path for the package based on working directory.
-// The empty string used for dir means current working directory.
+// ImpPath returns the path of the Go module containing dir. The empty string
+// used for dir means current working directory. Workspace mode is turned off,
+// so a "go.work" file listing other modules does not change the result.
 func ImpPath(ctx context.Context, rng *ring.Ring, dir string) (string, error) {
 	const format = "%w: %s: %s"
 
 	sout, eout := &bytes.Buffer{}, &bytes.Buffer{}
 	cmd := exec.CommandContext(ctx, "go", "list", "-m")
-	cmd.Env = rng.EnvAll()
+	// In workspace mode "go list -m" prints every module the workspace uses.
+	cmd.Env = append(rng.EnvAll(), "GOWORK=off")
 	cmd.Stdout, cmd.Stderr = sout, eout
 	cmd.Dir = dir
 	if err := cmd.Run(); err != nil {
@@ -51,6 +53,13 @@ func ImpPath(ctx context.Context, rng *ring.Ring, dir string) (string, error) {
 		return "", fmt.Errorf("%w: %s: %w", ErrImpPath, dir, err)
 	}
 	rsp := strings.TrimSpace(sout.String())
+	if strings.Contains(rsp, "\n") {
+		if dir == "" {
+			dir, _ = os.Getwd()
+		}
+		const multi = "%w: %s: more than one module: %q"
+		return "", fmt.Errorf(multi, ErrImpPath, dir, rsp)
+	}
 	if rsp == "command-line-arguments" {
 		if dir == "" {
 			dir, _ = os.Getwd()

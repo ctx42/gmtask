@@ -89,7 +89,7 @@ func Test_ImpPath(t *testing.T) {
 		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
-		rng.EnvSet("GOWORK", "dir")
+		rng.EnvSet("GOFLAGS", "-mod=bogus")
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -118,6 +118,25 @@ func Test_ImpPath(t *testing.T) {
 
 		// --- When ---
 		have, err := ImpPath(ctx, rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, prjkit.GoModName, have)
+	})
+
+	t.Run("workspace", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		mod := "module example.com/sub\n\ngo 1.26\n"
+		prj.CreateFileWith(mod, "sub", "go.mod")
+		prj.CreateFileWith("go 1.26\n\nuse (\n\t.\n\t./sub\n)\n", "go.work")
+		prj.Close()
+
+		// --- When ---
+		have, err := ImpPath(t.Context(), rng, prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
