@@ -104,9 +104,13 @@ func (Doc) Mce(ctx context.Context, rng *ring.Ring) error {
 		_, _ = fmt.Fprintf(rng.Stdout(), "Found %s\n", k)
 	}
 
-	updated, err := injectExamples(string(data), examples)
+	updated, unmatched, err := injectExamples(string(data), examples)
 	if err != nil {
 		return fmt.Errorf("inject examples: %w", err)
+	}
+	for _, key := range unmatched {
+		format := "#gomake WARN# no example for marker: %s\n"
+		_, _ = fmt.Fprintf(rng.Stderr(), format, key)
 	}
 
 	_, _ = fmt.Fprintf(rng.Stdout(), "Writing %s\n", file)
@@ -202,18 +206,20 @@ func parseExamples(filename string) (map[string]string, error) {
 // injectExamples processes Markdown content replacing code fences that follow
 // gmmce markers with the corresponding example bodies from examples. If a code
 // fence does not already exist after a marker, one is inserted. Markers with no
-// matching entry in examples are left unchanged, and so are markers inside a
-// code block. A fence following a marker that is never closed yields an error
-// wrapping errFenceNotClosed. The inserted fence is longer than any backtick
-// run in the body, so a body holding a fence of its own cannot close it early.
+// matching entry in examples are left unchanged and their keys are returned in
+// order; markers inside a code block are left unchanged too. A fence following
+// a marker that is never closed yields an error wrapping errFenceNotClosed.
+// The inserted fence is longer than any backtick run in the body, so a body
+// holding a fence of its own cannot close it early.
 func injectExamples(
 	content string,
 	examples map[string]string,
-) (string, error) {
+) (string, []string, error) {
 
 	lines := strings.Split(content, "\n")
 	result := make([]string, 0, len(lines))
 	fence := "" // Fence of the code block being copied; empty outside one.
+	var unmatched []string
 	for i := 0; i < len(lines); i++ {
 		line := lines[i]
 		if fence != "" {
@@ -237,6 +243,7 @@ func injectExamples(
 		key = strings.TrimSuffix(key, markerSfx)
 		body, ok := examples[key]
 		if !ok {
+			unmatched = append(unmatched, key)
 			continue
 		}
 
@@ -253,7 +260,8 @@ func injectExamples(
 					i++ // Skip the fence body.
 				}
 				if i == len(lines) {
-					return "", fmt.Errorf("%w: %s", errFenceNotClosed, key)
+					err := fmt.Errorf("%w: %s", errFenceNotClosed, key)
+					return "", nil, err
 				}
 			}
 		}
@@ -261,7 +269,7 @@ func injectExamples(
 		fen := bodyFence(body)
 		result = append(result, fen+"go", body, fen)
 	}
-	return strings.Join(result, "\n"), nil
+	return strings.Join(result, "\n"), unmatched, nil
 }
 
 // openFence returns the fence (a run of three or more backticks or tildes)

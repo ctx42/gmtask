@@ -97,6 +97,25 @@ func Test_Doc_Mce(t *testing.T) {
 		assert.Equal(t, want, oskit.ReadFileStr(t, md))
 	})
 
+	t.Run("warns about unmatched marker", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout().WetStderr()
+		dir := t.TempDir()
+		readme := oskit.Write(t, "<!-- gmmce:pkg1/Nope -->\n", dir, "README.md")
+		rng := tst.Ring("--dir", dir)
+
+		// --- When ---
+		err := Doc{}.Mce(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "#gomake WARN# no example for marker: pkg1/Nope\n"
+		assert.Equal(t, want, tst.Stderr())
+		assert.Equal(t, "Writing "+readme+"\n", tst.Stdout())
+		want = "<!-- gmmce:pkg1/Nope -->\n"
+		assert.Equal(t, want, oskit.ReadFileStr(t, readme))
+	})
+
 	t.Run("error - readme not found", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
@@ -284,7 +303,7 @@ func Test_injectExamples(t *testing.T) {
 		input := "text\n\n<!-- gmmce:pkg1/Example_case1 -->\n\nmore"
 
 		// --- When ---
-		have, err := injectExamples(input, examples)
+		have, _, err := injectExamples(input, examples)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -305,7 +324,7 @@ func Test_injectExamples(t *testing.T) {
 			"after"
 
 		// --- When ---
-		have, err := injectExamples(input, examples)
+		have, _, err := injectExamples(input, examples)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -327,7 +346,7 @@ func Test_injectExamples(t *testing.T) {
 			"after"
 
 		// --- When ---
-		have, err := injectExamples(input, examples)
+		have, _, err := injectExamples(input, examples)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -344,11 +363,12 @@ func Test_injectExamples(t *testing.T) {
 		input := "<!-- gmmce:unknown/Func -->\n```go\nold\n```"
 
 		// --- When ---
-		have, err := injectExamples(input, examples)
+		have, unmatched, err := injectExamples(input, examples)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, input, have)
+		assert.Equal(t, []string{"unknown/Func"}, unmatched)
 	})
 
 	t.Run("body containing fence", func(t *testing.T) {
@@ -364,7 +384,7 @@ func Test_injectExamples(t *testing.T) {
 			"after"
 
 		// --- When ---
-		have, err := injectExamples(input, exs)
+		have, _, err := injectExamples(input, exs)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -384,7 +404,7 @@ func Test_injectExamples(t *testing.T) {
 			"```\n"
 
 		// --- When ---
-		have, err := injectExamples(input, examples)
+		have, _, err := injectExamples(input, examples)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -400,7 +420,7 @@ func Test_injectExamples(t *testing.T) {
 			"# Next section\n"
 
 		// --- When ---
-		have, err := injectExamples(input, examples)
+		have, _, err := injectExamples(input, examples)
 
 		// --- Then ---
 		assert.ErrorIs(t, errFenceNotClosed, err)
@@ -413,7 +433,7 @@ func Test_injectExamples(t *testing.T) {
 		input := "# Title\n\nSome text.\n"
 
 		// --- When ---
-		have, err := injectExamples(input, examples)
+		have, _, err := injectExamples(input, examples)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -430,7 +450,7 @@ func Test_injectExamples(t *testing.T) {
 			"<!-- gmmce:pkg/ExampleB -->\n"
 
 		// --- When ---
-		have, err := injectExamples(input, exs)
+		have, _, err := injectExamples(input, exs)
 
 		// --- Then ---
 		assert.NoError(t, err)
