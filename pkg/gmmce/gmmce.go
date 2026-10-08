@@ -234,12 +234,13 @@ func injectExamples(
 			continue
 		}
 		result = append(result, line)
-		if !strings.HasPrefix(line, markerPfx) ||
-			!strings.HasSuffix(line, markerSfx) {
+		marker := strings.TrimSpace(line)
+		if !strings.HasPrefix(marker, markerPfx) ||
+			!strings.HasSuffix(marker, markerSfx) {
 			continue
 		}
 
-		key := strings.TrimPrefix(line, markerPfx)
+		key := strings.TrimPrefix(marker, markerPfx)
 		key = strings.TrimSuffix(key, markerSfx)
 		body, ok := examples[key]
 		if !ok {
@@ -266,8 +267,22 @@ func injectExamples(
 			}
 		}
 
+		// The fence takes the marker's indentation, so it stays inside a list
+		// item, and its line ending, so a CRLF file stays CRLF.
+		indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+		eol := ""
+		if strings.HasSuffix(line, "\r") {
+			eol = "\r"
+		}
 		fen := bodyFence(body)
-		result = append(result, fen+"go", body, fen)
+		result = append(result, indent+fen+"go"+eol)
+		for _, bln := range strings.Split(body, "\n") {
+			if bln != "" {
+				bln = indent + bln
+			}
+			result = append(result, bln+eol)
+		}
+		result = append(result, indent+fen+eol)
 	}
 	return strings.Join(result, "\n"), unmatched, nil
 }

@@ -428,6 +428,43 @@ func Test_injectExamples(t *testing.T) {
 		assert.Equal(t, "", have)
 	})
 
+	t.Run("CRLF line endings", func(t *testing.T) {
+		// --- Given ---
+		input := "<!-- gmmce:pkg1/Example_case1 -->\r\n\r\nmore"
+
+		// --- When ---
+		have, _, err := injectExamples(input, examples)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"<!-- gmmce:pkg1/Example_case1 -->\r\n" +
+			"```go\r\n" +
+			"fmt.Println(\"hello\")\r\n" +
+			"```\r\n" +
+			"\r\n" +
+			"more"
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("indented marker", func(t *testing.T) {
+		// --- Given ---
+		input := "- item\n  <!-- gmmce:pkg1/Example_case1 -->\n"
+
+		// --- When ---
+		have, _, err := injectExamples(input, examples)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"- item\n" +
+			"  <!-- gmmce:pkg1/Example_case1 -->\n" +
+			"  ```go\n" +
+			"  fmt.Println(\"hello\")\n" +
+			"  ```\n"
+		assert.Equal(t, want, have)
+	})
+
 	t.Run("no markers unchanged", func(t *testing.T) {
 		// --- Given ---
 		input := "# Title\n\nSome text.\n"
