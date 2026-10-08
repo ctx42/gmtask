@@ -401,6 +401,27 @@ func Test_Go_TestV(t *testing.T) {
 		assert.Contain(t, "test timed out after 1ns", tst.Stdout())
 	})
 
+	t.Run("argument timeout overrides configuration", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("--", "-timeout", "1ns")
+		cfg := jsonkit.To(t, map[string]any{"timeout": "10m"})
+		rng.MetaSet(gomake.ConfigMetaKey, cfg)
+
+		prj := gmtest.NewProject(t, prjkit.WithProjectEnv(os.Environ()))
+		prj.GoModInit()
+		prj.ProjectFrom("testdata/timeout/project")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Go{}.TestV(t.Context(), rng)
+
+		// --- Then ---
+		assert.ExitCode(t, 1, err)
+		assert.Contain(t, "test timed out after 1ns", tst.Stdout())
+	})
+
 	t.Run("error - custom tmp dir does not exist", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
@@ -764,6 +785,33 @@ func Test_Go_test(t *testing.T) {
 		assert.FileExist(t, prj.Path("tmp", TestLogFilename(rng)))
 		assert.Contain(t, "ok  \texample.com/comp/project", tst.Stdout())
 	})
+}
+
+func Test_hasTimeoutArg_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		args []string
+		want bool
+	}{
+		{"none", nil, false},
+		{"single dash", []string{"-timeout", "1s"}, true},
+		{"double dash", []string{"--timeout", "1s"}, true},
+		{"with value", []string{"-v", "-timeout=1s"}, true},
+		{"other flag", []string{"-run", "Test_timeout"}, false},
+		{"longer name", []string{"-timeoutx"}, false},
+		{"positional", []string{"timeout"}, false},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			have := hasTimeoutArg(tc.args)
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
+		})
+	}
 }
 
 func Test_parseDirTarget(t *testing.T) {

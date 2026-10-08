@@ -141,7 +141,8 @@ func (tgt Go) Test(ctx context.Context, rng *ring.Ring) error {
 // When verbose is set to true an additional flag "-v" is passed to "go test".
 //
 // The additional arguments may be passed to the "go test" with "-- arg0 arg1"
-// construct.
+// construct. A -timeout among them takes precedence over the configured and
+// environment timeouts.
 //
 //nolint:cyclop
 func (Go) test(ctx context.Context, rng *ring.Ring, verbose bool) error {
@@ -194,7 +195,9 @@ func (Go) test(ctx context.Context, rng *ring.Ring, verbose bool) error {
 			return fmt.Errorf("gmgo: invalid %s: %w", GoTestTimeoutEnvKey, err)
 		}
 	}
-	if timeout > 0 {
+	// "go test" takes the last -timeout it is given; one among the user's
+	// arguments must win over the configured default.
+	if timeout > 0 && !hasTimeoutArg(args) {
 		cmdArgs = append(cmdArgs, "-timeout="+timeout.String())
 	}
 	cmdArgs = append(cmdArgs, "./...")
@@ -212,6 +215,18 @@ func (Go) test(ctx context.Context, rng *ring.Ring, verbose bool) error {
 	cmd.Stdout, cmd.Stderr = mw, rng.Stderr()
 	cmd.Env = rng.EnvAll()
 	return cmd.Run()
+}
+
+// hasTimeoutArg returns true when args set the "go test" -timeout flag, in any
+// of its spellings.
+func hasTimeoutArg(args []string) bool {
+	for _, arg := range args {
+		name, _, _ := strings.Cut(strings.TrimLeft(arg, "-"), "=")
+		if strings.HasPrefix(arg, "-") && name == "timeout" {
+			return true
+		}
+	}
+	return false
 }
 
 // parseDirTarget parses the --dir and --help flags shared by the targets that
