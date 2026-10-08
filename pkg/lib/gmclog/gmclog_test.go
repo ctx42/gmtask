@@ -17,22 +17,16 @@ import (
 )
 
 func Test_ReadChangelog(t *testing.T) {
-	t.Run("single release", func(t *testing.T) {
-		// --- Given ---
-		relPath := "testdata/changelog_1.md"
-		absPath := pathkit.AbsPath(t, relPath)
-
+	t.Run("reads raw contents", func(t *testing.T) {
 		// --- When ---
-		cl, err := ReadChangelog(relPath)
+		have, err := ReadChangelog("testdata/changelog_1.md")
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, absPath, cl.pth)
-		assert.Nil(t, cl.Releases)
-
-		have := string(cl.contents)
-		want := oskit.ReadFileStr(t, absPath)
-		assert.Equal(t, want, have)
+		assert.Equal(t, pathkit.AbsPath(t, "testdata/changelog_1.md"), have.pth)
+		assert.Nil(t, have.Releases)
+		want := oskit.ReadFileStr(t, "testdata/changelog_1.md")
+		assert.Equal(t, want, string(have.contents))
 	})
 
 	t.Run("keeps title above releases", func(t *testing.T) {
@@ -46,12 +40,12 @@ func Test_ReadChangelog(t *testing.T) {
 		pth := oskit.Create(t, src, t.TempDir(), "CHANGELOG.md")
 
 		// --- When ---
-		clg, err := ReadChangelog(pth)
+		have, err := ReadChangelog(pth)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, "# Changelog\n\n", string(clg.preamble))
-		assert.Equal(t, src[len("# Changelog\n\n"):], string(clg.contents))
+		assert.Equal(t, "# Changelog\n\n", string(have.preamble))
+		assert.Equal(t, src[len("# Changelog\n\n"):], string(have.contents))
 	})
 
 	t.Run("title without releases", func(t *testing.T) {
@@ -60,38 +54,34 @@ func Test_ReadChangelog(t *testing.T) {
 		pth := oskit.Create(t, src, t.TempDir(), "CHANGELOG.md")
 
 		// --- When ---
-		clg, err := ReadChangelog(pth)
+		have, err := ReadChangelog(pth)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, "# Changelog\n\n", string(clg.preamble))
-		assert.Equal(t, "Nothing released yet.\n", string(clg.contents))
+		assert.Equal(t, "# Changelog\n\n", string(have.preamble))
+		assert.Equal(t, "Nothing released yet.\n", string(have.contents))
 	})
 
 	t.Run("error - not existing file", func(t *testing.T) {
-		// --- Given ---
-		relPath := "testdata/not_existing.md"
-
 		// --- When ---
-		cl, err := ReadChangelog(relPath)
+		have, err := ReadChangelog("testdata/not_existing.md")
 
 		// --- Then ---
 		assert.ErrorIs(t, os.ErrNotExist, err)
-		assert.Nil(t, cl)
+		assert.Nil(t, have)
 	})
 }
 
 func Test_ReadReleases(t *testing.T) {
 	t.Run("single release", func(t *testing.T) {
 		// --- When ---
-		cl, err := ReadReleases("testdata", "changelog_0.md")
+		have, err := ReadReleases("testdata", "changelog_0.md")
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, pathkit.AbsPath(t, "testdata", "changelog_0.md"), cl.pth)
-		assert.Len(t, 1, cl.Releases)
-
-		rel := cl.Releases[0]
+		assert.Equal(t, pathkit.AbsPath(t, "testdata/changelog_0.md"), have.pth)
+		assert.Len(t, 1, have.Releases)
+		rel := have.Releases[0]
 		assert.Equal(t, "v0.1.5", rel.Version.Original())
 		assert.Time(t, time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC), rel.Date)
 		assert.Equal(t, []string{"- Change 1.", "- Change 2."}, rel.Changes)
@@ -99,19 +89,17 @@ func Test_ReadReleases(t *testing.T) {
 
 	t.Run("multiple releases", func(t *testing.T) {
 		// --- When ---
-		cl, err := ReadReleases("testdata", "changelog_1.md")
+		have, err := ReadReleases("testdata", "changelog_1.md")
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, pathkit.AbsPath(t, "testdata", "changelog_1.md"), cl.pth)
-		assert.Len(t, 2, cl.Releases)
-
-		rel := cl.Releases[0]
+		assert.Equal(t, pathkit.AbsPath(t, "testdata/changelog_1.md"), have.pth)
+		assert.Len(t, 2, have.Releases)
+		rel := have.Releases[0]
 		assert.Equal(t, "v0.1.6", rel.Version.Original())
 		assert.Time(t, time.Date(2000, 1, 2, 3, 4, 6, 0, time.UTC), rel.Date)
 		assert.Equal(t, []string{"- Change 3.", "- Change 4."}, rel.Changes)
-
-		rel = cl.Releases[1]
+		rel = have.Releases[1]
 		assert.Equal(t, "v0.1.5", rel.Version.Original())
 		assert.Time(t, time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC), rel.Date)
 		assert.Equal(t, []string{"- Change 1.", "- Change 2."}, rel.Changes)
@@ -119,19 +107,17 @@ func Test_ReadReleases(t *testing.T) {
 
 	t.Run("multi line changes", func(t *testing.T) {
 		// --- When ---
-		cl, err := ReadReleases("testdata", "changelog_2.md")
+		have, err := ReadReleases("testdata", "changelog_2.md")
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, pathkit.AbsPath(t, "testdata", "changelog_2.md"), cl.pth)
-		assert.Len(t, 2, cl.Releases)
-
-		rel := cl.Releases[0]
+		assert.Equal(t, pathkit.AbsPath(t, "testdata/changelog_2.md"), have.pth)
+		assert.Len(t, 2, have.Releases)
+		rel := have.Releases[0]
 		assert.Equal(t, "v0.1.6", rel.Version.Original())
 		assert.Time(t, time.Date(2000, 1, 2, 3, 4, 6, 0, time.UTC), rel.Date)
 		assert.Equal(t, []string{"- Change 3.", "- Change 4."}, rel.Changes)
-
-		rel = cl.Releases[1]
+		rel = have.Releases[1]
 		assert.Equal(t, "v0.1.5", rel.Version.Original())
 		assert.Time(t, time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC), rel.Date)
 		want := []string{
@@ -144,7 +130,7 @@ func Test_ReadReleases(t *testing.T) {
 		assert.Equal(t, want, rel.Changes)
 	})
 
-	t.Run("hash-prefixed change line is not a release header", func(t *testing.T) {
+	t.Run("hash-prefixed line", func(t *testing.T) {
 		// --- Given ---
 		src := "" +
 			"## v0.1.5 (Sun, 02 Jan 2000 03:04:05 UTC)\n" +
@@ -154,17 +140,16 @@ func Test_ReadReleases(t *testing.T) {
 		pth := oskit.Create(t, src, t.TempDir(), "CHANGELOG.md")
 
 		// --- When ---
-		cl, err := ReadReleases(pth)
+		have, err := ReadReleases(pth)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Len(t, 1, cl.Releases)
-
+		assert.Len(t, 1, have.Releases)
 		want := []string{"- Change 1.", "## Not a header.", "- Change 2."}
-		assert.Equal(t, want, cl.Releases[0].Changes)
+		assert.Equal(t, want, have.Releases[0].Changes)
 	})
 
-	t.Run("parenthesized title is not a release header", func(t *testing.T) {
+	t.Run("parenthesized title", func(t *testing.T) {
 		// --- Given ---
 		src := "" +
 			"## v0.1.5 (Sun, 02 Jan 2000 03:04:05 UTC)\n" +
@@ -173,34 +158,34 @@ func Test_ReadReleases(t *testing.T) {
 		pth := oskit.Create(t, src, t.TempDir(), "CHANGELOG.md")
 
 		// --- When ---
-		cl, err := ReadReleases(pth)
+		have, err := ReadReleases(pth)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Len(t, 1, cl.Releases)
+		assert.Len(t, 1, have.Releases)
 		want := []string{"- Change 1.", "## Notes (draft)"}
-		assert.Equal(t, want, cl.Releases[0].Changes)
+		assert.Equal(t, want, have.Releases[0].Changes)
 	})
 
 	t.Run("error - changelog not found", func(t *testing.T) {
 		// --- When ---
-		cl, err := ReadReleases("testdata", "not_existing.md")
+		have, err := ReadReleases("testdata", "not_existing.md")
 
 		// --- Then ---
 		assert.ErrorIs(t, os.ErrNotExist, err)
-		assert.Nil(t, cl)
+		assert.Nil(t, have)
 	})
 
-	t.Run("error - invalid release header", func(t *testing.T) {
+	t.Run("error - invalid release date", func(t *testing.T) {
 		// --- Given ---
 		pth := oskit.Create(t, "## v0.1.0 (not-a-date)\n", t.TempDir(), "CL.md")
 
 		// --- When ---
-		cl, err := ReadReleases(pth)
+		have, err := ReadReleases(pth)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrInvRelDate, err)
-		assert.Nil(t, cl)
+		assert.Nil(t, have)
 	})
 
 	t.Run("error - names the bad line", func(t *testing.T) {
@@ -209,11 +194,11 @@ func Test_ReadReleases(t *testing.T) {
 		pth := oskit.Create(t, src, t.TempDir(), "CL.md")
 
 		// --- When ---
-		cl, err := ReadReleases(pth)
+		have, err := ReadReleases(pth)
 
 		// --- Then ---
 		assert.ErrorContain(t, "parse release header on line 3", err)
-		assert.Nil(t, cl)
+		assert.Nil(t, have)
 	})
 
 	t.Run("error - scan fails", func(t *testing.T) {
@@ -221,47 +206,11 @@ func Test_ReadReleases(t *testing.T) {
 		pth := oskit.Create(t, strings.Repeat("x", 70000), t.TempDir(), "CL.md")
 
 		// --- When ---
-		cl, err := ReadReleases(pth)
+		have, err := ReadReleases(pth)
 
 		// --- Then ---
 		assert.ErrorContain(t, "scan changelog", err)
-		assert.Nil(t, cl)
-	})
-}
-
-func Test_Changelog_ReadReleases_Save_round_trip(t *testing.T) {
-	t.Run("save does not duplicate parsed releases", func(t *testing.T) {
-		// --- Given ---
-		src := oskit.ReadFileStr(t, "testdata/changelog_1.md")
-		pth := oskit.Create(t, src, t.TempDir(), "CHANGELOG.md")
-		cl := must.Value(ReadReleases(pth))
-
-		// --- When ---
-		err := cl.Save()
-
-		// --- Then ---
-		assert.NoError(t, err)
-		assert.Equal(t, src, oskit.ReadFileStr(t, pth))
-	})
-
-	t.Run("preserves preamble before the first release", func(t *testing.T) {
-		// --- Given ---
-		src := "" +
-			"# Changelog\n" +
-			"\n" +
-			"## v0.1.5 (Sun, 02 Jan 2000 03:04:05 UTC)\n" +
-			"- Change 1.\n" +
-			"- Change 2.\n" +
-			"\n"
-		pth := oskit.Create(t, src, t.TempDir(), "CHANGELOG.md")
-		cl := must.Value(ReadReleases(pth))
-
-		// --- When ---
-		err := cl.Save()
-
-		// --- Then ---
-		assert.NoError(t, err)
-		assert.Equal(t, src, oskit.ReadFileStr(t, pth))
+		assert.Nil(t, have)
 	})
 }
 
@@ -271,19 +220,18 @@ func Test_Changelog_AddRelease(t *testing.T) {
 		rel0 := must.Value(NewRelease("v0.1.1", time.Now()))
 		rel1 := must.Value(NewRelease("v0.1.2", time.Now()))
 		rel2 := must.Value(NewRelease("v0.1.3", time.Now()))
-
-		cl := &Changelog{
+		clg := &Changelog{
 			Releases: []*Release{rel0},
 		}
 
 		// --- When ---
-		cl.AddRelease(rel1, rel2)
+		clg.AddRelease(rel1, rel2)
 
 		// --- Then ---
-		assert.Len(t, 3, cl.Releases)
-		assert.Same(t, rel2, cl.Releases[0])
-		assert.Same(t, rel1, cl.Releases[1])
-		assert.Same(t, rel0, cl.Releases[2])
+		assert.Len(t, 3, clg.Releases)
+		assert.Same(t, rel2, clg.Releases[0])
+		assert.Same(t, rel1, clg.Releases[1])
+		assert.Same(t, rel0, clg.Releases[2])
 	})
 }
 
@@ -300,12 +248,12 @@ func Test_Changelog_Save(t *testing.T) {
 		rel1 := must.Value(NewRelease("v0.1.1", tim1))
 		rel1.AddChange("Change 3", "Change 4")
 
-		cl := &Changelog{pth: pth}
-		cl.AddRelease(rel0)
-		cl.AddRelease(rel1)
+		clg := &Changelog{pth: pth}
+		clg.AddRelease(rel0)
+		clg.AddRelease(rel1)
 
 		// --- When ---
-		err := cl.Save()
+		err := clg.Save()
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -338,12 +286,12 @@ func Test_Changelog_Save(t *testing.T) {
 		rel2 := must.Value(NewRelease("v0.1.2", tim2))
 		rel2.AddChange("Change 5", "Change 6")
 
-		cl := must.Value(ReadChangelog(pth))
-		cl.AddRelease(rel1)
-		cl.AddRelease(rel2)
+		clg := must.Value(ReadChangelog(pth))
+		clg.AddRelease(rel1)
+		clg.AddRelease(rel2)
 
 		// --- When ---
-		err := cl.Save()
+		err := clg.Save()
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -450,10 +398,10 @@ func Test_Changelog_Save(t *testing.T) {
 	t.Run("error - create fails", func(t *testing.T) {
 		// --- Given ---
 		pth := filepath.Join(t.TempDir(), "nope", "CHANGELOG.md")
-		cl := &Changelog{pth: pth}
+		clg := &Changelog{pth: pth}
 
 		// --- When ---
-		err := cl.Save()
+		err := clg.Save()
 
 		// --- Then ---
 		assert.ErrorContain(t, "create temp changelog file", err)
@@ -472,5 +420,41 @@ func Test_Changelog_Save(t *testing.T) {
 		// --- Then ---
 		assert.ErrorContain(t, "replace changelog file", err)
 		assert.Equal(t, []string{"CHANGELOG.md"}, oskit.Readdirnames(t, dir))
+	})
+}
+
+func Test_Changelog_Save_round_trip(t *testing.T) {
+	t.Run("no duplicates", func(t *testing.T) {
+		// --- Given ---
+		src := oskit.ReadFileStr(t, "testdata/changelog_1.md")
+		pth := oskit.Create(t, src, t.TempDir(), "CHANGELOG.md")
+		clg := must.Value(ReadReleases(pth))
+
+		// --- When ---
+		err := clg.Save()
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, src, oskit.ReadFileStr(t, pth))
+	})
+
+	t.Run("keeps preamble", func(t *testing.T) {
+		// --- Given ---
+		src := "" +
+			"# Changelog\n" +
+			"\n" +
+			"## v0.1.5 (Sun, 02 Jan 2000 03:04:05 UTC)\n" +
+			"- Change 1.\n" +
+			"- Change 2.\n" +
+			"\n"
+		pth := oskit.Create(t, src, t.TempDir(), "CHANGELOG.md")
+		clg := must.Value(ReadReleases(pth))
+
+		// --- When ---
+		err := clg.Save()
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, src, oskit.ReadFileStr(t, pth))
 	})
 }

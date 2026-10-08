@@ -31,38 +31,35 @@ func Test_NewRelease(t *testing.T) {
 		now := time.Now().UTC()
 
 		// --- When ---
-		rel, err := NewRelease("v0.1.2", now)
+		have, err := NewRelease("v0.1.2", now)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, "v0.1.2", rel.Version.Original())
-		assert.Exact(t, now, rel.Date)
-		assert.Len(t, 0, rel.Changes)
-		assert.True(t, rel.formatChanges)
+		assert.Equal(t, "v0.1.2", have.Version.Original())
+		assert.Exact(t, now, have.Date)
+		assert.Len(t, 0, have.Changes)
+		assert.True(t, have.formatChanges)
 	})
 
-	t.Run("option passed to NewSemVerRelease constructor", func(t *testing.T) {
+	t.Run("with option", func(t *testing.T) {
 		// --- Given ---
 		now := time.Now().UTC()
 
 		// --- When ---
-		rel, err := NewRelease("v0.1.2", now, WithNoFormatting)
+		have, err := NewRelease("v0.1.2", now, WithNoFormatting)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.False(t, rel.formatChanges)
+		assert.False(t, have.formatChanges)
 	})
 
 	t.Run("error - invalid semantic version", func(t *testing.T) {
-		// --- Given ---
-		now := time.Now().In(testcases.WAW)
-
 		// --- When ---
-		rel, err := NewRelease("invalid", now)
+		have, err := NewRelease("invalid", time.Now())
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrInvRelVersion, err)
-		assert.Nil(t, rel)
+		assert.Nil(t, have)
 	})
 }
 
@@ -73,13 +70,13 @@ func Test_NewSemVerRelease(t *testing.T) {
 		now := time.Now().UTC()
 
 		// --- When ---
-		rel := NewSemVerRelease(ver, now)
+		have := NewSemVerRelease(ver, now)
 
 		// --- Then ---
-		assert.Equal(t, "v0.1.2", rel.Version.Original())
-		assert.Exact(t, now, rel.Date)
-		assert.Len(t, 0, rel.Changes)
-		assert.True(t, rel.formatChanges)
+		assert.Equal(t, "v0.1.2", have.Version.Original())
+		assert.Exact(t, now, have.Date)
+		assert.Len(t, 0, have.Changes)
+		assert.True(t, have.formatChanges)
 	})
 
 	t.Run("option applied", func(t *testing.T) {
@@ -88,11 +85,11 @@ func Test_NewSemVerRelease(t *testing.T) {
 		now := time.Now().UTC()
 
 		// --- When ---
-		rel := NewSemVerRelease(ver, now, WithNoFormatting)
+		have := NewSemVerRelease(ver, now, WithNoFormatting)
 
 		// --- Then ---
-		assert.Len(t, 0, rel.Changes)
-		assert.False(t, rel.formatChanges)
+		assert.Len(t, 0, have.Changes)
+		assert.False(t, have.formatChanges)
 	})
 
 	t.Run("date switched to UTC", func(t *testing.T) {
@@ -101,11 +98,11 @@ func Test_NewSemVerRelease(t *testing.T) {
 		now := time.Now().In(testcases.WAW)
 
 		// --- When ---
-		rel := NewSemVerRelease(ver, now)
+		have := NewSemVerRelease(ver, now)
 
 		// --- Then ---
-		assert.Time(t, now, rel.Date)
-		assert.Zone(t, time.UTC, rel.Date.Location())
+		assert.Time(t, now, have.Date)
+		assert.Zone(t, time.UTC, have.Date.Location())
 	})
 }
 
@@ -115,29 +112,29 @@ func Test_ReleaseFromHeader(t *testing.T) {
 		lin := "## v0.1.6 (Sun, 02 Jan 2000 03:04:06 UTC)"
 
 		// --- When ---
-		rel, err := ReleaseFromHeader(lin)
+		have, err := ReleaseFromHeader(lin)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, "v0.1.6", rel.Version.Original())
-		assert.Time(t, "2000-01-02T03:04:06Z", rel.Date)
-		assert.Len(t, 0, rel.Changes)
-		assert.True(t, rel.formatChanges)
+		assert.Equal(t, "v0.1.6", have.Version.Original())
+		assert.Time(t, "2000-01-02T03:04:06Z", have.Date)
+		assert.Len(t, 0, have.Changes)
+		assert.True(t, have.formatChanges)
 	})
 
-	t.Run("whitespace between tokens does not matter", func(t *testing.T) {
+	t.Run("extra whitespace", func(t *testing.T) {
 		// --- Given ---
 		lin := "##   v0.1.6   (Sun, 02 Jan 2000 03:04:06 UTC)"
 
 		// --- When ---
-		rel, err := ReleaseFromHeader(lin)
+		have, err := ReleaseFromHeader(lin)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, "v0.1.6", rel.Version.Original())
-		assert.Time(t, "2000-01-02T03:04:06Z", rel.Date)
-		assert.Len(t, 0, rel.Changes)
-		assert.True(t, rel.formatChanges)
+		assert.Equal(t, "v0.1.6", have.Version.Original())
+		assert.Time(t, "2000-01-02T03:04:06Z", have.Date)
+		assert.Len(t, 0, have.Changes)
+		assert.True(t, have.formatChanges)
 	})
 
 	t.Run("options passed", func(t *testing.T) {
@@ -145,12 +142,12 @@ func Test_ReleaseFromHeader(t *testing.T) {
 		lin := "##   v0.1.6   (Sun, 02 Jan 2000 03:04:06 UTC)"
 
 		// --- When ---
-		rel, err := ReleaseFromHeader(lin, WithNoFormatting)
+		have, err := ReleaseFromHeader(lin, WithNoFormatting)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Len(t, 0, rel.Changes)
-		assert.False(t, rel.formatChanges)
+		assert.Len(t, 0, have.Changes)
+		assert.False(t, have.formatChanges)
 	})
 }
 
@@ -196,13 +193,13 @@ func Test_ReleaseFromHeader_tabular(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.testN, func(t *testing.T) {
 			// --- When ---
-			rel, err := ReleaseFromHeader(tc.lin)
+			have, err := ReleaseFromHeader(tc.lin)
 
 			// --- Then ---
 			for _, want := range tc.ers {
 				assert.ErrorIs(t, want, err)
 			}
-			assert.Nil(t, rel)
+			assert.Nil(t, have)
 		})
 	}
 }
@@ -452,7 +449,6 @@ func Test_ReleaseSlice(t *testing.T) {
 		rel0 := must.Value(NewRelease("v0.1.0", time.Now()))
 		rel1 := must.Value(NewRelease("v0.1.1", time.Now()))
 		rel2 := must.Value(NewRelease("v0.1.2", time.Now()))
-
 		rels := []*Release{rel0, rel1, rel2}
 
 		// --- When ---
@@ -469,7 +465,6 @@ func Test_ReleaseSlice(t *testing.T) {
 		rel0 := must.Value(NewRelease("v0.1.0", time.Now()))
 		rel1 := must.Value(NewRelease("v0.1.1", time.Now()))
 		rel2 := must.Value(NewRelease("v0.1.2", time.Now()))
-
 		rels := []*Release{rel2, rel0, rel1}
 
 		// --- When ---
@@ -486,7 +481,6 @@ func Test_ReleaseSlice(t *testing.T) {
 		rel0 := must.Value(NewRelease("v0.1.0", time.Now()))
 		rel1 := must.Value(NewRelease("v0.1.1", time.Now()))
 		rel2 := must.Value(NewRelease("v0.1.2", time.Now()))
-
 		rels := []*Release{rel2, rel0, rel1}
 
 		// --- When ---
