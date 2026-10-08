@@ -466,6 +466,29 @@ func Test_BumpTarget(t *testing.T) {
 		assert.Equal(t, want, tst.Stdout())
 	})
 
+	t.Run("approval without newline", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("y")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t, prjkit.WithGitBranch("feature/x"))
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorEqual(t, "read version input: EOF", err)
+		want := "" +
+			"Current tag: \n" +
+			"Release from branch \"feature/x\"? [y/N]: " +
+			"Enter a version number [v0.0.1]: "
+		assert.Equal(t, want, tst.Stdout())
+	})
+
 	t.Run("invalid semver tag", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
@@ -1058,6 +1081,33 @@ func Test_BumpTarget(t *testing.T) {
 			"Current tag: \n" +
 			"Enter a version number [v0.0.1]: "
 		assert.Equal(t, want, tst.Stdout())
+	})
+
+	t.Run("last answer without newline", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("v0.0.2\nok")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"Current tag: \n" +
+			"Enter a version number [v0.0.1]: " +
+			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
+			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.Equal(t, "v0.0.2", oskit.ReadFileStr(t, prj.Root(), "VER"))
 	})
 
 	t.Run("error - EOF reading continue", func(t *testing.T) {

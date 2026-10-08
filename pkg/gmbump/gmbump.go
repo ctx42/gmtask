@@ -28,6 +28,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -168,7 +169,7 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 
 	format := "Enter a version number [%s]: "
 	_, _ = fmt.Fprintf(rng.Stdout(), format, next.Original())
-	txt, err := rdr.ReadString('\n')
+	txt, err := readLine(rdr)
 	if err != nil {
 		return fmt.Errorf("read version input: %w", err)
 	}
@@ -197,7 +198,7 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 
 	msg := "Now you may edit CHANGELOG.md. Then press ENTER to continue.\n"
 	_, _ = fmt.Fprint(rng.Stdout(), msg)
-	if _, err = rdr.ReadString('\n'); err != nil {
+	if _, err = readLine(rdr); err != nil {
 		return fmt.Errorf("read continue input: %w", err)
 	}
 	_, _ = fmt.Fprint(rng.Stdout(), "Continuing.\n")
@@ -311,7 +312,7 @@ func approveBranch(rng *ring.Ring, rdr *bufio.Reader, branch string) error {
 
 	format := "Release from branch %q? [y/N]: "
 	_, _ = fmt.Fprintf(rng.Stdout(), format, branch)
-	txt, err := rdr.ReadString('\n')
+	txt, err := readLine(rdr)
 	if err != nil {
 		return fmt.Errorf("read approval input: %w", err)
 	}
@@ -322,6 +323,17 @@ func approveBranch(rng *ring.Ring, rdr *bufio.Reader, branch string) error {
 	}
 	format = "bump aborted: branch %q is %w (master, main)"
 	return fmt.Errorf(format, branch, ErrNotDefBranch)
+}
+
+// readLine reads one line of input from rdr. A last line not ended by a
+// newline, as piped input often is, is returned as an answer rather than
+// failing with [io.EOF]; only end of input with nothing read is an error.
+func readLine(rdr *bufio.Reader) (string, error) {
+	txt, err := rdr.ReadString('\n')
+	if errors.Is(err, io.EOF) && txt != "" {
+		return txt, nil
+	}
+	return txt, err
 }
 
 // nextRelease returns the release ver heads towards. It is the version core
