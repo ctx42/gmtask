@@ -201,6 +201,7 @@ func (clg *Changelog) Save() error {
 	buf.Write(clg.preamble)
 	for _, rel := range clg.Releases {
 		buf.WriteString(rel.String())
+		buf.WriteString("\n") // A blank line ends each release.
 	}
 	buf.Write(clg.contents)
 

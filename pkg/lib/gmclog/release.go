@@ -34,7 +34,8 @@ func WithNoFormatting(rel *Release) { rel.formatChanges = false }
 //	- line 1
 //	- line 2
 //
-// The release ends with one empty line.
+// In a changelog file, an empty line written by [Changelog.Save] ends the
+// release.
 type Release struct {
 	Version       *semver.Version // Semantic version.
 	Date          time.Time       // Date release was created.
@@ -116,6 +117,10 @@ func (rel *Release) Compare(other *Release) int {
 	return rel.Version.Compare(other.Version)
 }
 
+// String returns the release header line followed by one line per change,
+// each ending in a newline. Unless [WithNoFormatting] was used, every change
+// is prefixed with "- " and gets a terminal period when it does not already
+// end in ".", "?" or "!".
 func (rel *Release) String() string {
 	tim := rel.Date.UTC().Format(time.RFC1123)
 	var buf bytes.Buffer
@@ -131,7 +136,6 @@ func (rel *Release) String() string {
 		}
 		_, _ = fmt.Fprintf(&buf, "%s%s\n", prefix, lin)
 	}
-	buf.WriteString("\n")
 	return buf.String()
 }
 

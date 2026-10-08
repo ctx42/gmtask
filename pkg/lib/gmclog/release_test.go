@@ -303,8 +303,7 @@ func Test_Release_String(t *testing.T) {
 
 		// --- Then ---
 		want := "" +
-			"## v0.1.2 (Sun, 02 Jan 2000 03:04:06 UTC)\n" +
-			"\n"
+			"## v0.1.2 (Sun, 02 Jan 2000 03:04:06 UTC)\n"
 		assert.Equal(t, want, have)
 	})
 
@@ -318,8 +317,7 @@ func Test_Release_String(t *testing.T) {
 
 		// --- Then ---
 		want := "" +
-			"## v0.1.2 (Sun, 02 Jan 2000 02:04:06 UTC)\n" +
-			"\n"
+			"## v0.1.2 (Sun, 02 Jan 2000 02:04:06 UTC)\n"
 		assert.Equal(t, want, have)
 	})
 
@@ -336,8 +334,7 @@ func Test_Release_String(t *testing.T) {
 		want := "" +
 			"## v0.1.2 (Sun, 02 Jan 2000 03:04:06 UTC)\n" +
 			"- Change 1.\n" +
-			"- Change 2.\n" +
-			"\n"
+			"- Change 2.\n"
 		assert.Equal(t, want, have)
 	})
 
@@ -354,8 +351,7 @@ func Test_Release_String(t *testing.T) {
 		want := "" +
 			"## v0.1.2 (Sun, 02 Jan 2000 03:04:06 UTC)\n" +
 			"- Is it fixed?\n" +
-			"- Yes!\n" +
-			"\n"
+			"- Yes!\n"
 		assert.Equal(t, want, have)
 	})
 
@@ -372,8 +368,7 @@ func Test_Release_String(t *testing.T) {
 		want := "" +
 			"## v0.1.2 (Sun, 02 Jan 2000 03:04:06 UTC)\n" +
 			"Change 1\n" +
-			"Change 2\n" +
-			"\n"
+			"Change 2\n"
 		assert.Equal(t, want, have)
 	})
 }
