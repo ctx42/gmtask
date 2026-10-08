@@ -67,10 +67,12 @@ func (Doc) Mce(ctx context.Context, rng *ring.Ring) error {
 	if err := fs.Parse(rng.Args()); err != nil {
 		return err
 	}
-	rng = rng.SetArgs(fs.Args())
 	if fs.GetBool("help") {
 		fs.Usage()
 		return nil
+	}
+	if fs.NArg() > 0 {
+		return fmt.Errorf("unexpected arguments: %v", fs.Args())
 	}
 
 	absDir, err := filepath.Abs(dir)

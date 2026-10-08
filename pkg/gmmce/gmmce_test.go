@@ -153,6 +153,21 @@ func Test_Doc_Mce(t *testing.T) {
 		assert.Equal(t, want, tst.Stderr())
 	})
 
+	t.Run("error - positional argument", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t)
+		dir := t.TempDir()
+		readme := oskit.Write(t, "x\n", dir, "README.md")
+		rng := tst.Ring("--dir", dir, "DOCS.md")
+
+		// --- When ---
+		err := Doc{}.Mce(t.Context(), rng)
+
+		// --- Then ---
+		assert.ErrorContain(t, "unexpected arguments: [DOCS.md]", err)
+		assert.Equal(t, "x\n", oskit.ReadFileStr(t, readme))
+	})
+
 	t.Run("error - unknown flag", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
