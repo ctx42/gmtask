@@ -185,7 +185,8 @@ func skipDir(name string) bool {
 
 // parseExamples parses a Go source file and returns a map of function name to
 // body text for every function whose name starts with "Example". The body text
-// has the outer braces and one level of tab indentation removed.
+// has the outer braces and one level of tab indentation removed; lines that
+// continue a raw string literal are kept verbatim.
 func parseExamples(filename string) (map[string]string, error) {
 	src, err := os.ReadFile(filename) //nolint:gosec
 	if err != nil {
@@ -206,12 +207,17 @@ func parseExamples(filename string) (map[string]string, error) {
 			continue
 		}
 		// Slice by brace byte offsets so single-line bodies keep their content.
-		lo := fset.Position(fn.Body.Lbrace).Offset
+		lbr := fset.Position(fn.Body.Lbrace)
 		hi := fset.Position(fn.Body.Rbrace).Offset
-		inner := string(src[lo+1 : hi])
+		inner := string(src[lbr.Offset+1 : hi])
+		raw := rawStringLines(fset, fn.Body)
 		bodyLines := strings.Split(inner, "\n")
 		stripped := make([]string, len(bodyLines))
 		for i, line := range bodyLines {
+			if raw[lbr.Line+i] {
+				stripped[i] = line // Part of a raw string; keep it verbatim.
+				continue
+			}
 			stripped[i] = strings.TrimPrefix(line, "\t")
 		}
 		examples[fn.Name.Name] = strings.TrimSpace(
@@ -219,6 +225,25 @@ func parseExamples(filename string) (map[string]string, error) {
 		)
 	}
 	return examples, nil
+}
+
+// rawStringLines returns the file line numbers inside node that continue a
+// multi-line raw string literal: every line of the literal but its first.
+func rawStringLines(fset *token.FileSet, node ast.Node) map[int]bool {
+	lines := make(map[int]bool)
+	ast.Inspect(node, func(nod ast.Node) bool {
+		lit, ok := nod.(*ast.BasicLit)
+		if !ok || lit.Kind != token.STRING || lit.Value[0] != '`' {
+			return true
+		}
+		first := fset.Position(lit.Pos()).Line
+		last := fset.Position(lit.End()).Line
+		for lin := first + 1; lin <= last; lin++ {
+			lines[lin] = true
+		}
+		return true
+	})
+	return lines
 }
 
 // injectExamples processes Markdown content replacing code fences that follow

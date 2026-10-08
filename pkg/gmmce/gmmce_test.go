@@ -319,6 +319,25 @@ func Test_parseExamples(t *testing.T) {
 		assert.Equal(t, "fmt.Println(\"x\")", have["Example"])
 	})
 
+	t.Run("raw string keeps indentation", func(t *testing.T) {
+		// --- Given ---
+		src := "" +
+			"package foo\n\n" +
+			"func Example() {\n" +
+			"\ts := `a\n" +
+			"\tb`\n" +
+			"\t_ = s\n" +
+			"}\n"
+		pth := oskit.Write(t, src, t.TempDir(), "eg_test.go")
+
+		// --- When ---
+		have, err := parseExamples(pth)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "s := `a\n\tb`\n_ = s", have["Example"])
+	})
+
 	t.Run("error - not existing file", func(t *testing.T) {
 		// --- When ---
 		_, err := parseExamples("not_existing_test.go")
