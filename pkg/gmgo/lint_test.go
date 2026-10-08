@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
@@ -728,6 +729,41 @@ func Test_Lint_Config(t *testing.T) {
 
 		want := "#gomake INFO# lint config: using tmp/.golangci.yml\n"
 		assert.Equal(t, want, tst.Stderr())
+	})
+
+	t.Run("force set to false", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		rng.EnvSet(GoLintConfigForceEnvKey, "false")
+		rng.EnvSet(GoLintConfigRepoEnvKey, filepath.Join(t.TempDir(), "none"))
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("version: \"2\"\n", ".golangci.yml")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Lint{}.Config(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "#gomake INFO# lint config: using .golangci.yml\n"
+		assert.Equal(t, want, tst.Stderr())
+	})
+
+	t.Run("error - invalid force value", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet(GoLintConfigForceEnvKey, "maybe")
+
+		// --- When ---
+		err := Lint{}.Config(t.Context(), rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, strconv.ErrSyntax, err)
+		want := "invalid GOMAKE_GOLINT_CONFIG_FORCE: \"maybe\""
+		assert.ErrorContain(t, want, err)
 	})
 
 	t.Run("show help", func(t *testing.T) {

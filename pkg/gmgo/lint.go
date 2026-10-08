@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ctx42/gomake/pkg/gomake"
@@ -133,7 +134,8 @@ func (Lint) Install(ctx context.Context, rng *ring.Ring) error {
 // working directory or to "tmp" if it exists. The destination directory is
 // customizable with target arguments. If the execution context has no deadline
 // set, it will be set to 60 seconds. You may force the config file download by
-// setting the [GoLintConfigForceEnvKey] environment variable to 1. The source
+// setting the [GoLintConfigForceEnvKey] environment variable to a true value
+// such as "1" or "true"; a value that is not a boolean is an error. The source
 // repository defaults to [goDevRepo] but may be overridden by the target's
 // "repo" configuration, or, taking precedence over both, the
 // [GoLintConfigRepoEnvKey] environment variable. The config file name defaults
@@ -172,6 +174,13 @@ func (Lint) config(
 	if err != nil {
 		return "", false, err
 	}
+	var force bool
+	if env := rng.EnvGet(GoLintConfigForceEnvKey); env != "" {
+		if force, err = strconv.ParseBool(env); err != nil {
+			key := GoLintConfigForceEnvKey
+			return "", false, fmt.Errorf("invalid %s: %q: %w", key, env, err)
+		}
+	}
 
 	tgtName := ":go:lint:config"
 	dirHelp := "" +
@@ -187,7 +196,7 @@ func (Lint) config(
 	}
 
 	dst := filepath.Join(out, cfgFile)
-	if rng.EnvGet(GoLintConfigForceEnvKey) == "" {
+	if !force {
 		if _, err := os.Stat(dst); err == nil {
 			format := "#gomake INFO# lint config: using %s\n"
 			_, _ = fmt.Fprintf(rng.Stderr(), format, dst)

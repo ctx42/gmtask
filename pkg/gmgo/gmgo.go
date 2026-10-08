@@ -55,9 +55,9 @@ const (
 	// Unset leaves the configured timeout, or the go tool default, in effect.
 	GoTestTimeoutEnvKey = "GOMAKE_GO_TEST_TIMEOUT"
 
-	// GoLintConfigForceEnvKey is the environment variable that, when set to any
-	// non-empty value, forces a fresh download of the shared golangci-lint
-	// config even if a local .golangci.yml already exists.
+	// GoLintConfigForceEnvKey is the environment variable that, when set to a
+	// true value ([strconv.ParseBool]), forces a fresh download of the shared
+	// golangci-lint config even if a local .golangci.yml already exists.
 	GoLintConfigForceEnvKey = "GOMAKE_GOLINT_CONFIG_FORCE"
 
 	// GoLintConfigRepoEnvKey is the environment variable overriding the git
