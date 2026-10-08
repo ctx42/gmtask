@@ -64,6 +64,10 @@ var (
 	// ErrBumpFlags is returned when more than one of the flags forcing a bump
 	// level is set.
 	ErrBumpFlags = errors.New("conflicting bump flags")
+
+	// ErrNotNewer is returned when the version to release is not newer than
+	// the current version tag.
+	ErrNotNewer = errors.New("version not newer than the current tag")
 )
 
 // Bump runs the ":bump" target against the current working directory. It is the
@@ -80,8 +84,9 @@ func Bump(ctx context.Context, rng *ring.Ring) error {
 //
 // It returns [ErrBumpFlags] when more than one bump level is forced,
 // [ErrNotClean] for a dirty working tree, [gitaid.ErrDetached] for a detached
-// HEAD, and [ErrNotDefBranch] when a release from a branch other than "master"
-// or "main" is not approved.
+// HEAD, [ErrNotDefBranch] when a release from a branch other than "master"
+// or "main" is not approved, and [ErrNotNewer] when the entered version is not
+// newer than the current version tag.
 //
 //nolint:cyclop
 func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
@@ -176,6 +181,15 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	// Tag the canonical form: a "v" prefix and all three version numbers, as
 	// Go modules require. Short input such as "1.2" parses as "1.2.0".
 	next = semver.MustParse("v" + next.String())
+
+	// Refuse to tag backwards or reuse the current tag before any file is
+	// written, so a refused release leaves the working tree clean.
+	if cur, cerr := semver.NewVersion(curStr); cerr == nil &&
+		!next.GreaterThan(cur) {
+
+		format := "%w: %s is not newer than %s"
+		return fmt.Errorf(format, ErrNotNewer, next.Original(), curStr)
+	}
 
 	if err = writeChangelog(repo, next, changes); err != nil {
 		return err

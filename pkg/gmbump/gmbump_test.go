@@ -983,6 +983,33 @@ func Test_BumpTarget(t *testing.T) {
 		assert.Equal(t, "v0.0.1\nv1.2.0\n", tags)
 	})
 
+	t.Run("error - version not newer", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("v0.4.0\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.5.0")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNotNewer, err)
+		assert.ErrorContain(t, "v0.4.0 is not newer than v0.5.0", err)
+		want := "" +
+			"Current tag: v0.5.0\n" +
+			"Enter a version number [v0.5.1]: "
+		assert.Equal(t, want, tst.Stdout())
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "CHANGELOG.md"))
+	})
+
 	t.Run("error - EOF reading version", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
