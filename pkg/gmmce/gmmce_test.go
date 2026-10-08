@@ -6,6 +6,7 @@ package gmmce
 import (
 	"context"
 	"maps"
+	"os"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -171,6 +172,40 @@ func Test_Doc_Mce(t *testing.T) {
 		// --- Then ---
 		assert.ErrorContain(t, "unexpected arguments: [DOCS.md]", err)
 		assert.Equal(t, "x\n", oskit.ReadFileStr(t, readme))
+	})
+
+	t.Run("error - invalid go source", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t)
+		dir := t.TempDir()
+		oskit.Write(t, "<!-- gmmce:x/Example -->\n", dir, "README.md")
+		bad := oskit.MkdirAll(t, dir, "x")
+		oskit.Write(t, "package x\n\nfunc {\n", bad, "x_test.go")
+		rng := tst.Ring("--dir", dir)
+
+		// --- When ---
+		err := Doc{}.Mce(t.Context(), rng)
+
+		// --- Then ---
+		assert.ErrorRegexp(t, "find examples: .*x_test.go:3", err)
+	})
+
+	t.Run("error - write fails", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		dir := t.TempDir()
+		copyExamples(t, dir)
+		oskit.Write(t, "<!-- gmmce:pkg1/Example_case1 -->\n", dir, "README.md")
+		must.Nil(os.Chmod(dir, 0o555))
+		t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+		rng := tst.Ring("--dir", dir)
+
+		// --- When ---
+		err := Doc{}.Mce(t.Context(), rng)
+
+		// --- Then ---
+		assert.ErrorContain(t, "write markdown file: create temp file", err)
+		assert.Equal(t, "Found pkg1/Example_case1\n", tst.Stdout())
 	})
 
 	t.Run("error - unknown flag", func(t *testing.T) {
@@ -359,6 +394,19 @@ func Test_parseExamples(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, "s := `a\n\tb`\n_ = s", have["Example"])
+	})
+
+	t.Run("error - invalid go source", func(t *testing.T) {
+		// --- Given ---
+		src := "package foo\n\nfunc {\n"
+		pth := oskit.Write(t, src, t.TempDir(), "x_test.go")
+
+		// --- When ---
+		have, err := parseExamples(pth)
+
+		// --- Then ---
+		assert.ErrorContain(t, "x_test.go:3:", err)
+		assert.Nil(t, have)
 	})
 
 	t.Run("error - not existing file", func(t *testing.T) {
