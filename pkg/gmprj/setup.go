@@ -180,8 +180,9 @@ func (sup *Setup) vars() tmplVars {
 }
 
 // Setup creates the directories and files declared in the project's gomake.yaml
-// "structure" block, initializes the Go module and git repository, adds an
-// initial commit and tags it v0.0.0.
+// "structure" block, initializes the Go module and, when the root is not a git
+// repository yet, initializes one: an empty commit on master tagged v0.0.0,
+// and the project files committed on a develop branch made from it.
 //
 // Every check runs before the first filesystem write: a missing structure
 // block fails, then a root that is not a directory returns [ErrNotDir] and one
@@ -260,19 +261,18 @@ func (sup *Setup) addScmRepo(rng *ring.Ring) error {
 	return nil
 }
 
-// initScmRepo initializes a git repository at the setup root, creates the
-// initial commit, and tags it v0.0.0.
+// initScmRepo initializes a git repository at the setup root with an empty
+// root commit on the master branch, tagged v0.0.0, and the project files
+// committed on a develop branch made from it. The root holds no files, so
+// every develop commit - the one with the scaffold included - has a parent
+// and can be rewritten with "git rebase -i master" before the branch is
+// squash-merged into master.
 func (sup *Setup) initScmRepo(ctx context.Context, rng *ring.Ring) error {
-	err := gitaid.Init(ctx, sup.root)
+	err := gitaid.InitBranch(ctx, sup.root, branchMaster)
 	if err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(rng.Stdout(), "git: repository initialized\n")
-
-	if err = gitaid.AddAll(ctx, sup.root); err != nil {
-		return err
-	}
-	_, _ = fmt.Fprintf(rng.Stdout(), "git: all files added\n")
 
 	if sup.origin != "" {
 		if err = gitaid.AddRemote(ctx, sup.root, sup.origin); err != nil {
@@ -281,14 +281,30 @@ func (sup *Setup) initScmRepo(ctx context.Context, rng *ring.Ring) error {
 		_, _ = fmt.Fprintf(rng.Stdout(), "git: remote origin added\n")
 	}
 
-	if err = gitaid.Commit(ctx, sup.root, "Initial commit."); err != nil {
+	if err = gitaid.CommitEmpty(ctx, sup.root, "Initial commit."); err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintf(rng.Stdout(), "git: initial commit made\n")
+	_, _ = fmt.Fprintf(rng.Stdout(), "git: empty initial commit made\n")
 
-	if err = gitaid.Tag(ctx, sup.root, "v0.0.0", "initial tag\n"); err != nil {
+	if err = gitaid.Tag(ctx, sup.root, tagInitial, "initial tag\n"); err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintf(rng.Stdout(), "git: repository tagged with v0.0.0\n")
+	format := "git: %s tagged with %s\n"
+	_, _ = fmt.Fprintf(rng.Stdout(), format, branchMaster, tagInitial)
+
+	if err = gitaid.CreateBranch(ctx, sup.root, branchDevelop); err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(rng.Stdout(), "git: branch %s created\n", branchDevelop)
+
+	if err = gitaid.AddAll(ctx, sup.root); err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(rng.Stdout(), "git: all files added\n")
+
+	if err = gitaid.Commit(ctx, sup.root, "chore: scaffold project"); err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(rng.Stdout(), "git: project files committed\n")
 	return nil
 }

@@ -65,6 +65,19 @@ const (
 	CfgPath = "configs" + string(os.PathSeparator) + CfgFile //nolint:gocritic
 )
 
+// Git layout of a repository [Setup.Setup] initializes.
+const (
+	// branchMaster holds the empty root commit and, later, the releases.
+	branchMaster = "master"
+
+	// branchDevelop holds the project files, open to any rewrite before it is
+	// squash-merged into branchMaster.
+	branchDevelop = "develop"
+
+	// tagInitial tags the empty root commit on branchMaster.
+	tagInitial = "v0.0.0"
+)
+
 // ScmNo is the [xdef.EnvScmState] value of a project that is not part of a
 // git repository. The other two states are gitaid's [gitaid.StateClean] and
 // [gitaid.StateDirty], and gitaid reports an error rather than a state for

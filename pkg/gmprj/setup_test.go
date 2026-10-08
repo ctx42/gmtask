@@ -490,6 +490,39 @@ func Test_Setup_Setup(t *testing.T) {
 		assert.NoFileExist(t, prj.Path("go.mod"))
 	})
 
+	t.Run("force commits existing files on develop", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.Close()
+		prj.Chdir()
+
+		opts := []func(*Setup){
+			WithSetupGoModule("project"),
+			WithSetupForce(true),
+		}
+		sup := must.Value(NewSetup("", opts...))
+		rng := tst.Ring()
+		setStructure(t, rng)
+
+		// --- When ---
+		err := sup.Setup(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "done\n", tst.Stdout())
+
+		head := prj.ExeStdout("git", "symbolic-ref", "--short", "HEAD")
+		assert.Equal(t, "develop\n", head)
+		assert.Equal(t, "", prj.ExeStdout("git", "ls-tree", "-r", "master"))
+		files := prj.ExeStdout("git", "ls-tree", "-r", "--name-only", "develop")
+		assert.Contain(t, "file0.txt\n", files)
+		assert.Contain(t, "go.mod\n", files)
+		assert.Equal(t, "", prj.ExeStdout("git", "status", "--porcelain"))
+	})
+
 	t.Run("mkdir creates the project root", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
@@ -693,7 +726,6 @@ func Test_Setup_addScmRepo(t *testing.T) {
 func Test_Setup_initScmRepo(t *testing.T) {
 	t.Run("without remote", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
 
 		prj := gmtest.NewProject(t)
@@ -704,51 +736,65 @@ func Test_Setup_initScmRepo(t *testing.T) {
 		rng := tst.Ring()
 
 		// --- When ---
-		err := sup.initScmRepo(ctx, rng)
+		err := sup.initScmRepo(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		want := "" +
 			"git: repository initialized\n" +
+			"git: empty initial commit made\n" +
+			"git: master tagged with v0.0.0\n" +
+			"git: branch develop created\n" +
 			"git: all files added\n" +
-			"git: initial commit made\n" +
-			"git: repository tagged with v0.0.0\n"
+			"git: project files committed\n"
 		assert.Equal(t, want, tst.Stdout())
 
-		gitLog := prj.ExeStdout("git", "--no-pager", "log", "--decorate=short", "--pretty=oneline", "-n1")
-		assert.Contain(t, "tag: v0.0.0", gitLog)
-		assert.Contain(t, "Initial commit.\n", gitLog)
+		gitLog := prj.ExeStdout("git", "log", "--format=%s%d", "--name-only")
+		want = "" +
+			"chore: scaffold project (HEAD -> develop)\n" +
+			"\n" +
+			"README.md\n" +
+			"Initial commit. (tag: v0.0.0, master)\n"
+		assert.Equal(t, want, gitLog)
+		assert.Equal(t, "", prj.ExeStdout("git", "remote"))
 	})
 
 	t.Run("with remote", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
 
 		prj := gmtest.NewProject(t)
 		prj.CreateFileWith("", "README.md")
 		prj.Close()
 
-		sup := must.Value(NewSetup(prj.Root(), WithSetupGitOrigin(prjkit.GitSSHOrigin)))
+		opt := WithSetupGitOrigin(prjkit.GitSSHOrigin)
+		sup := must.Value(NewSetup(prj.Root(), opt))
 		rng := tst.Ring()
 
 		// --- When ---
-		err := sup.initScmRepo(ctx, rng)
+		err := sup.initScmRepo(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		want := "" +
 			"git: repository initialized\n" +
-			"git: all files added\n" +
 			"git: remote origin added\n" +
-			"git: initial commit made\n" +
-			"git: repository tagged with v0.0.0\n"
-		have := tst.Stdout()
-		assert.Equal(t, want, have)
+			"git: empty initial commit made\n" +
+			"git: master tagged with v0.0.0\n" +
+			"git: branch develop created\n" +
+			"git: all files added\n" +
+			"git: project files committed\n"
+		assert.Equal(t, want, tst.Stdout())
 
-		gitLog := prj.ExeStdout("git", "--no-pager", "log", "--decorate=short", "--pretty=oneline", "-n1")
-		assert.Contain(t, "tag: v0.0.0", gitLog)
-		assert.Contain(t, "Initial commit.\n", gitLog)
+		gitLog := prj.ExeStdout("git", "log", "--format=%s%d", "--name-only")
+		want = "" +
+			"chore: scaffold project (HEAD -> develop)\n" +
+			"\n" +
+			"README.md\n" +
+			"Initial commit. (tag: v0.0.0, master)\n"
+		assert.Equal(t, want, gitLog)
+		origin := prj.ExeStdout("git", "remote", "get-url", "origin")
+		assert.Equal(t, prjkit.GitSSHOrigin+"\n", origin)
 	})
 
 	t.Run("path not existing error", func(t *testing.T) {

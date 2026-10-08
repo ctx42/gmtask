@@ -18,19 +18,34 @@ project and inspecting its build environment.
 
 `gmprj` provides the `:project:*` gomake targets. `:project:setup` creates a
 new project's directory and file layout, initializes the Go module, and sets up
-a git repository with an initial commit tagged `v0.0.0`. The layout is not
+a git repository: an empty initial commit on `master` tagged `v0.0.0`, and the
+project files committed on a `develop` branch made from it. The layout is not
 hardcoded: it is read from a `structure` block you author in your `gomake.yaml`,
 so each team controls exactly what a fresh project looks like.
+
+Because `master` holds only the empty root, every commit on `develop` - the
+scaffold commit included - can be reworded, split, or squashed with
+`git rebase -i master`, then squash-merged into `master` once it is ready:
+
+```shell
+git rebase -i master
+git switch master
+git merge --squash develop
+git commit
+```
+
+A directory that already is a git repository is left as it is: no branch,
+commit, or tag is made.
 
 ## Targets
 
 - **`:project:setup`** — scaffold a project from the `structure` block, init the
-  module, and init/commit/tag git. Refuses a target directory that already
-  holds entries, `.git` included, so a forgotten `-d/--mkdir` cannot scatter
-  the scaffold over an existing project. `-f/--force` says the directory was
-  meant: it lifts that check and lets `-d/--mkdir` adopt a directory that
-  already exists. Flags: `-o/--origin`, `-m/--module`, `-d/--mkdir`,
-  `-f/--force`.
+  module, and set up git with `master` and `develop`. Refuses a target
+  directory that already holds entries, `.git` included, so a forgotten
+  `-d/--mkdir` cannot scatter the scaffold over an existing project.
+  `-f/--force` says the directory was meant: it lifts that check and lets
+  `-d/--mkdir` adopt a directory that already exists. Flags: `-o/--origin`,
+  `-m/--module`, `-d/--mkdir`, `-f/--force`.
 
   The target only parses the flags — `Setup` owns the decisions, so the same
   guards apply to `NewSetup(root, WithSetupMkdir(…), WithSetupForce(…))` used
