@@ -1,3 +1,7 @@
+## v0.11.0 (Thu, 08 Oct 2026 12:52:59 UTC)
+- build(deps): upgrade dotenv, gomake, ring and xflag.
+- feat(gmbump): add -m and -M flags to force minor and major bumps.
+
 ## v0.10.0 (Thu, 08 Oct 2026 12:23:47 UTC)
 - build(deps)!: upgrade gitaid to v0.8.0.
 - feat(gmprj)!: set up new repositories with master and develop.
