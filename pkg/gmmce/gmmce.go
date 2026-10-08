@@ -187,9 +187,10 @@ func skipDir(name string) bool {
 }
 
 // parseExamples parses a Go source file and returns a map of function name to
-// body text for every function whose name starts with "Example". The body text
-// has the outer braces and one level of tab indentation removed; lines that
-// continue a raw string literal are kept verbatim.
+// body text for every example function: one whose name starts with "Example"
+// and that has no receiver, parameters or results. The body text has the
+// outer braces and one level of tab indentation removed; lines that continue
+// a raw string literal are kept verbatim.
 func parseExamples(filename string) (map[string]string, error) {
 	src, err := os.ReadFile(filename) //nolint:gosec
 	if err != nil {
@@ -206,7 +207,9 @@ func parseExamples(filename string) (map[string]string, error) {
 		if !ok || fn.Body == nil {
 			continue
 		}
-		if !strings.HasPrefix(fn.Name.Name, "Example") {
+		// Example functions take no receiver, parameters or results.
+		if !strings.HasPrefix(fn.Name.Name, "Example") || fn.Recv != nil ||
+			fn.Type.Params.NumFields() > 0 || fn.Type.Results.NumFields() > 0 {
 			continue
 		}
 		// Slice by brace byte offsets so single-line bodies keep their content.

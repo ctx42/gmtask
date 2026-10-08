@@ -298,6 +298,24 @@ func Test_parseExamples(t *testing.T) {
 		assert.Len(t, 0, have)
 	})
 
+	t.Run("example-like non-examples skipped", func(t *testing.T) {
+		// --- Given ---
+		src := "" +
+			"package foo\n\n" +
+			"type T struct{}\n\n" +
+			"func (T) ExampleMethod() {}\n\n" +
+			"func ExampleParam(x int) {}\n\n" +
+			"func ExampleResult() int { return 0 }\n"
+		pth := oskit.Write(t, src, t.TempDir(), "foo_test.go")
+
+		// --- When ---
+		have, err := parseExamples(pth)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Len(t, 0, have)
+	})
+
 	t.Run("single-line empty body", func(t *testing.T) {
 		// --- Given ---
 		src := "package foo\n\nfunc Example() {}\n"
