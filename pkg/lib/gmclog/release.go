@@ -77,7 +77,8 @@ func NewSemVerRelease(
 }
 
 // ReleaseFromHeader creates a new instance of Release based on the header line
-// of a release in a changelog.
+// of a release in a changelog. The date must be in RFC 1123 format in the UTC
+// zone, or an error wrapping [ErrInvRelDate] is returned.
 func ReleaseFromHeader(lin string, opts ...func(*Release)) (*Release, error) {
 	parts := releaseHeaderRx.FindStringSubmatch(lin)
 	if len(parts) != 3 {
@@ -88,6 +89,12 @@ func ReleaseFromHeader(lin string, opts ...func(*Release)) (*Release, error) {
 	tim, err := time.Parse(time.RFC1123, parts[2])
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvRelDate, err)
+	}
+	// Parsing accepts any zone abbreviation and fabricates a zero offset for
+	// one it does not know, which would shift the date; only UTC is written.
+	if tim.Location() != time.UTC {
+		format := "%w: zone is not UTC: %s"
+		return nil, fmt.Errorf(format, ErrInvRelDate, parts[2])
 	}
 	return NewRelease(parts[1], tim, opts...)
 }

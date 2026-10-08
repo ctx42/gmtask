@@ -182,6 +182,11 @@ func Test_ReleaseFromHeader_tabular(t *testing.T) {
 			[]error{ErrInvRelDate},
 		},
 		{
+			"error - non UTC zone",
+			"## v0.1.2 (Sun, 02 Jan 2000 03:04:06 CET)",
+			[]error{ErrInvRelDate},
+		},
+		{
 			"error - empty line",
 			"",
 			[]error{ErrInvRelHeader},
