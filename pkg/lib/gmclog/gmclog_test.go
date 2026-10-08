@@ -225,6 +225,19 @@ func Test_ReadReleases(t *testing.T) {
 		assert.Nil(t, cl)
 	})
 
+	t.Run("error - names the bad line", func(t *testing.T) {
+		// --- Given ---
+		src := "# Changelog\n\n## v0.1.0 (not-a-date)\n"
+		pth := oskit.Create(t, src, t.TempDir(), "CL.md")
+
+		// --- When ---
+		cl, err := ReadReleases(pth)
+
+		// --- Then ---
+		assert.ErrorContain(t, "parse release header on line 3", err)
+		assert.Nil(t, cl)
+	})
+
 	t.Run("error - scan fails", func(t *testing.T) {
 		// --- Given ---
 		pth := oskit.Create(t, strings.Repeat("x", 70000), t.TempDir(), "CL.md")

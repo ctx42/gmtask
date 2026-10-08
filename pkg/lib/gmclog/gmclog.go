@@ -107,15 +107,17 @@ func ReadReleases(pth string, elems ...string) (*Changelog, error) {
 		return nil, err
 	}
 
-	curr := -1
+	curr, num := -1, 0
 	var preamble []string
 	scn := bufio.NewScanner(bytes.NewReader(cl.contents))
 	for scn.Scan() {
+		num++
 		lin := scn.Text()
 		if releaseLineRx.MatchString(lin) {
 			var rel *Release
 			if rel, err = ReleaseFromHeader(lin, WithNoFormatting); err != nil {
-				return nil, fmt.Errorf("parse release header: %w", err)
+				format := "parse release header on line %d: %w"
+				return nil, fmt.Errorf(format, num, err)
 			}
 			cl.Releases = append(cl.Releases, rel)
 			curr = len(cl.Releases) - 1
