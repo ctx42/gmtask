@@ -7,6 +7,7 @@ package gmmce
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"go/ast"
@@ -30,6 +31,10 @@ const (
 	// markerSfx is the suffix closing a gmmce injection marker.
 	markerSfx = " -->"
 )
+
+// errFenceNotClosed is returned when the code fence following a marker is
+// never closed; replacing it would swallow the rest of the document.
+var errFenceNotClosed = errors.New("code fence after marker not closed")
 
 // Doc collects Markdown documentation targets.
 type Doc struct{} //gomake:ns_root
@@ -99,7 +104,10 @@ func (Doc) Mce(ctx context.Context, rng *ring.Ring) error {
 		_, _ = fmt.Fprintf(rng.Stdout(), "Found %s\n", k)
 	}
 
-	updated := injectExamples(string(data), examples)
+	updated, err := injectExamples(string(data), examples)
+	if err != nil {
+		return fmt.Errorf("inject examples: %w", err)
+	}
 
 	_, _ = fmt.Fprintf(rng.Stdout(), "Writing %s\n", file)
 	//nolint:gosec // Path is resolved earlier; mode is intentional.
@@ -195,9 +203,14 @@ func parseExamples(filename string) (map[string]string, error) {
 // gmmce markers with the corresponding example bodies from examples. If a code
 // fence does not already exist after a marker, one is inserted. Markers with no
 // matching entry in examples are left unchanged, and so are markers inside a
-// code block. The inserted fence is longer than any backtick run in the body,
-// so a body holding a fence of its own cannot close it early.
-func injectExamples(content string, examples map[string]string) string {
+// code block. A fence following a marker that is never closed yields an error
+// wrapping errFenceNotClosed. The inserted fence is longer than any backtick
+// run in the body, so a body holding a fence of its own cannot close it early.
+func injectExamples(
+	content string,
+	examples map[string]string,
+) (string, error) {
+
 	lines := strings.Split(content, "\n")
 	result := make([]string, 0, len(lines))
 	fence := "" // Fence of the code block being copied; empty outside one.
@@ -239,13 +252,16 @@ func injectExamples(content string, examples map[string]string) string {
 				for i < len(lines) && !closesFence(lines[i], old) {
 					i++ // Skip the fence body.
 				}
+				if i == len(lines) {
+					return "", fmt.Errorf("%w: %s", errFenceNotClosed, key)
+				}
 			}
 		}
 
 		fen := bodyFence(body)
 		result = append(result, fen+"go", body, fen)
 	}
-	return strings.Join(result, "\n")
+	return strings.Join(result, "\n"), nil
 }
 
 // openFence returns the fence (a run of three or more backticks or tildes)

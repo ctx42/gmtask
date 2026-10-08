@@ -284,9 +284,10 @@ func Test_injectExamples(t *testing.T) {
 		input := "text\n\n<!-- gmmce:pkg1/Example_case1 -->\n\nmore"
 
 		// --- When ---
-		have := injectExamples(input, examples)
+		have, err := injectExamples(input, examples)
 
 		// --- Then ---
+		assert.NoError(t, err)
 		want := "text\n\n" +
 			"<!-- gmmce:pkg1/Example_case1 -->\n" +
 			"```go\n" +
@@ -304,9 +305,10 @@ func Test_injectExamples(t *testing.T) {
 			"after"
 
 		// --- When ---
-		have := injectExamples(input, examples)
+		have, err := injectExamples(input, examples)
 
 		// --- Then ---
+		assert.NoError(t, err)
 		want := "<!-- gmmce:pkg1/Example_case1 -->\n" +
 			"```go\n" +
 			"fmt.Println(\"hello\")\n" +
@@ -325,9 +327,10 @@ func Test_injectExamples(t *testing.T) {
 			"after"
 
 		// --- When ---
-		have := injectExamples(input, examples)
+		have, err := injectExamples(input, examples)
 
 		// --- Then ---
+		assert.NoError(t, err)
 		want := "<!-- gmmce:pkg1/Example_case1 -->\n" +
 			"```go\n" +
 			"fmt.Println(\"hello\")\n" +
@@ -341,9 +344,10 @@ func Test_injectExamples(t *testing.T) {
 		input := "<!-- gmmce:unknown/Func -->\n```go\nold\n```"
 
 		// --- When ---
-		have := injectExamples(input, examples)
+		have, err := injectExamples(input, examples)
 
 		// --- Then ---
+		assert.NoError(t, err)
 		assert.Equal(t, input, have)
 	})
 
@@ -360,9 +364,10 @@ func Test_injectExamples(t *testing.T) {
 			"after"
 
 		// --- When ---
-		have := injectExamples(input, exs)
+		have, err := injectExamples(input, exs)
 
 		// --- Then ---
+		assert.NoError(t, err)
 		assert.Equal(t, input, have)
 	})
 
@@ -379,10 +384,28 @@ func Test_injectExamples(t *testing.T) {
 			"```\n"
 
 		// --- When ---
-		have := injectExamples(input, examples)
+		have, err := injectExamples(input, examples)
 
 		// --- Then ---
+		assert.NoError(t, err)
 		assert.Equal(t, input, have)
+	})
+
+	t.Run("error - fence not closed", func(t *testing.T) {
+		// --- Given ---
+		input := "" +
+			"<!-- gmmce:pkg1/Example_case1 -->\n" +
+			"```go\n" +
+			"old\n" +
+			"# Next section\n"
+
+		// --- When ---
+		have, err := injectExamples(input, examples)
+
+		// --- Then ---
+		assert.ErrorIs(t, errFenceNotClosed, err)
+		assert.ErrorContain(t, "pkg1/Example_case1", err)
+		assert.Equal(t, "", have)
 	})
 
 	t.Run("no markers unchanged", func(t *testing.T) {
@@ -390,9 +413,10 @@ func Test_injectExamples(t *testing.T) {
 		input := "# Title\n\nSome text.\n"
 
 		// --- When ---
-		have := injectExamples(input, examples)
+		have, err := injectExamples(input, examples)
 
 		// --- Then ---
+		assert.NoError(t, err)
 		assert.Equal(t, input, have)
 	})
 
@@ -406,9 +430,10 @@ func Test_injectExamples(t *testing.T) {
 			"<!-- gmmce:pkg/ExampleB -->\n"
 
 		// --- When ---
-		have := injectExamples(input, exs)
+		have, err := injectExamples(input, exs)
 
 		// --- Then ---
+		assert.NoError(t, err)
 		want := "<!-- gmmce:pkg/ExampleA -->\n" +
 			"```go\n" +
 			"bodyA\n" +
