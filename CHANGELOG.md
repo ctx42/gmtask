@@ -1,3 +1,7 @@
+## v0.10.0 (Thu, 08 Oct 2026 12:23:47 UTC)
+- build(deps)!: upgrade gitaid to v0.8.0.
+- feat(gmprj)!: set up new repositories with master and develop.
+
 ## v0.9.0 (Mon, 28 Sep 2026 10:23:26 UTC)
 - build(deps): bump gomake to 0.27.1.
 - fix(gmbump): skip the push only when origin is unset.
