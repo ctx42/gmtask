@@ -189,8 +189,16 @@ func TestLogFilename(rng *ring.Ring) string {
 // directory and copies src out of the working tree, so it works with hosts
 // that reject "git archive --remote" such as GitHub. The empty string used for
 // branch means the repository's default branch. When ctx has no deadline set,
-// one of 60 seconds is applied.
-func gitGetFile(ctx context.Context, repo, branch, src, dst string) error {
+// one of 60 seconds is applied. Git runs with the environment of rng.
+func gitGetFile(
+	ctx context.Context,
+	rng *ring.Ring,
+	repo string,
+	branch string,
+	src string,
+	dst string,
+) error {
+
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, 60*time.Second)
@@ -217,13 +225,14 @@ func gitGetFile(ctx context.Context, repo, branch, src, dst string) error {
 
 	eout := &bytes.Buffer{}
 	cmd := exec.CommandContext(ctx, "git", args...) //nolint:gosec
+	cmd.Env = rng.EnvAll()
 	cmd.Stderr = eout
 	if err = cmd.Run(); err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
-			return ctxErr
+			return fmt.Errorf("git clone %s: %w", repo, ctxErr)
 		}
 		msg := strings.TrimSpace(eout.String())
-		return fmt.Errorf("%w: git clone %s: %s", err, repo, msg)
+		return fmt.Errorf("git clone %s: %s: %w", repo, msg, err)
 	}
 
 	data, err := os.ReadFile(filepath.Join(tmp, src)) //nolint:gosec

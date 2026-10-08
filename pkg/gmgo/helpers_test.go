@@ -290,12 +290,13 @@ func Test_TestLogFilename(t *testing.T) {
 func Test_gitGetFile(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
+		rng := ringtest.New(t).Ring()
 		repo := setupConfigRepo(t)
 		dst := filepath.Join(t.TempDir(), ".golangci.yml")
 
 		// --- When ---
-		err := gitGetFile(ctx, repo, "master", ".golangci.yml", dst)
+		err := gitGetFile(ctx, rng, repo, "master", ".golangci.yml", dst)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -305,12 +306,13 @@ func Test_gitGetFile(t *testing.T) {
 
 	t.Run("error - destination directory missing", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
+		rng := ringtest.New(t).Ring()
 		repo := setupConfigRepo(t)
 		dst := filepath.Join(t.TempDir(), "missing", ".golangci.yml")
 
 		// --- When ---
-		err := gitGetFile(ctx, repo, "master", ".golangci.yml", dst)
+		err := gitGetFile(ctx, rng, repo, "master", ".golangci.yml", dst)
 
 		// --- Then ---
 		assert.ErrorIs(t, fs.ErrNotExist, err)
@@ -318,25 +320,61 @@ func Test_gitGetFile(t *testing.T) {
 
 	t.Run("error - clone fails", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
+		rng := ringtest.New(t).Ring()
 		repo := filepath.Join(t.TempDir(), "not-a-repo")
 		dst := filepath.Join(t.TempDir(), ".golangci.yml")
 
 		// --- When ---
-		err := gitGetFile(ctx, repo, "master", ".golangci.yml", dst)
+		err := gitGetFile(ctx, rng, repo, "master", ".golangci.yml", dst)
 
 		// --- Then ---
-		assert.ErrorContain(t, "git clone", err)
+		assert.ErrorContain(t, "git clone "+repo+": ", err)
+		assert.ErrorContain(t, "exit status 128", err)
+	})
+
+	t.Run("uses ring environment", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		repo := setupConfigRepo(t)
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("GIT_CONFIG_COUNT", "1")
+		rng.EnvSet("GIT_CONFIG_KEY_0", "url."+repo+".insteadOf")
+		rng.EnvSet("GIT_CONFIG_VALUE_0", "alias:cfg")
+		dst := filepath.Join(t.TempDir(), ".golangci.yml")
+
+		// --- When ---
+		err := gitGetFile(ctx, rng, "alias:cfg", "", ".golangci.yml", dst)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.FileExist(t, dst)
+	})
+
+	t.Run("error - context cancelled", func(t *testing.T) {
+		// --- Given ---
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		repo := setupConfigRepo(t)
+		dst := filepath.Join(t.TempDir(), ".golangci.yml")
+
+		// --- When ---
+		err := gitGetFile(ctx, ringtest.New(t).Ring(), repo, "", "x", dst)
+
+		// --- Then ---
+		assert.ErrorIs(t, context.Canceled, err)
+		assert.ErrorContain(t, "git clone "+repo, err)
 	})
 
 	t.Run("error - source not in repo", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
+		rng := ringtest.New(t).Ring()
 		repo := setupConfigRepo(t)
 		dst := filepath.Join(t.TempDir(), "out.yml")
 
 		// --- When ---
-		err := gitGetFile(ctx, repo, "master", "missing.yml", dst)
+		err := gitGetFile(ctx, rng, repo, "master", "missing.yml", dst)
 
 		// --- Then ---
 		assert.ErrorIs(t, fs.ErrNotExist, err)
