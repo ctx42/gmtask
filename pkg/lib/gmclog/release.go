@@ -18,8 +18,9 @@ var releaseHeaderRx = regexp.MustCompile(`^## (.*?) \((.+)\)$`)
 
 // releaseLineRx is a regular expression recognizing a changelog line as a
 // release header: one whose title starts with a version number. Other
-// second-level headers ending in a parenthesized note are release content.
-var releaseLineRx = regexp.MustCompile(`^##\s+v?\d\S*\s+\(.+\)$`)
+// second-level headers ending in a parenthesized note are release content. It
+// matches a single line or, being multi-line, a line within a whole file.
+var releaseLineRx = regexp.MustCompile(`(?m)^##[ \t]+v?\d\S*[ \t]+\(.+\)\r?$`)
 
 // WithNoFormatting is a constructor option turning off change-line formatting.
 func WithNoFormatting(rel *Release) { rel.formatChanges = false }

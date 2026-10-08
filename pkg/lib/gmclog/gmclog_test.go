@@ -90,6 +90,39 @@ func Test_ReadChangelog(t *testing.T) {
 		assert.Equal(t, want, have)
 	})
 
+	t.Run("keeps title above releases", func(t *testing.T) {
+		// --- Given ---
+		src := "" +
+			"# Changelog\n" +
+			"\n" +
+			"## v0.1.0 (Sun, 02 Jan 2000 00:00:00 UTC)\n" +
+			"- Change 1.\n" +
+			"\n"
+		pth := oskit.Create(t, src, t.TempDir(), "CHANGELOG.md")
+
+		// --- When ---
+		clg, err := ReadChangelog(pth)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "# Changelog\n\n", string(clg.preamble))
+		assert.Equal(t, src[len("# Changelog\n\n"):], string(clg.contents))
+	})
+
+	t.Run("title without releases", func(t *testing.T) {
+		// --- Given ---
+		src := "# Changelog\n\nNothing released yet.\n"
+		pth := oskit.Create(t, src, t.TempDir(), "CHANGELOG.md")
+
+		// --- When ---
+		clg, err := ReadChangelog(pth)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "# Changelog\n\n", string(clg.preamble))
+		assert.Equal(t, "Nothing released yet.\n", string(clg.contents))
+	})
+
 	t.Run("error - not existing file", func(t *testing.T) {
 		// --- Given ---
 		relPath := "testdata/not_existing.md"
@@ -434,6 +467,39 @@ func Test_Changelog_Save(t *testing.T) {
 		assert.True(t, lst.Mode()&os.ModeSymlink != 0)
 		want := "## v0.1.0 (Sun, 02 Jan 2000 00:00:00 UTC)\n\n"
 		assert.Equal(t, want, oskit.ReadFileStr(t, dst))
+	})
+
+	t.Run("new release below title", func(t *testing.T) {
+		// --- Given ---
+		src := "" +
+			"# Changelog\n" +
+			"\n" +
+			"## v0.1.0 (Sun, 02 Jan 2000 00:00:00 UTC)\n" +
+			"- Change 1.\n" +
+			"\n"
+		pth := oskit.Create(t, src, t.TempDir(), "CHANGELOG.md")
+
+		tim := must.Value(time.Parse(time.RFC3339, "2000-01-02T01:00:00Z"))
+		rel := must.Value(NewRelease("v0.1.1", tim))
+		rel.AddChange("Change 2")
+		clg := must.Value(ReadChangelog(pth))
+		clg.AddRelease(rel)
+
+		// --- When ---
+		err := clg.Save()
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"# Changelog\n" +
+			"\n" +
+			"## v0.1.1 (Sun, 02 Jan 2000 01:00:00 UTC)\n" +
+			"- Change 2.\n" +
+			"\n" +
+			"## v0.1.0 (Sun, 02 Jan 2000 00:00:00 UTC)\n" +
+			"- Change 1.\n" +
+			"\n"
+		assert.Equal(t, want, oskit.ReadFileStr(t, pth))
 	})
 
 	t.Run("error - create fails", func(t *testing.T) {

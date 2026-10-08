@@ -29,12 +29,13 @@ followed by the lines describing its changes:
 - Change 2.
 ```
 
-There are two ways in. Use `ReadChangelog` to prepend new releases to the top of
-a file without parsing what is already there — the cheap path for release
-tooling. Use `ReadReleases` to parse existing releases into structured values
-for inspection or editing. `AddRelease` sorts the structured `Releases` slice
-youngest to oldest by semantic version; unparsed body text kept by
-`ReadChangelog` is written unchanged.
+There are two ways in. Use `ReadChangelog` to add new releases above the
+existing ones without parsing them — the cheap path for release tooling. A
+preamble such as a `# Changelog` title stays on top. Use `ReadReleases` to
+parse existing releases into structured values for inspection or editing.
+`AddRelease` sorts the structured `Releases` slice youngest to oldest by
+semantic version; unparsed body text kept by `ReadChangelog` is written
+unchanged.
 
 ## Features
 
@@ -80,7 +81,7 @@ fmt.Print(rel.String())
 
 `ReadChangelog` requires the file to exist; `CreateFile` makes an empty one if
 it doesn't. `AddRelease` accepts one or more releases and re-sorts, and `Save`
-writes the new releases above the existing contents.
+writes the new releases above the existing ones, below any `# ` title.
 
 ```go
 if err := gmclog.CreateFile("CHANGELOG.md"); err != nil {

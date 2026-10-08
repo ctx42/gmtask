@@ -11,8 +11,8 @@
 //	- Change 1.
 //	- Change 2.
 //
-// Use [ReadChangelog] to prepend releases without parsing the existing file,
-// or [ReadReleases] to parse the releases for inspection or editing.
+// Use [ReadChangelog] to add releases above the existing ones without parsing
+// them, or [ReadReleases] to parse the releases for inspection or editing.
 // [Changelog.AddRelease] sorts the structured [Changelog.Releases] slice
 // youngest to oldest by [Release.Compare]; unparsed body bytes left by
 // [ReadChangelog] are written as-is and are not reordered.
@@ -73,13 +73,27 @@ type Changelog struct {
 	contents []byte     // The changelog file as it is now.
 }
 
-// ReadChangelog reads the changelog file pointed by pth. In contrast to
-// [ReadReleases], the contents of the changelog are not examined in any way,
-// and the added releases are simply added to the top of the file.
+// ReadChangelog reads the changelog file pointed to by pth. In contrast to
+// [ReadReleases], the releases in the changelog are not parsed:
+// [Changelog.Save] writes the added releases above the existing ones, below a
+// preamble such as a "# Changelog" title. The preamble is everything before
+// the first release header or, in a file with none, a leading "# " title line
+// and the blank lines after it.
 //
 // It will not return an error if the read changelog is in an unsupported
 // format.
 func ReadChangelog(pth string) (*Changelog, error) {
+	clg, err := readChangelog(pth)
+	if err != nil {
+		return nil, err
+	}
+	clg.preamble, clg.contents = splitPreamble(clg.contents)
+	return clg, nil
+}
+
+// readChangelog reads the changelog file pointed to by pth without examining
+// its contents.
+func readChangelog(pth string) (*Changelog, error) {
 	var err error
 	if pth, err = filepath.Abs(pth); err != nil {
 		return nil, fmt.Errorf("resolve changelog path: %w", err)
@@ -89,11 +103,34 @@ func ReadChangelog(pth string) (*Changelog, error) {
 	if res, rerr := filepath.EvalSymlinks(pth); rerr == nil {
 		pth = res
 	}
-	cl := &Changelog{pth: pth}
-	if cl.contents, err = os.ReadFile(pth); err != nil { //nolint:gosec
+	clg := &Changelog{pth: pth}
+	if clg.contents, err = os.ReadFile(pth); err != nil { //nolint:gosec
 		return nil, fmt.Errorf("read changelog: %w", err)
 	}
-	return cl, nil
+	return clg, nil
+}
+
+// splitPreamble splits data into the preamble preceding the releases and the
+// rest. See [ReadChangelog] for what the preamble is.
+func splitPreamble(data []byte) (preamble, rest []byte) {
+	if loc := releaseLineRx.FindIndex(data); loc != nil {
+		return data[:loc[0]], data[loc[0]:]
+	}
+	if !bytes.HasPrefix(data, []byte("# ")) {
+		return nil, data
+	}
+	end := bytes.IndexByte(data, '\n') + 1
+	if end == 0 {
+		return data, nil
+	}
+	for end < len(data) {
+		nxt := bytes.IndexByte(data[end:], '\n') + 1
+		if nxt == 0 || len(bytes.TrimSpace(data[end:end+nxt])) > 0 {
+			break
+		}
+		end += nxt
+	}
+	return data[:end], data[end:]
 }
 
 // ReadReleases reads the changelog file pointed by pth (joined with elems when
@@ -102,7 +139,7 @@ func ReadChangelog(pth string) (*Changelog, error) {
 // incompatible.
 func ReadReleases(pth string, elems ...string) (*Changelog, error) {
 	pth = filepath.Join(append([]string{pth}, elems...)...)
-	cl, err := ReadChangelog(pth)
+	cl, err := readChangelog(pth)
 	if err != nil {
 		return nil, err
 	}
