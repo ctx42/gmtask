@@ -96,6 +96,8 @@ Run from the repository root:
 ```shell
 gomake :bump        # propose the release the commits imply
 gomake :bump -p     # force a patch bump instead
+gomake :bump -m     # force a minor bump instead
+gomake :bump -M     # force a major bump instead (minor while on 0.x)
 gomake :bump -h     # show help
 ```
 

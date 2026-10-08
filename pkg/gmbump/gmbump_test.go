@@ -6,6 +6,7 @@ package gmbump
 import (
 	"bytes"
 	"context"
+	"flag"
 	"io"
 	"path/filepath"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	"github.com/ctx42/testing/pkg/must"
 	"github.com/ctx42/testkit/pkg/oskit"
 	"github.com/ctx42/testkit/pkg/prjkit"
+	"github.com/ctx42/xflag/pkg/xflag"
 
 	"github.com/ctx42/gmtask/internal/gmtest"
 	"github.com/ctx42/gmtask/pkg/gmgo"
@@ -96,6 +98,23 @@ func Test_BumpTarget(t *testing.T) {
 		// --- Then ---
 		assert.ErrorContain(t, "flag provided but not defined", err)
 		assert.Contain(t, "Usage of :bump:", tst.Stderr())
+	})
+
+	t.Run("error - conflicting bump flags", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t)
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+
+		rng := tst.Ring("-p", "--minor")
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrBumpFlags, err)
+		assert.ErrorContain(t, "--patch and --minor", err)
 	})
 
 	t.Run("error - not git repo", func(t *testing.T) {
@@ -780,6 +799,75 @@ func Test_BumpTarget(t *testing.T) {
 		assert.Equal(t, "- commit 1.", rel.Changes[0])
 	})
 
+	t.Run("bump minor version", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.1.0")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("", "fix: a defect")
+		prj.Close()
+
+		rng := tst.Ring("-m")
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "Enter a version number [v0.2.0]: ", tst.Stdout())
+		assert.Equal(t, "v0.2.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+	})
+
+	t.Run("bump major version", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v1.1.0")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("", "fix: a defect")
+		prj.Close()
+
+		rng := tst.Ring("-M")
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "Enter a version number [v2.0.0]: ", tst.Stdout())
+		assert.Equal(t, "v2.0.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+	})
+
+	t.Run("major bump on 0.x advances the minor", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.1.0")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("", "fix: a defect")
+		prj.Close()
+
+		rng := tst.Ring("--major")
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "Enter a version number [v0.2.0]: ", tst.Stdout())
+		assert.Equal(t, "v0.2.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+	})
+
 	t.Run("force custom tag", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
@@ -1119,4 +1207,55 @@ func Test_BumpTarget_proposal(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "v0.9.1", have.Original())
 	})
+}
+
+func Test_forcedBump(t *testing.T) {
+	t.Run("error - two levels forced", func(t *testing.T) {
+		// --- Given ---
+		fs := xflag.NewFlagSet("test", flag.ContinueOnError)
+		fs.BoolSL(gitaid.BumpPatch, "p", false, "")
+		fs.BoolSL(gitaid.BumpMinor, "m", false, "")
+		fs.BoolSL(gitaid.BumpMajor, "M", false, "")
+		must.Nil(fs.Parse([]string{"-m", "-M"}))
+
+		// --- When ---
+		have, err := forcedBump(fs)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrBumpFlags, err)
+		assert.ErrorContain(t, "--minor and --major", err)
+		assert.Empty(t, have)
+	})
+}
+
+func Test_forcedBump_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		args []string
+		want string
+	}{
+		{"none", nil, ""},
+		{"patch", []string{"-p"}, gitaid.BumpPatch},
+		{"minor", []string{"--minor"}, gitaid.BumpMinor},
+		{"major", []string{"-M"}, gitaid.BumpMajor},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- Given ---
+			fs := xflag.NewFlagSet("test", flag.ContinueOnError)
+			fs.BoolSL(gitaid.BumpPatch, "p", false, "")
+			fs.BoolSL(gitaid.BumpMinor, "m", false, "")
+			fs.BoolSL(gitaid.BumpMajor, "M", false, "")
+			must.Nil(fs.Parse(tc.args))
+
+			// --- When ---
+			have, err := forcedBump(fs)
+
+			// --- Then ---
+			assert.NoError(t, err)
+			assert.Equal(t, tc.want, have)
+		})
+	}
 }

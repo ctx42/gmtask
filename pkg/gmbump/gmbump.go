@@ -7,9 +7,10 @@
 // the same one [gitaid.Derive] stamps into development builds, so the tag cut
 // here can never name a different release than those builds pointed at. The
 // bump comes from the Conventional Commits since the latest version tag, or
-// from -p to force a patch. You confirm or override the proposal, and it then
-// prepends a CHANGELOG.md entry built from the commits since that tag, writes
-// the version to a VER file, then commits, tags, and pushes to origin.
+// from -p, -m or -M to force a patch, minor or major bump; on a 0.x version a
+// major bump advances the minor. You confirm or override the proposal, and it
+// then prepends a CHANGELOG.md entry built from the commits since that tag,
+// writes the version to a VER file, then commits, tags, and pushes to origin.
 //
 // A release needs a clean working tree and a branch to cut from. The target
 // refuses a detached HEAD outright, and on a branch other than "master" or
@@ -59,6 +60,10 @@ var (
 	// ErrNotDefBranch is returned when a release from a branch other than
 	// "master" or "main" was not approved.
 	ErrNotDefBranch = errors.New("not a default branch")
+
+	// ErrBumpFlags is returned when more than one of the flags forcing a bump
+	// level is set.
+	ErrBumpFlags = errors.New("conflicting bump flags")
 )
 
 // Bump runs the ":bump" target against the current working directory. It is the
@@ -73,9 +78,10 @@ func Bump(ctx context.Context, rng *ring.Ring) error {
 // and pushes to origin. The empty string for repo means the current working
 // directory.
 //
-// It returns [ErrNotClean] for a dirty working tree,
-// [gitaid.ErrDetached] for a detached HEAD, and [ErrNotDefBranch] when a
-// release from a branch other than "master" or "main" is not approved.
+// It returns [ErrBumpFlags] when more than one bump level is forced,
+// [ErrNotClean] for a dirty working tree, [gitaid.ErrDetached] for a detached
+// HEAD, and [ErrNotDefBranch] when a release from a branch other than "master"
+// or "main" is not approved.
 //
 //nolint:cyclop
 func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
@@ -87,7 +93,9 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		_, _ = fmt.Fprint(rng.Stderr(), head+fs.HelpOptions())
 	}
 	fs.BoolSL("help", "h", false, "show help")
-	fs.BoolSL("patch", "p", false, "force a patch version bump")
+	fs.BoolSL(gitaid.BumpPatch, "p", false, "force a patch version bump")
+	fs.BoolSL(gitaid.BumpMinor, "m", false, "force a minor version bump")
+	fs.BoolSL(gitaid.BumpMajor, "M", false, "force a major version bump")
 	if err := fs.Parse(rng.Args()); err != nil {
 		return err
 	}
@@ -95,6 +103,10 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	if fs.GetBool("help") {
 		fs.Usage()
 		return nil
+	}
+	bump, err := forcedBump(fs)
+	if err != nil {
+		return err
 	}
 
 	clean, err := gitaid.IsClean(ctx, repo)
@@ -117,10 +129,6 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 
 	// The same derivation every other target uses, so the tag this offers to
 	// cut is the release the development builds were already heading to.
-	var bump string
-	if fs.GetBool("patch") {
-		bump = gitaid.BumpPatch
-	}
 	ver, err := gmgo.ProjectVersion(ctx, rng, repo, bump)
 	if err != nil {
 		return fmt.Errorf("resolve version: %w", err)
@@ -316,4 +324,25 @@ func nextRelease(ver gitaid.Version) (*semver.Version, error) {
 	}
 	core := fmt.Sprintf("v%d.%d.%d", sem.Major(), sem.Minor(), sem.Patch())
 	return semver.NewVersion(core)
+}
+
+// forcedBump returns the bump level the flags force, or the empty string when
+// none does. Each level is forced by the flag of the same long name. It
+// returns [ErrBumpFlags] when more than one is set.
+func forcedBump(fs *xflag.FlagSet) (string, error) {
+	var bump string
+	for _, lvl := range []string{
+		gitaid.BumpPatch,
+		gitaid.BumpMinor,
+		gitaid.BumpMajor,
+	} {
+		if !fs.GetBool(lvl) {
+			continue
+		}
+		if bump != "" {
+			return "", fmt.Errorf("%w: --%s and --%s", ErrBumpFlags, bump, lvl)
+		}
+		bump = lvl
+	}
+	return bump, nil
 }
