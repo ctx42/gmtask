@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -42,27 +43,31 @@ func Test_CreateFile(t *testing.T) {
 		assert.Equal(t, "abc", oskit.ReadFileStr(t, pth))
 	})
 
-	t.Run("error - stat fails for other reason", func(t *testing.T) {
+	t.Run("error - parent is a file", func(t *testing.T) {
 		// --- Given ---
 		fil := oskit.Create(t, "x", t.TempDir(), "file")
-		pth := filepath.Join(fil, "child")
 
 		// --- When ---
-		err := CreateFile(pth)
+		err := CreateFile(filepath.Join(fil, "child"))
 
 		// --- Then ---
-		assert.ErrorContain(t, "stat file", err)
+		assert.ErrorIs(t, syscall.ENOTDIR, err)
 	})
 
-	t.Run("error - create fails", func(t *testing.T) {
-		// --- Given ---
-		pth := filepath.Join(t.TempDir(), "nope", "CHANGELOG.md")
-
+	t.Run("error - parent does not exist", func(t *testing.T) {
 		// --- When ---
-		err := CreateFile(pth)
+		err := CreateFile(filepath.Join(t.TempDir(), "nope", "CHANGELOG.md"))
 
 		// --- Then ---
-		assert.ErrorContain(t, "create file", err)
+		assert.ErrorIs(t, os.ErrNotExist, err)
+	})
+
+	t.Run("error - path is a directory", func(t *testing.T) {
+		// --- When ---
+		err := CreateFile(t.TempDir())
+
+		// --- Then ---
+		assert.ErrorContain(t, "is a directory", err)
 	})
 }
 

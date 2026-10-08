@@ -45,21 +45,22 @@ var (
 	ErrInvRelVersion = errors.New("invalid release version")
 )
 
-// CreateFile creates an empty file if it doesn't exist.
+// CreateFile creates an empty file at pth when none exists; an existing file
+// is left untouched. Creating and checking happen in one open call, so a file
+// created concurrently by another process is never truncated. It returns an
+// error when pth is a directory.
 func CreateFile(pth string) error {
-	_, err := os.Stat(pth)
-	if err == nil {
-		return nil
-	}
-	if !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("stat file: %w", err)
-	}
-	fil, err := os.Create(pth) //nolint:gosec
+	fil, err := os.OpenFile(pth, os.O_RDONLY|os.O_CREATE, 0o666) //nolint:gosec
 	if err != nil {
 		return fmt.Errorf("create file: %w", err)
 	}
-	if err = fil.Close(); err != nil {
-		return fmt.Errorf("close file: %w", err)
+	inf, err := fil.Stat()
+	_ = fil.Close()
+	if err != nil {
+		return fmt.Errorf("stat file: %w", err)
+	}
+	if inf.IsDir() {
+		return fmt.Errorf("create file: %s: is a directory", pth)
 	}
 	return nil
 }
