@@ -83,6 +83,11 @@ func ReadChangelog(pth string) (*Changelog, error) {
 	if pth, err = filepath.Abs(pth); err != nil {
 		return nil, fmt.Errorf("resolve changelog path: %w", err)
 	}
+	// Save replaces the file by renaming, which would replace a symbolic link
+	// rather than update its target; resolve the link up front.
+	if res, rerr := filepath.EvalSymlinks(pth); rerr == nil {
+		pth = res
+	}
 	cl := &Changelog{pth: pth}
 	if cl.contents, err = os.ReadFile(pth); err != nil { //nolint:gosec
 		return nil, fmt.Errorf("read changelog: %w", err)

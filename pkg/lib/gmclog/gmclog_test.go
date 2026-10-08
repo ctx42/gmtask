@@ -376,6 +376,30 @@ func Test_Changelog_Save(t *testing.T) {
 		assert.Equal(t, os.FileMode(0o644), oskit.Stat(t, pth).Mode().Perm())
 	})
 
+	t.Run("updates symlink target", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		docs := oskit.MkdirAll(t, dir, "docs")
+		dst := oskit.Create(t, "", docs, "CHANGELOG.md")
+		lnk := filepath.Join(dir, "CHANGELOG.md")
+		must.Nil(os.Symlink(dst, lnk))
+
+		tim := must.Value(time.Parse(time.RFC3339, "2000-01-02T00:00:00Z"))
+		rel := must.Value(NewRelease("v0.1.0", tim))
+		clg := must.Value(ReadChangelog(lnk))
+		clg.AddRelease(rel)
+
+		// --- When ---
+		err := clg.Save()
+
+		// --- Then ---
+		assert.NoError(t, err)
+		lst := must.Value(os.Lstat(lnk))
+		assert.True(t, lst.Mode()&os.ModeSymlink != 0)
+		want := "## v0.1.0 (Sun, 02 Jan 2000 00:00:00 UTC)\n\n"
+		assert.Equal(t, want, oskit.ReadFileStr(t, dst))
+	})
+
 	t.Run("error - create fails", func(t *testing.T) {
 		// --- Given ---
 		pth := filepath.Join(t.TempDir(), "nope", "CHANGELOG.md")
