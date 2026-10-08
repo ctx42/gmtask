@@ -50,9 +50,16 @@ const (
 	branchMain = "main"
 )
 
-// ErrNotDefBranch is an error returned when a release from a branch other
-// than "master" or "main" was not approved.
-var ErrNotDefBranch = errors.New("not a default branch")
+// Sentinel errors.
+var (
+	// ErrNotClean is returned when the working tree has uncommitted changes or
+	// untracked files.
+	ErrNotClean = errors.New("working directory not clean")
+
+	// ErrNotDefBranch is returned when a release from a branch other than
+	// "master" or "main" was not approved.
+	ErrNotDefBranch = errors.New("not a default branch")
+)
 
 // Bump runs the ":bump" target against the current working directory. It is the
 // entry point registered with gomake; see [BumpTarget] for the behavior.
@@ -66,7 +73,7 @@ func Bump(ctx context.Context, rng *ring.Ring) error {
 // and pushes to origin. The empty string for repo means the current working
 // directory.
 //
-// It returns [gitaid.ErrNotClean] for a dirty working tree,
+// It returns [ErrNotClean] for a dirty working tree,
 // [gitaid.ErrDetached] for a detached HEAD, and [ErrNotDefBranch] when a
 // release from a branch other than "master" or "main" is not approved.
 //
@@ -95,7 +102,7 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		return fmt.Errorf("check repository state: %w", err)
 	}
 	if !clean {
-		return gitaid.ErrNotClean
+		return ErrNotClean
 	}
 
 	// A detached HEAD has no branch to release from: the commit this would

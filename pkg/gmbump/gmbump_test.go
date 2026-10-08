@@ -132,7 +132,7 @@ func Test_BumpTarget(t *testing.T) {
 		err := BumpTarget(ctx, rng, prj.Root())
 
 		// --- Then ---
-		assert.ErrorIs(t, gitaid.ErrNotClean, err)
+		assert.ErrorIs(t, ErrNotClean, err)
 	})
 
 	t.Run("error - repo has untracked files", func(t *testing.T) {
@@ -152,7 +152,7 @@ func Test_BumpTarget(t *testing.T) {
 		err := BumpTarget(ctx, rng, prj.Root())
 
 		// --- Then ---
-		assert.ErrorIs(t, gitaid.ErrNotClean, err)
+		assert.ErrorIs(t, ErrNotClean, err)
 	})
 
 	t.Run("error - dirty tree on another branch", func(t *testing.T) {
@@ -172,7 +172,7 @@ func Test_BumpTarget(t *testing.T) {
 		err := BumpTarget(ctx, rng, prj.Root())
 
 		// --- Then ---
-		assert.ErrorIs(t, gitaid.ErrNotClean, err)
+		assert.ErrorIs(t, ErrNotClean, err)
 		assert.ErrorIsNot(t, ErrNotDefBranch, err)
 	})
 
