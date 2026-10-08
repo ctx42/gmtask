@@ -33,16 +33,16 @@ There are two ways in. Use `ReadChangelog` to add new releases above the
 existing ones without parsing them — the cheap path for release tooling. A
 preamble such as a `# Changelog` title stays on top. Use `ReadReleases` to
 parse existing releases into structured values for inspection or editing.
-`AddRelease` sorts the structured `Releases` slice youngest to oldest by
-semantic version; unparsed body text kept by `ReadChangelog` is written
+`AddRelease` sorts the structured `Releases` slice from the highest to the
+lowest semantic version; unparsed body text kept by `ReadChangelog` is written
 unchanged.
 
 ## Features
 
 - **Two read modes** — `ReadChangelog` prepends without parsing; `ReadReleases`
   parses existing releases for inspection or editing.
-- **Ordered on add** — `AddRelease` sorts structured releases youngest to
-  oldest by semantic version; unparsed body text is not reordered.
+- **Ordered on add** — `AddRelease` sorts structured releases from the highest
+  to the lowest semantic version; unparsed body text is not reordered.
 - **Automatic formatting** — change lines are prefixed with `- ` and get a
   trailing period unless they end in `.`, `?` or `!`; `AddChange` trims
   changes and skips blank ones. Disable formatting with `WithNoFormatting`.

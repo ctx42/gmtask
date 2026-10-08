@@ -38,7 +38,7 @@ func WithNoFormatting(rel *Release) { rel.formatChanges = false }
 // release.
 type Release struct {
 	Version       *semver.Version // Semantic version.
-	Date          time.Time       // Date release was created.
+	Date          time.Time       // Date the release was created.
 	Changes       []string        // Release changes.
 	formatChanges bool            // Controls if changes are prefixed with "- ".
 }
@@ -60,7 +60,8 @@ func NewRelease(
 }
 
 // NewSemVerRelease returns a new instance of Release with options applied. The
-// date is always changed to UTC.
+// date is always changed to UTC. The version must not be nil: the methods of
+// the returned release dereference it.
 func NewSemVerRelease(
 	ver *semver.Version,
 	date time.Time,
@@ -139,7 +140,7 @@ func (rel *Release) String() string {
 	return buf.String()
 }
 
-// finalize removes empty lines from the end of the "changes" slice.
+// finalize removes trailing blank (white-space-only) entries from Changes.
 func (rel *Release) finalize() {
 	for i := len(rel.Changes) - 1; i >= 0; i-- {
 		if strings.TrimSpace(rel.Changes[i]) != "" {

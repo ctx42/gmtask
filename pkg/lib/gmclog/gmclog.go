@@ -13,9 +13,9 @@
 //
 // Use [ReadChangelog] to add releases above the existing ones without parsing
 // them, or [ReadReleases] to parse the releases for inspection or editing.
-// [Changelog.AddRelease] sorts the structured [Changelog.Releases] slice
-// youngest to oldest by [Release.Compare]; unparsed body bytes left by
-// [ReadChangelog] are written as-is and are not reordered.
+// [Changelog.AddRelease] sorts the structured [Changelog.Releases] slice from
+// the highest to the lowest version by [Release.Compare]; unparsed body bytes
+// left by [ReadChangelog] are written as-is and are not reordered.
 //
 // Import path:
 //
@@ -133,10 +133,15 @@ func splitPreamble(data []byte) (preamble, rest []byte) {
 	return data[:end], data[end:]
 }
 
-// ReadReleases reads the changelog file pointed by pth (joined with elems when
-// provided) and parses releases. It is used when you wish to examine releases
-// or edit them. It will return an error if the format of the changelog is
-// incompatible.
+// ReadReleases reads the changelog file pointed to by pth (joined with elems
+// when provided) and parses releases. It is used when you wish to examine
+// releases or edit them. It will return an error if the format of the
+// changelog is incompatible.
+//
+// Saving the parsed changelog normalizes it rather than reproducing it byte
+// for byte: line endings become "\n", consecutive blank lines between
+// releases collapse to one, trailing blank lines of a release are dropped, and
+// every release ends with one blank line.
 func ReadReleases(pth string, elems ...string) (*Changelog, error) {
 	pth = filepath.Join(append([]string{pth}, elems...)...)
 	cl, err := readChangelog(pth)
@@ -186,7 +191,8 @@ func ReadReleases(pth string, elems ...string) (*Changelog, error) {
 }
 
 // AddRelease adds the release(s) to the changelog. Before exiting, it sorts
-// releases from youngest to oldest according to semantic version rules.
+// releases from the highest to the lowest version according to semantic
+// version rules. A nil release panics when sorting.
 func (clg *Changelog) AddRelease(rel ...*Release) {
 	clg.Releases = append(clg.Releases, rel...)
 	sort.Stable(sort.Reverse(ReleaseSlice(clg.Releases)))
