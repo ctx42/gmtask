@@ -173,12 +173,9 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		}
 	}
 
-	// Always use a "v" prefix. User input was already validated as a semver
-	// string above when non-empty.
-	nextStr := next.Original()
-	if nextStr != "" && nextStr[0] != 'v' {
-		next = semver.MustParse("v" + nextStr)
-	}
+	// Tag the canonical form: a "v" prefix and all three version numbers, as
+	// Go modules require. Short input such as "1.2" parses as "1.2.0".
+	next = semver.MustParse("v" + next.String())
 
 	if err = writeChangelog(repo, next, changes); err != nil {
 		return err

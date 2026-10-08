@@ -952,6 +952,37 @@ func Test_BumpTarget(t *testing.T) {
 		assert.Equal(t, "- commit 2.", rel.Changes[0])
 	})
 
+	t.Run("short custom version", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("1.2\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.0.1")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"Current tag: v0.0.1\n" +
+			"Enter a version number [v0.0.2]: " +
+			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
+			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.Equal(t, "v1.2.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+		tags := prj.ExeStdout("git", "tag", "--list")
+		assert.Equal(t, "v0.0.1\nv1.2.0\n", tags)
+	})
+
 	t.Run("error - EOF reading version", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
