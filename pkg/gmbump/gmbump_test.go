@@ -1128,12 +1128,62 @@ func Test_BumpTarget(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, io.EOF, err)
+		assert.ErrorContain(t, "CHANGELOG.md and VER may be modified", err)
 
 		want := "" +
 			"Current tag: \n" +
 			"Enter a version number [v0.0.1]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n"
 		assert.Equal(t, want, tst.Stdout())
+	})
+
+	t.Run("error - tag exists", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("v0.0.2\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.0.1")
+		prj.Exe("git", "checkout", "-q", "-b", "other")
+		prj.CreateFileWith("other", "other.txt")
+		prj.GitCommit("v0.0.2")
+		prj.Exe("git", "checkout", "-q", "-")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorContain(t, "release v0.0.2 committed but not tagged", err)
+		assert.Contain(t, "Continuing.\n", tst.Stdout())
+		msg := prj.ExeStdout("git", "log", "-1", "--format=%s")
+		assert.Equal(t, "Bump version to v0.0.2.\n", msg)
+	})
+
+	t.Run("error - push fails", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.GitSetRemote(filepath.Join(t.TempDir(), "missing"))
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		want := "release v0.0.1 committed and tagged locally; push it manually"
+		assert.ErrorContain(t, want, err)
+		assert.Contain(t, "Continuing.\n", tst.Stdout())
+		assert.Equal(t, "v0.0.1\n", prj.ExeStdout("git", "tag"))
 	})
 
 	t.Run("changelog is written in reverse", func(t *testing.T) {

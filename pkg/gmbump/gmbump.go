@@ -198,28 +198,34 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 
 	msg := "Now you may edit CHANGELOG.md. Then press ENTER to continue.\n"
 	_, _ = fmt.Fprint(rng.Stdout(), msg)
+	// From here on a failure leaves the release half done; every error says
+	// what state the repository was left in.
+	const unfinished = "release not finished; " +
+		"CHANGELOG.md and VER may be modified: %w"
 	if _, err = readLine(rdr); err != nil {
-		return fmt.Errorf("read continue input: %w", err)
+		err = fmt.Errorf("read continue input: %w", err)
+		return fmt.Errorf(unfinished, err)
 	}
 	_, _ = fmt.Fprint(rng.Stdout(), "Continuing.\n")
 
 	pth := filepath.Join(repo, "VER")
 	if err = os.WriteFile(pth, []byte(next.Original()), 0o600); err != nil {
-		return fmt.Errorf("write VER file: %w", err)
+		return fmt.Errorf(unfinished, fmt.Errorf("write VER file: %w", err))
 	}
 
 	if err = gitaid.Add(ctx, repo, "CHANGELOG.md", "VER"); err != nil {
-		return fmt.Errorf("git add: %w", err)
+		return fmt.Errorf(unfinished, fmt.Errorf("git add: %w", err))
 	}
 
 	cm := fmt.Sprintf("Bump version to %s.", next.Original())
 	if err = gitaid.Commit(ctx, repo, cm); err != nil {
-		return fmt.Errorf("git commit: %w", err)
+		return fmt.Errorf(unfinished, fmt.Errorf("git commit: %w", err))
 	}
 
 	tm := fmt.Sprintf("Tag version %s.", next.Original())
 	if err = gitaid.Tag(ctx, repo, next.Original(), tm); err != nil {
-		return fmt.Errorf("git tag: %w", err)
+		format := "release %s committed but not tagged: git tag: %w"
+		return fmt.Errorf(format, next.Original(), err)
 	}
 
 	// Ask for the remote rather than read it off a failed push: git words a
@@ -231,7 +237,9 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	if origin == "" {
 		_, _ = fmt.Fprint(rng.Stdout(), "No remote configured; skip push.\n")
 	} else if err = gitaid.Push(ctx, repo); err != nil {
-		return fmt.Errorf("git push: %w", err)
+		format := "release %s committed and tagged locally; " +
+			"push it manually: git push: %w"
+		return fmt.Errorf(format, next.Original(), err)
 	}
 
 	_, _ = fmt.Fprint(rng.Stdout(), "Done.\n")
