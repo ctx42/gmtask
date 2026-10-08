@@ -114,7 +114,9 @@ Usage of :doc:mce:
 `--dir` sets the root scanned for example functions (default `.`). `--file`
 selects the Markdown file to rewrite; when omitted it defaults to `README.md`
 inside `--dir`. Each matched example is reported on stdout, followed by the file
-being written.
+written, or a note that it is unchanged. The file is replaced atomically and
+only when its contents change. A marker naming no example draws a warning on
+stderr.
 
 ### Markers
 

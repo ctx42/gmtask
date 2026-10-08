@@ -116,11 +116,14 @@ func (Doc) Mce(ctx context.Context, rng *ring.Ring) error {
 		_, _ = fmt.Fprintf(rng.Stderr(), format, key)
 	}
 
-	_, _ = fmt.Fprintf(rng.Stdout(), "Writing %s\n", file)
-	//nolint:gosec // Path is resolved earlier; mode is intentional.
-	if err = os.WriteFile(absFile, []byte(updated), 0o644); err != nil {
+	if updated == string(data) {
+		_, _ = fmt.Fprintf(rng.Stdout(), "Unchanged %s\n", file)
+		return nil
+	}
+	if err = writeFile(absFile, []byte(updated)); err != nil {
 		return fmt.Errorf("write markdown file: %w", err)
 	}
+	_, _ = fmt.Fprintf(rng.Stdout(), "Wrote %s\n", file)
 	return nil
 }
 

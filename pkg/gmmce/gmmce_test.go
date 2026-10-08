@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/ctx42/ring/pkg/ring/ringtest"
 	"github.com/ctx42/testing/pkg/assert"
@@ -60,6 +61,8 @@ func Test_Doc_Mce(t *testing.T) {
 			"// Output: Hello world.\n" +
 			"```"
 		readme := oskit.Write(t, input, dir, "README.md")
+		old := time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC)
+		oskit.ModTimeSet(t, old, readme)
 
 		rng := tst.Ring("--dir", dir)
 
@@ -68,8 +71,10 @@ func Test_Doc_Mce(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Contain(t, "Found pkg1/Example_case1\n", tst.Stdout())
+		want := "Found pkg1/Example_case1\nUnchanged " + readme + "\n"
+		assert.Equal(t, want, tst.Stdout())
 		assert.Equal(t, input, oskit.ReadFileStr(t, readme))
+		assert.Exact(t, old, oskit.ModTime(t, readme).UTC())
 	})
 
 	t.Run("custom file flag", func(t *testing.T) {
@@ -113,7 +118,7 @@ func Test_Doc_Mce(t *testing.T) {
 		assert.NoError(t, err)
 		want := "#gomake WARN# no example for marker: pkg1/Nope\n"
 		assert.Equal(t, want, tst.Stderr())
-		assert.Equal(t, "Writing "+readme+"\n", tst.Stdout())
+		assert.Equal(t, "Unchanged "+readme+"\n", tst.Stdout())
 		want = "<!-- gmmce:pkg1/Nope -->\n"
 		assert.Equal(t, want, oskit.ReadFileStr(t, readme))
 	})
