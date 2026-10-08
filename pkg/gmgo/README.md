@@ -192,7 +192,7 @@ gomake :go:lint:config -dir tmp # to a specific directory
 Pin the golangci-lint version and the config file name in `gomake.yaml` — see
 [Configuration](#configuration).
 
-The config is fetched with a shallow clone of a git repository (the `master`
+The config is fetched with a shallow clone of a git repository (the default
 branch's `.golangci.yml`), defaulting to `git@github.com:ctx42/xdev.git`. Point
 it at your own repository with `GOMAKE_GOLINT_CONFIG_REPO` — any remote `git`
 can clone, SSH or HTTPS:
@@ -264,7 +264,7 @@ targets:
 ```
 
 The `file` key names the config; the `repo` key sets the git repository it is
-fetched from (a shallow clone of the `master` branch, any SSH or HTTPS remote).
+fetched from (a shallow clone of the default branch, any SSH or HTTPS remote).
 `repo` is also settable per run with the `GOMAKE_GOLINT_CONFIG_REPO` environment
 variable, which takes precedence:
 
