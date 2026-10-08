@@ -194,25 +194,34 @@ func parseExamples(filename string) (map[string]string, error) {
 // injectExamples processes Markdown content replacing code fences that follow
 // gmmce markers with the corresponding example bodies from examples. If a code
 // fence does not already exist after a marker, one is inserted. Markers with no
-// matching entry in examples are left unchanged.
+// matching entry in examples are left unchanged, and so are markers inside a
+// code block. The inserted fence is longer than any backtick run in the body,
+// so a body holding a fence of its own cannot close it early.
 func injectExamples(content string, examples map[string]string) string {
 	lines := strings.Split(content, "\n")
 	result := make([]string, 0, len(lines))
-	i := 0
-	for i < len(lines) {
+	fence := "" // Fence of the code block being copied; empty outside one.
+	for i := 0; i < len(lines); i++ {
 		line := lines[i]
+		if fence != "" {
+			if closesFence(line, fence) {
+				fence = ""
+			}
+			result = append(result, line)
+			continue
+		}
+		if fence = openFence(line); fence != "" {
+			result = append(result, line)
+			continue
+		}
+		result = append(result, line)
 		if !strings.HasPrefix(line, markerPfx) ||
 			!strings.HasSuffix(line, markerSfx) {
-			result = append(result, line)
-			i++
 			continue
 		}
 
 		key := strings.TrimPrefix(line, markerPfx)
 		key = strings.TrimSuffix(key, markerSfx)
-		result = append(result, line)
-		i++
-
 		body, ok := examples[key]
 		if !ok {
 			continue
@@ -220,21 +229,58 @@ func injectExamples(content string, examples map[string]string) string {
 
 		// Skip an existing code fence if present, allowing blank lines between
 		// the marker and the opening fence (common Markdown layout).
-		j := i
+		j := i + 1
 		for j < len(lines) && strings.TrimSpace(lines[j]) == "" {
 			j++
 		}
-		if j < len(lines) && strings.HasPrefix(lines[j], "```") {
-			i = j + 1 // skip opening fence
-			for i < len(lines) && strings.TrimSpace(lines[i]) != "```" {
-				i++ // skip fence body
-			}
-			if i < len(lines) {
-				i++ // skip closing fence
+		if j < len(lines) {
+			if old := openFence(lines[j]); old != "" {
+				i = j + 1 // Skip the opening fence.
+				for i < len(lines) && !closesFence(lines[i], old) {
+					i++ // Skip the fence body.
+				}
 			}
 		}
 
-		result = append(result, "```go", body, "```")
+		fen := bodyFence(body)
+		result = append(result, fen+"go", body, fen)
 	}
 	return strings.Join(result, "\n")
+}
+
+// openFence returns the fence (a run of three or more backticks or tildes)
+// opening a code block on line, or an empty string when line opens none.
+func openFence(line string) string {
+	trimmed := strings.TrimLeft(line, " ")
+	if trimmed == "" || (trimmed[0] != '`' && trimmed[0] != '~') {
+		return ""
+	}
+	fence := trimmed[:len(trimmed)-len(strings.TrimLeft(trimmed, trimmed[:1]))]
+	if len(fence) < 3 {
+		return ""
+	}
+	return fence
+}
+
+// closesFence returns true when line closes a code block opened with fence: it
+// holds only the fence character, at least as many times as in fence.
+func closesFence(line, fence string) bool {
+	trimmed := strings.TrimSpace(line)
+	return len(trimmed) >= len(fence) &&
+		strings.Trim(trimmed, fence[:1]) == ""
+}
+
+// bodyFence returns a backtick fence longer than any run of backticks in body
+// and at least three backticks long.
+func bodyFence(body string) string {
+	longest, run := 0, 0
+	for _, chr := range body {
+		if chr != '`' {
+			run = 0
+			continue
+		}
+		run++
+		longest = max(longest, run)
+	}
+	return strings.Repeat("`", max(3, longest+1))
 }

@@ -347,6 +347,44 @@ func Test_injectExamples(t *testing.T) {
 		assert.Equal(t, input, have)
 	})
 
+	t.Run("body containing fence", func(t *testing.T) {
+		// --- Given ---
+		exs := map[string]string{"k": "a\n```\nb"}
+		input := "" +
+			"<!-- gmmce:k -->\n" +
+			"````go\n" +
+			"a\n" +
+			"```\n" +
+			"b\n" +
+			"````\n" +
+			"after"
+
+		// --- When ---
+		have := injectExamples(input, exs)
+
+		// --- Then ---
+		assert.Equal(t, input, have)
+	})
+
+	t.Run("marker inside fence", func(t *testing.T) {
+		// --- Given ---
+		input := "" +
+			"```markdown\n" +
+			"<!-- gmmce:pkg1/Example_case1 -->\n" +
+			"```\n" +
+			"\n" +
+			"text\n" +
+			"```go\n" +
+			"code\n" +
+			"```\n"
+
+		// --- When ---
+		have := injectExamples(input, examples)
+
+		// --- Then ---
+		assert.Equal(t, input, have)
+	})
+
 	t.Run("no markers unchanged", func(t *testing.T) {
 		// --- Given ---
 		input := "# Title\n\nSome text.\n"
