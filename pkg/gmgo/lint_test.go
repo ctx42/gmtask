@@ -109,6 +109,42 @@ func Test_Lint_Default(t *testing.T) {
 		assert.Contain(t, want, tst.Stderr())
 	})
 
+	t.Run("uses config from custom dir", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("--dir", "out")
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.ProjectFrom("testdata/vet/success/project")
+		bad := "version: \"2\"\nlinters:\n  enable: [no-such-linter]\n"
+		prj.CreateFileWith(bad, "out", ".golangci.yml")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Lint{}.Default(t.Context(), rng)
+
+		// --- Then ---
+		assert.Error(t, err)
+		want := "#gomake INFO# lint config: using out/.golangci.yml"
+		assert.Contain(t, want, tst.Stderr())
+		assert.Contain(t, "no-such-linter", tst.Stderr())
+	})
+
+	t.Run("help does not lint", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("-h")
+
+		// --- When ---
+		err := Lint{}.Default(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "Usage of :go:lint:config", tst.Stderr())
+	})
+
 	t.Run("auto-installs when binary is missing", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
@@ -201,7 +237,7 @@ func Test_Lint_lint(t *testing.T) {
 		rng := tst.Ring()
 
 		// --- When ---
-		err := Lint{}.lint(ctx, rng, prj.Root())
+		err := Lint{}.lint(ctx, rng, prj.Root(), "")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -223,7 +259,7 @@ func Test_Lint_lint(t *testing.T) {
 		rng := tst.Ring()
 
 		// --- When ---
-		err := Lint{}.lint(ctx, rng, prj.Root())
+		err := Lint{}.lint(ctx, rng, prj.Root(), "")
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
@@ -246,7 +282,7 @@ func Test_Lint_lint(t *testing.T) {
 		rng := tst.Ring()
 
 		// --- When ---
-		err := Lint{}.lint(ctx, rng, prj.Root())
+		err := Lint{}.lint(ctx, rng, prj.Root(), "")
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)

@@ -19,14 +19,21 @@ import (
 // Lint collects Go linting targets.
 type Lint Go
 
-// Default ensures golangci-lint is installed at the required version, fetches
-// the shared config when needed, and lints the current working directory and
-// its subdirectories. Lint output is written to the ring streams.
+// Default fetches the shared config when needed, ensures golangci-lint is
+// installed at the required version, and lints the current working directory
+// and its subdirectories with that config. It takes the arguments of
+// [Lint.Config]. Lint output is written to the ring streams.
 //
 // Example usage:
 //
 //	gomake :go:lint
 func (tgt Lint) Default(ctx context.Context, rng *ring.Ring) error {
+	// Resolve the config first: it validates the configuration and the
+	// arguments before anything is installed, and returns on --help.
+	cfgPth, help, err := tgt.config(ctx, rng)
+	if err != nil || help {
+		return err
+	}
 	ver, err := tgt.checkVersion(ctx, rng, "")
 	// Install when the binary is missing/unusable or older than required,
 	// then re-check so a failed install surfaces before linting.
@@ -38,10 +45,7 @@ func (tgt Lint) Default(ctx context.Context, rng *ring.Ring) error {
 			return err
 		}
 	}
-	if err = tgt.Config(ctx, rng); err != nil {
-		return err
-	}
-	return tgt.lint(ctx, rng, "")
+	return tgt.lint(ctx, rng, "", cfgPth)
 }
 
 // checkVersion returns the current golangci-lint version or error if:
@@ -67,16 +71,25 @@ func (Lint) checkVersion(
 	return extractGolangCiVersion(sout.String())
 }
 
-// lint lints Go code in given directory and subdirectories using a
-// configuration file located in "${dir}/tmp/.golangci.yml" (if it exists). The
+// lint lints Go code in given directory and subdirectories using the
+// configuration file at cfgPth or, when cfgPth is empty, the one located in
+// "${dir}/tmp/.golangci.yml" or "${dir}/.golangci.yml" (if it exists). The
 // empty string used for dir means current working directory.
-func (Lint) lint(ctx context.Context, rng *ring.Ring, dir string) error {
+func (Lint) lint(
+	ctx context.Context,
+	rng *ring.Ring,
+	dir string,
+	cfgPth string,
+) error {
+
 	args := []string{"run"}
 	// Resolve the config under dir (not process CWD) so FileExists matches
 	// cmd.Dir when dir is non-empty and not the process working directory.
-	cfgPth := filepath.Join(dir, "tmp", ".golangci.yml")
-	if !gomake.FileExists(cfgPth) {
-		cfgPth = filepath.Join(dir, ".golangci.yml")
+	if cfgPth == "" {
+		cfgPth = filepath.Join(dir, "tmp", ".golangci.yml")
+		if !gomake.FileExists(cfgPth) {
+			cfgPth = filepath.Join(dir, ".golangci.yml")
+		}
 	}
 	if gomake.FileExists(cfgPth) {
 		args = append(args, "-c", cfgPth)
@@ -134,18 +147,30 @@ func (Lint) Install(ctx context.Context, rng *ring.Ring) error {
 // Example usage:
 //
 //	gomake :go:lint:config
-func (Lint) Config(ctx context.Context, rng *ring.Ring) error {
+func (tgt Lint) Config(ctx context.Context, rng *ring.Ring) error {
+	_, _, err := tgt.config(ctx, rng)
+	return err
+}
+
+// config does the work of [Lint.Config] and returns the path of the config
+// file in place. help is true when --help was requested, in which case the
+// usage was written and nothing else was done.
+func (Lint) config(
+	ctx context.Context,
+	rng *ring.Ring,
+) (cfgPth string, help bool, err error) {
+
 	cfg, err := gomake.TargetConfig(rng)
 	if err != nil {
-		return err
+		return "", false, err
 	}
 	cfgFile, err := gomake.GetCfgDefault(cfg, "file", ".golangci.yml")
 	if err != nil {
-		return err
+		return "", false, err
 	}
 	repo, err := gomake.GetCfgDefault(cfg, "repo", goDevRepo)
 	if err != nil {
-		return err
+		return "", false, err
 	}
 
 	tgtName := ":go:lint:config"
@@ -153,11 +178,8 @@ func (Lint) Config(ctx context.Context, rng *ring.Ring) error {
 		"directory to put lint config to " +
 		"(default: \".\" or \"tmp\" if exists)"
 	out, rng, help, err := parseDirTarget(rng, tgtName, dirHelp)
-	if err != nil {
-		return err
-	}
-	if help {
-		return nil
+	if err != nil || help {
+		return "", help, err
 	}
 
 	if out == "" && gomake.DirExists("tmp") {
@@ -169,7 +191,7 @@ func (Lint) Config(ctx context.Context, rng *ring.Ring) error {
 		if _, err := os.Stat(dst); err == nil {
 			format := "#gomake INFO# lint config: using %s\n"
 			_, _ = fmt.Fprintf(rng.Stderr(), format, dst)
-			return nil
+			return dst, false, nil
 		}
 	}
 	if env := rng.EnvGet(GoLintConfigRepoEnvKey); env != "" {
@@ -177,5 +199,8 @@ func (Lint) Config(ctx context.Context, rng *ring.Ring) error {
 	}
 	format := "#gomake INFO# lint config: downloading from %s to %s\n"
 	_, _ = fmt.Fprintf(rng.Stderr(), format, repo, dst)
-	return gitGetFile(ctx, repo, "master", cfgFile, dst)
+	if err = gitGetFile(ctx, repo, "master", cfgFile, dst); err != nil {
+		return "", false, err
+	}
+	return dst, false, nil
 }
