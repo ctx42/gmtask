@@ -24,7 +24,8 @@ func Test_NewProject(t *testing.T) {
 		have := NewProject(tspy)
 
 		// --- Then ---
-		assert.Equal(t, "project", filepath.Base(have.Root()))
+		assert.DirExist(t, have.Root())
+		assert.Equal(t, prjkit.ProjDir, filepath.Base(have.Root()))
 		assert.Equal(t, prjkit.GoModName, have.ImpSpec())
 
 		have.Close() // Must close to prevent error.
@@ -37,14 +38,14 @@ func Test_NewProject(t *testing.T) {
 		tspy.ExpectTempDir(1)
 		tspy.Close()
 
-		called := false
-		opt := func(*prjkit.Project) { called = true }
+		var seen *prjkit.Project
+		opt := func(prj *prjkit.Project) { seen = prj }
 
 		// --- When ---
 		have := NewProject(tspy, opt)
 
 		// --- Then ---
-		assert.True(t, called)
+		assert.Same(t, have, seen)
 
 		have.Close() // Must close to prevent error.
 	})
@@ -62,6 +63,7 @@ func Test_NewNamedProject(t *testing.T) {
 		have := NewNamedProject(tspy, "custom")
 
 		// --- Then ---
+		assert.DirExist(t, have.Root())
 		assert.Equal(t, "custom", filepath.Base(have.Root()))
 		assert.Equal(t, prjkit.GoModNameStem+"custom", have.ImpSpec())
 
@@ -74,15 +76,38 @@ func Test_NewNamedProject(t *testing.T) {
 		tspy.ExpectCleanups(1)
 		tspy.ExpectTempDir(1)
 		tspy.Close()
-		called := false
-		opt := func(*prjkit.Project) { called = true }
+
+		var seen *prjkit.Project
+		opt := func(prj *prjkit.Project) { seen = prj }
 
 		// --- When ---
 		have := NewNamedProject(tspy, "custom", opt)
 
 		// --- Then ---
-		assert.True(t, called)
+		assert.Same(t, have, seen)
 
 		have.Close() // Must close to prevent error.
+	})
+
+	t.Run("error - name with separator", func(t *testing.T) {
+		// --- Given ---
+		tspy := tester.New(t)
+		tspy.ExpectFatal()
+		tspy.ExpectLogEqual("gmtest: invalid project name \"a/b\"")
+		tspy.Close()
+
+		// --- When ---
+		assert.Panic(t, func() { NewNamedProject(tspy, "a/b") })
+	})
+
+	t.Run("error - empty name", func(t *testing.T) {
+		// --- Given ---
+		tspy := tester.New(t)
+		tspy.ExpectFatal()
+		tspy.ExpectLogEqual("gmtest: invalid project name \"\"")
+		tspy.Close()
+
+		// --- When ---
+		assert.Panic(t, func() { NewNamedProject(tspy, "") })
 	})
 }
