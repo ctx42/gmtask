@@ -769,7 +769,7 @@ func Test_BumpTarget(t *testing.T) {
 		prj.CreateFileWith("file0 0", "file0.txt")
 		prj.GitInitAddAll("v0.1.0")
 		prj.CreateFileWith("file0 1", "file0.txt")
-		prj.GitCommit("")
+		prj.GitCommit("", "feat: a feature")
 		prj.Close()
 
 		rng := tst.Ring("-p")
@@ -796,7 +796,7 @@ func Test_BumpTarget(t *testing.T) {
 		assert.Equal(t, "v0.1.1", rel.Version.Original())
 		assert.Within(t, prj.GitCommitLog().Latest().Date, "1s", rel.Date)
 		assert.Len(t, 1, rel.Changes)
-		assert.Equal(t, "- commit 1.", rel.Changes[0])
+		assert.Equal(t, "- feat: a feature.", rel.Changes[0])
 	})
 
 	t.Run("bump minor version", func(t *testing.T) {
