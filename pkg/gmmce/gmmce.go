@@ -13,6 +13,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -123,23 +124,31 @@ func (Doc) Mce(ctx context.Context, rng *ring.Ring) error {
 
 // findExamples walks root recursively and collects all Go example functions
 // from *_test.go files. The returned map keys are "relpath/FuncName" where
-// relpath is the directory of the test file relative to mdDir.
+// relpath is the directory of the test file relative to mdDir. Like the go
+// tool, the walk skips "testdata" and "vendor" directories and those whose
+// names begin with "." or "_", except root itself.
 func findExamples(
 	ctx context.Context,
 	root, mdDir string,
 ) (map[string]string, error) {
 
 	examples := make(map[string]string)
-	err := filepath.Walk(
+	err := filepath.WalkDir(
 		root,
-		func(pth string, info os.FileInfo, err error) error {
+		func(pth string, ent fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
 			if err = ctx.Err(); err != nil {
 				return err
 			}
-			if info.IsDir() || !strings.HasSuffix(pth, "_test.go") {
+			if ent.IsDir() {
+				if pth != root && skipDir(ent.Name()) {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if !strings.HasSuffix(pth, "_test.go") {
 				return nil
 			}
 			pkgDir := filepath.Dir(pth)
@@ -163,6 +172,13 @@ func findExamples(
 		},
 	)
 	return examples, err
+}
+
+// skipDir returns true for a directory name the go tool ignores when matching
+// packages: "testdata", "vendor", and names beginning with "." or "_".
+func skipDir(name string) bool {
+	return name == "testdata" || name == "vendor" ||
+		strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_")
 }
 
 // parseExamples parses a Go source file and returns a map of function name to

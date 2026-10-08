@@ -34,7 +34,8 @@ exported `Doc.Mce` method is also usable as a plain library.
 
 - **Single source of truth** — docs show the same code `go test` compiles.
 - **Recursive scan** — collects `Example*` functions from every `*_test.go`
-  under the scanned directory.
+  under the scanned directory, skipping `testdata`, `vendor`, `.`- and
+  `_`-prefixed directories below it, as the go tool does.
 - **Idempotent** — re-running with unchanged examples leaves the file byte-for-
   byte identical.
 - **Insert or replace** — writes a fresh code fence when a marker has none, and

@@ -5,7 +5,9 @@ package gmmce
 
 import (
 	"context"
+	"maps"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/ctx42/ring/pkg/ring/ringtest"
@@ -200,6 +202,24 @@ func Test_findExamples(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.HasKey(t, "Example_case1", have)
+	})
+
+	t.Run("skips ignored directories", func(t *testing.T) {
+		// --- Given ---
+		root := t.TempDir()
+		copyExamples(t, root)
+		bad := "package x\n\nfunc {\n"
+		for _, dir := range []string{"testdata", "vendor", ".git", "_tmp"} {
+			oskit.Write(t, bad, oskit.MkdirAll(t, root, dir), "x_test.go")
+		}
+
+		// --- When ---
+		have, err := findExamples(t.Context(), root, root)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := []string{"pkg1/Example_case1"}
+		assert.Equal(t, want, slices.Sorted(maps.Keys(have)))
 	})
 
 	t.Run("error - not existing root", func(t *testing.T) {
