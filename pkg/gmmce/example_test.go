@@ -30,7 +30,8 @@ func ExampleDoc_Mce() {
 		fmt.Println(err)
 		return
 	}
-	example := "package greet\n\n" +
+	example := "" +
+		"package greet\n\n" +
 		"import \"fmt\"\n\n" +
 		"func ExampleHello() {\n" +
 		"\tfmt.Println(\"Hello world.\")\n" +

@@ -14,7 +14,7 @@ import (
 )
 
 func Test_writeFile(t *testing.T) {
-	t.Run("replaces contents and keeps mode", func(t *testing.T) {
+	t.Run("keeps mode", func(t *testing.T) {
 		// --- Given ---
 		dir := t.TempDir()
 		pth := oskit.Write(t, "old", dir, "README.md")

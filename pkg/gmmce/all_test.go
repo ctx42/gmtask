@@ -12,7 +12,7 @@ import (
 const egFixture = "testdata/pkg1/examples_test.go"
 
 // copyExamples creates a "pkg1" package directory under dir and copies
-// [egFixture] into it, so the scanned tree holds a known example function.
+// egFixture into it, so the scanned tree holds a known example function.
 func copyExamples(t tester.T, dir string) {
 	t.Helper()
 	sub := oskit.MkdirAll(t, dir, "pkg1")

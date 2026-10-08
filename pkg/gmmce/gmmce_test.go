@@ -21,23 +21,24 @@ import (
 func Test_Doc_Mce(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
 
 		dir := t.TempDir()
 		copyExamples(t, dir)
-		readme := oskit.Write(t, "# Doc\n\n"+
-			"<!-- gmmce:pkg1/Example_case1 -->\n", dir, "README.md")
+		content := "# Doc\n\n<!-- gmmce:pkg1/Example_case1 -->\n"
+		readme := oskit.Write(t, content, dir, "README.md")
 
 		rng := tst.Ring("--dir", dir)
 
 		// --- When ---
-		err := Doc{}.Mce(ctx, rng)
+		err := Doc{}.Mce(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Contain(t, "Found pkg1/Example_case1\n", tst.Stdout())
-		want := "# Doc\n\n" +
+		want := "Found pkg1/Example_case1\nWrote " + readme + "\n"
+		assert.Equal(t, want, tst.Stdout())
+		want = "" +
+			"# Doc\n\n" +
 			"<!-- gmmce:pkg1/Example_case1 -->\n" +
 			"```go\n" +
 			"fmt.Println(\"Hello world.\")\n" +
@@ -49,12 +50,12 @@ func Test_Doc_Mce(t *testing.T) {
 
 	t.Run("idempotent", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
 
 		dir := t.TempDir()
 		copyExamples(t, dir)
-		input := "# Doc\n\n" +
+		input := "" +
+			"# Doc\n\n" +
 			"<!-- gmmce:pkg1/Example_case1 -->\n" +
 			"```go\n" +
 			"fmt.Println(\"Hello world.\")\n" +
@@ -68,7 +69,7 @@ func Test_Doc_Mce(t *testing.T) {
 		rng := tst.Ring("--dir", dir)
 
 		// --- When ---
-		err := Doc{}.Mce(ctx, rng)
+		err := Doc{}.Mce(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -80,23 +81,24 @@ func Test_Doc_Mce(t *testing.T) {
 
 	t.Run("custom file flag", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
 
 		dir := t.TempDir()
 		copyExamples(t, dir)
-		md := oskit.Write(t, "<!-- gmmce:pkg1/Example_case1 -->\n",
-			dir, "DOCS.md")
+		content := "<!-- gmmce:pkg1/Example_case1 -->\n"
+		md := oskit.Write(t, content, dir, "DOCS.md")
 
 		rng := tst.Ring("--dir", dir, "--file", md)
 
 		// --- When ---
-		err := Doc{}.Mce(ctx, rng)
+		err := Doc{}.Mce(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Contain(t, "Found pkg1/Example_case1\n", tst.Stdout())
-		want := "<!-- gmmce:pkg1/Example_case1 -->\n" +
+		want := "Found pkg1/Example_case1\nWrote " + md + "\n"
+		assert.Equal(t, want, tst.Stdout())
+		want = "" +
+			"<!-- gmmce:pkg1/Example_case1 -->\n" +
 			"```go\n" +
 			"fmt.Println(\"Hello world.\")\n" +
 			"\n" +
@@ -105,11 +107,14 @@ func Test_Doc_Mce(t *testing.T) {
 		assert.Equal(t, want, oskit.ReadFileStr(t, md))
 	})
 
-	t.Run("warns about unmatched marker", func(t *testing.T) {
+	t.Run("unmatched marker", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t).WetStdout().WetStderr()
+
 		dir := t.TempDir()
-		readme := oskit.Write(t, "<!-- gmmce:pkg1/Nope -->\n", dir, "README.md")
+		content := "<!-- gmmce:pkg1/Nope -->\n"
+		readme := oskit.Write(t, content, dir, "README.md")
+
 		rng := tst.Ring("--dir", dir)
 
 		// --- When ---
@@ -120,50 +125,48 @@ func Test_Doc_Mce(t *testing.T) {
 		want := "#gomake WARN# no example for marker: pkg1/Nope\n"
 		assert.Equal(t, want, tst.Stderr())
 		assert.Equal(t, "Unchanged "+readme+"\n", tst.Stdout())
-		want = "<!-- gmmce:pkg1/Nope -->\n"
-		assert.Equal(t, want, oskit.ReadFileStr(t, readme))
-	})
-
-	t.Run("error - readme not found", func(t *testing.T) {
-		// --- Given ---
-		ctx := context.Background()
-		tst := ringtest.New(t)
-
-		dir := t.TempDir()
-		rng := tst.Ring("--dir", dir)
-
-		// --- When ---
-		err := Doc{}.Mce(ctx, rng)
-
-		// --- Then ---
-		assert.ErrorContain(t, "README.md", err)
+		assert.Equal(t, content, oskit.ReadFileStr(t, readme))
 	})
 
 	t.Run("show help", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
-
 		rng := tst.Ring("--help")
 
 		// --- When ---
-		err := Doc{}.Mce(ctx, rng)
+		err := Doc{}.Mce(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		want := "" +
 			"Usage of :doc:mce:\n" +
 			"      --dir     root directory to scan for Go examples\n" +
-			"      --file    Markdown file to update (default: README.md in --dir)\n" +
+			"      --file    " +
+			"Markdown file to update (default: README.md in --dir)\n" +
 			"  -h, --help    show help\n"
 		assert.Equal(t, want, tst.Stderr())
+	})
+
+	t.Run("error - readme not found", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t)
+		rng := tst.Ring("--dir", t.TempDir())
+
+		// --- When ---
+		err := Doc{}.Mce(t.Context(), rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, os.ErrNotExist, err)
+		assert.ErrorContain(t, "read markdown file", err)
 	})
 
 	t.Run("error - positional argument", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t)
+
 		dir := t.TempDir()
 		readme := oskit.Write(t, "x\n", dir, "README.md")
+
 		rng := tst.Ring("--dir", dir, "DOCS.md")
 
 		// --- When ---
@@ -177,10 +180,12 @@ func Test_Doc_Mce(t *testing.T) {
 	t.Run("error - invalid go source", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t)
+
 		dir := t.TempDir()
 		oskit.Write(t, "<!-- gmmce:x/Example -->\n", dir, "README.md")
 		bad := oskit.MkdirAll(t, dir, "x")
 		oskit.Write(t, "package x\n\nfunc {\n", bad, "x_test.go")
+
 		rng := tst.Ring("--dir", dir)
 
 		// --- When ---
@@ -193,11 +198,14 @@ func Test_Doc_Mce(t *testing.T) {
 	t.Run("error - write fails", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t).WetStdout()
+
 		dir := t.TempDir()
 		copyExamples(t, dir)
-		oskit.Write(t, "<!-- gmmce:pkg1/Example_case1 -->\n", dir, "README.md")
+		content := "<!-- gmmce:pkg1/Example_case1 -->\n"
+		oskit.Write(t, content, dir, "README.md")
 		must.Nil(os.Chmod(dir, 0o555))
 		t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
 		rng := tst.Ring("--dir", dir)
 
 		// --- When ---
@@ -210,56 +218,47 @@ func Test_Doc_Mce(t *testing.T) {
 
 	t.Run("error - unknown flag", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
-
 		rng := tst.Ring("-unknown")
 
 		// --- When ---
-		err := Doc{}.Mce(ctx, rng)
+		err := Doc{}.Mce(t.Context(), rng)
 
 		// --- Then ---
-		assert.ErrorContain(t, "flag provided but not defined: -unknown", err)
-		assert.Contain(t, "flag provided but not defined: -unknown", tst.Stderr())
+		want := "flag provided but not defined: -unknown"
+		assert.ErrorContain(t, want, err)
+		assert.Contain(t, want, tst.Stderr())
 	})
 }
 
 func Test_findExamples(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
-
 		root := must.Value(filepath.Abs("testdata"))
-		mdDir := root
 
 		// --- When ---
-		have, err := findExamples(ctx, root, mdDir)
+		have, err := findExamples(t.Context(), root, root)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.HasKey(t, "pkg1/Example_case1", have)
-		assert.Equal(t,
-			"fmt.Println(\"Hello world.\")\n\n// Output: Hello world.",
-			have["pkg1/Example_case1"],
-		)
+		want := "fmt.Println(\"Hello world.\")\n\n// Output: Hello world."
+		assert.Equal(t, want, have["pkg1/Example_case1"])
 	})
 
 	t.Run("root in mdDir", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
-
 		root := must.Value(filepath.Abs(filepath.Join("testdata", "pkg1")))
-		mdDir := root
 
 		// --- When ---
-		have, err := findExamples(ctx, root, mdDir)
+		have, err := findExamples(t.Context(), root, root)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.HasKey(t, "Example_case1", have)
 	})
 
-	t.Run("skips ignored directories", func(t *testing.T) {
+	t.Run("ignored directories", func(t *testing.T) {
 		// --- Given ---
 		root := t.TempDir()
 		copyExamples(t, root)
@@ -279,20 +278,18 @@ func Test_findExamples(t *testing.T) {
 
 	t.Run("error - not existing root", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
-
 		root := filepath.Join("testdata", "not_existing")
 
 		// --- When ---
-		_, err := findExamples(ctx, root, root)
+		_, err := findExamples(t.Context(), root, root)
 
 		// --- Then ---
-		assert.ErrorContain(t, "not_existing", err)
+		assert.ErrorIs(t, os.ErrNotExist, err)
 	})
 
 	t.Run("error - context cancelled", func(t *testing.T) {
 		// --- Given ---
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
 
 		root := must.Value(filepath.Abs("testdata"))
@@ -320,7 +317,7 @@ func Test_parseExamples(t *testing.T) {
 		assert.Equal(t, want, have["Example_case1"])
 	})
 
-	t.Run("non-example functions are skipped", func(t *testing.T) {
+	t.Run("non-example skipped", func(t *testing.T) {
 		// --- Given ---
 		src := "package foo\n\nfunc TestFoo(t interface{}) {}\n"
 		pth := oskit.Write(t, src, t.TempDir(), "foo_test.go")
@@ -333,7 +330,7 @@ func Test_parseExamples(t *testing.T) {
 		assert.Len(t, 0, have)
 	})
 
-	t.Run("example-like non-examples skipped", func(t *testing.T) {
+	t.Run("example-like non-examples", func(t *testing.T) {
 		// --- Given ---
 		src := "" +
 			"package foo\n\n" +
@@ -377,7 +374,7 @@ func Test_parseExamples(t *testing.T) {
 		assert.Equal(t, "fmt.Println(\"x\")", have["Example"])
 	})
 
-	t.Run("raw string keeps indentation", func(t *testing.T) {
+	t.Run("raw string", func(t *testing.T) {
 		// --- Given ---
 		src := "" +
 			"package foo\n\n" +
@@ -414,7 +411,7 @@ func Test_parseExamples(t *testing.T) {
 		_, err := parseExamples("not_existing_test.go")
 
 		// --- Then ---
-		assert.ErrorContain(t, "not_existing_test.go", err)
+		assert.ErrorIs(t, os.ErrNotExist, err)
 	})
 }
 
@@ -432,7 +429,8 @@ func Test_injectExamples(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		want := "text\n\n" +
+		want := "" +
+			"text\n\n" +
 			"<!-- gmmce:pkg1/Example_case1 -->\n" +
 			"```go\n" +
 			"fmt.Println(\"hello\")\n" +
@@ -442,7 +440,8 @@ func Test_injectExamples(t *testing.T) {
 
 	t.Run("replace existing fence", func(t *testing.T) {
 		// --- Given ---
-		input := "<!-- gmmce:pkg1/Example_case1 -->\n" +
+		input := "" +
+			"<!-- gmmce:pkg1/Example_case1 -->\n" +
 			"```go\n" +
 			"old content\n" +
 			"```\n" +
@@ -453,7 +452,8 @@ func Test_injectExamples(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		want := "<!-- gmmce:pkg1/Example_case1 -->\n" +
+		want := "" +
+			"<!-- gmmce:pkg1/Example_case1 -->\n" +
 			"```go\n" +
 			"fmt.Println(\"hello\")\n" +
 			"```\n" +
@@ -463,7 +463,8 @@ func Test_injectExamples(t *testing.T) {
 
 	t.Run("replace fence after blank lines", func(t *testing.T) {
 		// --- Given ---
-		input := "<!-- gmmce:pkg1/Example_case1 -->\n" +
+		input := "" +
+			"<!-- gmmce:pkg1/Example_case1 -->\n" +
 			"\n" +
 			"```go\n" +
 			"old content\n" +
@@ -475,7 +476,8 @@ func Test_injectExamples(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		want := "<!-- gmmce:pkg1/Example_case1 -->\n" +
+		want := "" +
+			"<!-- gmmce:pkg1/Example_case1 -->\n" +
 			"```go\n" +
 			"fmt.Println(\"hello\")\n" +
 			"```\n" +
@@ -483,7 +485,7 @@ func Test_injectExamples(t *testing.T) {
 		assert.Equal(t, want, have)
 	})
 
-	t.Run("unknown marker key is left unchanged", func(t *testing.T) {
+	t.Run("unknown key", func(t *testing.T) {
 		// --- Given ---
 		input := "<!-- gmmce:unknown/Func -->\n```go\nold\n```"
 
@@ -608,7 +610,8 @@ func Test_injectExamples(t *testing.T) {
 			"pkg/ExampleA": "bodyA",
 			"pkg/ExampleB": "bodyB",
 		}
-		input := "<!-- gmmce:pkg/ExampleA -->\n" +
+		input := "" +
+			"<!-- gmmce:pkg/ExampleA -->\n" +
 			"<!-- gmmce:pkg/ExampleB -->\n"
 
 		// --- When ---
@@ -616,7 +619,8 @@ func Test_injectExamples(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		want := "<!-- gmmce:pkg/ExampleA -->\n" +
+		want := "" +
+			"<!-- gmmce:pkg/ExampleA -->\n" +
 			"```go\n" +
 			"bodyA\n" +
 			"```\n" +
