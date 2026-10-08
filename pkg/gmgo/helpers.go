@@ -145,7 +145,8 @@ type LDVar struct {
 //	-X 'example.com/app/version.scmRev=v1.2'
 //
 // Each assignment is single-quoted so "go build" receives one argument per
-// flag. It returns an empty string when vars is empty.
+// flag, so neither pkgPath nor any name or value may contain a single quote.
+// It returns an empty string when vars is empty.
 func LDFlags(pkgPath string, vars []LDVar) string {
 	parts := make([]string, 0, len(vars))
 	for _, v := range vars {

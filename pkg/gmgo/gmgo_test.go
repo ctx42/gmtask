@@ -823,7 +823,18 @@ func Test_Go_test(t *testing.T) {
 	})
 }
 
-func Test_hasTimeoutArg_tabular(t *testing.T) {
+func Test_ldValues(t *testing.T) {
+	// --- Given ---
+	vars := []LDVar{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}}
+
+	// --- When ---
+	have := ldValues(vars)
+
+	// --- Then ---
+	assert.Equal(t, []string{"a", "1", "b", "2"}, have)
+}
+
+func Test_hasFlagArg_tabular(t *testing.T) {
 	tt := []struct {
 		testN string
 
@@ -842,7 +853,7 @@ func Test_hasTimeoutArg_tabular(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.testN, func(t *testing.T) {
 			// --- When ---
-			have := hasTimeoutArg(tc.args)
+			have := hasFlagArg(tc.args, "timeout")
 
 			// --- Then ---
 			assert.Equal(t, tc.want, have)
@@ -1310,6 +1321,89 @@ func Test_Go_Build(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrConfig, err)
+	})
+
+	t.Run("error - empty package", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t)
+		rng := tst.Ring("cmd/project.go")
+		setBuildConfig(t, rng, map[string]any{
+			"example.com/comp/project": map[string]any{
+				"package": "",
+				"names":   map[string]any{xdef.VarScmRev: "ScmRev"},
+			},
+		})
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.CreateFileWith(tstBuildMain, "cmd", "project.go")
+		prj.CreateFileWith(tstBuildVersion, "project.go")
+		prj.GitInitAddAll("v1.0.0")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Go{}.Build(t.Context(), rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrConfig, err)
+		assert.ErrorContain(t, "empty package", err)
+		assert.NoFileExist(t, prj.Path("project"))
+	})
+
+	t.Run("error - quote in name", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t)
+		rng := tst.Ring("cmd/project.go")
+		setBuildConfig(t, rng, map[string]any{
+			"example.com/comp/project": map[string]any{
+				"package": "example.com/comp/project",
+				"names":   map[string]any{xdef.VarScmRev: "Scm'Rev"},
+			},
+		})
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.CreateFileWith(tstBuildMain, "cmd", "project.go")
+		prj.CreateFileWith(tstBuildVersion, "project.go")
+		prj.GitInitAddAll("v1.0.0")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Go{}.Build(t.Context(), rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrConfig, err)
+		assert.ErrorContain(t, "single quote", err)
+		assert.NoFileExist(t, prj.Path("project"))
+	})
+
+	t.Run("error - user ldflags", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t)
+		rng := tst.Ring("-ldflags=-s", "cmd/project.go")
+		setBuildConfig(t, rng, map[string]any{
+			"example.com/comp/project": map[string]any{
+				"package": "example.com/comp/project",
+			},
+		})
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.CreateFileWith(tstBuildMain, "cmd", "project.go")
+		prj.CreateFileWith(tstBuildVersion, "project.go")
+		prj.GitInitAddAll("v1.0.0")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Go{}.Build(t.Context(), rng)
+
+		// --- Then ---
+		want := "-ldflags in arguments would drop the injected build metadata"
+		assert.ErrorContain(t, want, err)
+		assert.NoFileExist(t, prj.Path("project"))
 	})
 
 	t.Run("error - invalid names config type", func(t *testing.T) {

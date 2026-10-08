@@ -205,7 +205,7 @@ func (Go) test(ctx context.Context, rng *ring.Ring, verbose bool) error {
 	}
 	// "go test" takes the last -timeout it is given; one among the user's
 	// arguments must win over the configured default.
-	if setTimeout && !hasTimeoutArg(args) {
+	if setTimeout && !hasFlagArg(args, "timeout") {
 		cmdArgs = append(cmdArgs, "-timeout="+timeout.String())
 	}
 	cmdArgs = append(cmdArgs, "./...")
@@ -225,12 +225,12 @@ func (Go) test(ctx context.Context, rng *ring.Ring, verbose bool) error {
 	return cmd.Run()
 }
 
-// hasTimeoutArg returns true when args set the "go test" -timeout flag, in any
-// of its spellings.
-func hasTimeoutArg(args []string) bool {
+// hasFlagArg returns true when args set the flag of the given name, in any of
+// its spellings: "-name", "--name", with or without "=value".
+func hasFlagArg(args []string, flag string) bool {
 	for _, arg := range args {
 		name, _, _ := strings.Cut(strings.TrimLeft(arg, "-"), "=")
-		if strings.HasPrefix(arg, "-") && name == "timeout" {
+		if strings.HasPrefix(arg, "-") && name == flag {
 			return true
 		}
 	}
@@ -443,7 +443,8 @@ var buildVarNames = []string{
 // Build runs "go build", injecting build metadata via "-ldflags -X" when the
 // current module has an entry in the target's "modules" configuration. Without
 // a matching entry it builds normally and injects nothing. Extra arguments are
-// forwarded to "go build".
+// forwarded to "go build"; with an entry they must not set -ldflags, and the
+// package, names and values must not contain a single quote.
 //
 // Example usage:
 //
@@ -466,6 +467,16 @@ func (Go) Build(ctx context.Context, rng *ring.Ring) error {
 		if err != nil {
 			return fmt.Errorf("%w: module %q: %w", ErrConfig, module, err)
 		}
+		if pkg == "" {
+			return fmt.Errorf("%w: module %q: empty package", ErrConfig, module)
+		}
+		// "go build" keeps only the last -ldflags, so one among the
+		// arguments would silently drop the injected values.
+		if hasFlagArg(rng.Args(), "ldflags") {
+			return errors.New("" +
+				"-ldflags in arguments would drop the injected build metadata",
+			)
+		}
 		vals, err := buildValues(ctx, rng)
 		if err != nil {
 			return err
@@ -477,6 +488,14 @@ func (Go) Build(ctx context.Context, rng *ring.Ring) error {
 				return err
 			}
 			vars = append(vars, LDVar{Name: name, Value: vals[field]})
+		}
+		// The go tool splits -ldflags on quotes and has no escapes, so a
+		// single quote would end an assignment early.
+		for _, val := range append([]string{pkg}, ldValues(vars)...) {
+			if strings.Contains(val, "'") {
+				format := "%w: module %q: single quote in %q"
+				return fmt.Errorf(format, ErrConfig, module, val)
+			}
 		}
 		args = append(args, "-ldflags="+LDFlags(pkg, vars))
 	}
@@ -490,6 +509,15 @@ func (Go) Build(ctx context.Context, rng *ring.Ring) error {
 	format := "#gomake INFO# go %s\n"
 	_, _ = fmt.Fprintf(cmd.Stderr, format, strings.Join(args, " "))
 	return cmd.Run()
+}
+
+// ldValues returns the names and values of vars, in order.
+func ldValues(vars []LDVar) []string {
+	vals := make([]string, 0, 2*len(vars))
+	for _, v := range vars {
+		vals = append(vals, v.Name, v.Value)
+	}
+	return vals
 }
 
 // buildValues collects the build-metadata values to inject, keyed by canonical
