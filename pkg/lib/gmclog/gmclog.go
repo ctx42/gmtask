@@ -150,6 +150,7 @@ func (clg *Changelog) AddRelease(rel ...*Release) {
 // Save saves the changelog, overwriting the original file with the releases.
 // It writes to a temporary file in the same directory and renames it into
 // place so a crash or partial write cannot truncate an existing changelog.
+// The saved file keeps the mode of the file it replaces; a new file gets 0644.
 func (clg *Changelog) Save() error {
 	buf := &bytes.Buffer{}
 	buf.Write(clg.preamble)
@@ -174,6 +175,16 @@ func (clg *Changelog) Save() error {
 	if _, err = tmp.Write(buf.Bytes()); err != nil {
 		_ = tmp.Close()
 		return fmt.Errorf("write changelog: %w", err)
+	}
+	// The temporary file is created with mode 0600; give it the mode of the
+	// file it replaces, or 0644 for a new changelog.
+	mode := os.FileMode(0o644)
+	if inf, serr := os.Stat(clg.pth); serr == nil {
+		mode = inf.Mode().Perm()
+	}
+	if err = tmp.Chmod(mode); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("set changelog mode: %w", err)
 	}
 	if err = tmp.Close(); err != nil {
 		return fmt.Errorf("close temp changelog file: %w", err)

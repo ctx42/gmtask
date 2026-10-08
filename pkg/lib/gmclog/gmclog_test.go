@@ -349,6 +349,33 @@ func Test_Changelog_Save(t *testing.T) {
 		assert.Equal(t, want, oskit.ReadFileStr(t, pth))
 	})
 
+	t.Run("keeps file mode", func(t *testing.T) {
+		// --- Given ---
+		pth := oskit.Create(t, "", t.TempDir(), "CHANGELOG.md")
+		must.Nil(os.Chmod(pth, 0o640))
+		clg := must.Value(ReadChangelog(pth))
+
+		// --- When ---
+		err := clg.Save()
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, os.FileMode(0o640), oskit.Stat(t, pth).Mode().Perm())
+	})
+
+	t.Run("new file mode", func(t *testing.T) {
+		// --- Given ---
+		pth := filepath.Join(t.TempDir(), "CHANGELOG.md")
+		clg := &Changelog{pth: pth}
+
+		// --- When ---
+		err := clg.Save()
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, os.FileMode(0o644), oskit.Stat(t, pth).Mode().Perm())
+	})
+
 	t.Run("error - create fails", func(t *testing.T) {
 		// --- Given ---
 		pth := filepath.Join(t.TempDir(), "nope", "CHANGELOG.md")
