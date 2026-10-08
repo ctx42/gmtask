@@ -199,7 +199,7 @@ func (Lint) config(
 	}
 	format := "#gomake INFO# lint config: downloading from %s to %s\n"
 	_, _ = fmt.Fprintf(rng.Stderr(), format, repo, dst)
-	if err = gitGetFile(ctx, repo, "master", cfgFile, dst); err != nil {
+	if err = gitGetFile(ctx, repo, "", cfgFile, dst); err != nil {
 		return "", false, err
 	}
 	return dst, false, nil

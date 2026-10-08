@@ -8,6 +8,7 @@ import (
 	"context"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -544,6 +545,28 @@ func Test_Lint_Config(t *testing.T) {
 		want := "#gomake INFO# lint config: downloading from " + repo +
 			" to tmp/.golangci.yml\n"
 		assert.Equal(t, want, tst.Stderr())
+	})
+
+	t.Run("source repo on main branch", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		repo := setupConfigRepo(t)
+		cmd := exec.Command("git", "-C", repo, "branch", "-m", "master", "main")
+		must.Value(cmd.CombinedOutput())
+		rng.EnvSet(GoLintConfigRepoEnvKey, repo)
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Lint{}.Config(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.FileExist(t, prj.Path(".golangci.yml"))
+		assert.Contain(t, "lint config: downloading", tst.Stderr())
 	})
 
 	t.Run("env source repo overrides configuration", func(t *testing.T) {
