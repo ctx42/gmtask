@@ -7,10 +7,17 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+)
+
+// Compile-time assertions of the interfaces implemented in this file.
+var (
+	_ fmt.Stringer   = (*Release)(nil)
+	_ sort.Interface = ReleaseSlice(nil)
 )
 
 // releaseHeaderRx is a regular expression matching a release header.

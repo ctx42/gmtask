@@ -45,26 +45,6 @@ var (
 	ErrInvRelVersion = errors.New("invalid release version")
 )
 
-// CreateFile creates an empty file at pth when none exists; an existing file
-// is left untouched. Creating and checking happen in one open call, so a file
-// created concurrently by another process is never truncated. It returns an
-// error when pth is a directory.
-func CreateFile(pth string) error {
-	fil, err := os.OpenFile(pth, os.O_RDONLY|os.O_CREATE, 0o666) //nolint:gosec
-	if err != nil {
-		return fmt.Errorf("create file: %w", err)
-	}
-	inf, err := fil.Stat()
-	_ = fil.Close()
-	if err != nil {
-		return fmt.Errorf("stat file: %w", err)
-	}
-	if inf.IsDir() {
-		return fmt.Errorf("create file: %s: is a directory", pth)
-	}
-	return nil
-}
-
 // Changelog represents the changelog file.
 type Changelog struct {
 	pth      string     // Absolute path to the changelog file.
@@ -144,14 +124,14 @@ func splitPreamble(data []byte) (preamble, rest []byte) {
 // every release ends with one blank line.
 func ReadReleases(pth string, elems ...string) (*Changelog, error) {
 	pth = filepath.Join(append([]string{pth}, elems...)...)
-	cl, err := readChangelog(pth)
+	clg, err := readChangelog(pth)
 	if err != nil {
 		return nil, err
 	}
 
 	curr, num := -1, 0
 	var preamble []string
-	scn := bufio.NewScanner(bytes.NewReader(cl.contents))
+	scn := bufio.NewScanner(bytes.NewReader(clg.contents))
 	for scn.Scan() {
 		num++
 		lin := scn.Text()
@@ -161,12 +141,12 @@ func ReadReleases(pth string, elems ...string) (*Changelog, error) {
 				format := "parse release header on line %d: %w"
 				return nil, fmt.Errorf(format, num, err)
 			}
-			cl.Releases = append(cl.Releases, rel)
-			curr = len(cl.Releases) - 1
+			clg.Releases = append(clg.Releases, rel)
+			curr = len(clg.Releases) - 1
 			continue
 		}
 		if curr >= 0 {
-			cl.Releases[curr].Changes = append(cl.Releases[curr].Changes, lin)
+			clg.Releases[curr].Changes = append(clg.Releases[curr].Changes, lin)
 			continue
 		}
 		// A line before the first release header, such as a "# Changelog"
@@ -177,17 +157,17 @@ func ReadReleases(pth string, elems ...string) (*Changelog, error) {
 	if err = scn.Err(); err != nil {
 		return nil, fmt.Errorf("scan changelog: %w", err)
 	}
-	for _, rel := range cl.Releases {
+	for _, rel := range clg.Releases {
 		rel.finalize()
 	}
 	// The parsed releases and preamble fully represent the file; drop the raw
 	// contents so Save reserializes from them instead of appending the file to
 	// itself.
 	if len(preamble) > 0 {
-		cl.preamble = []byte(strings.Join(preamble, "\n") + "\n")
+		clg.preamble = []byte(strings.Join(preamble, "\n") + "\n")
 	}
-	cl.contents = nil
-	return cl, nil
+	clg.contents = nil
+	return clg, nil
 }
 
 // AddRelease adds the release(s) to the changelog. Before exiting, it sorts
@@ -204,12 +184,12 @@ func (clg *Changelog) AddRelease(rel ...*Release) {
 // The saved file keeps the mode of the file it replaces; a new file gets 0644.
 func (clg *Changelog) Save() error {
 	buf := &bytes.Buffer{}
-	buf.Write(clg.preamble)
+	_, _ = buf.Write(clg.preamble)
 	for _, rel := range clg.Releases {
-		buf.WriteString(rel.String())
-		buf.WriteString("\n") // A blank line ends each release.
+		_, _ = buf.WriteString(rel.String())
+		_, _ = buf.WriteString("\n") // A blank line ends each release.
 	}
-	buf.Write(clg.contents)
+	_, _ = buf.Write(clg.contents)
 
 	dir := filepath.Dir(clg.pth)
 	tmp, err := os.CreateTemp(dir, ".changelog-*.tmp")
