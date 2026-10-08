@@ -779,6 +779,7 @@ func Test_parseDirTarget(t *testing.T) {
 		assert.False(t, help)
 		assert.Equal(t, "reports", out)
 		assert.Equal(t, []string{"./pkg/..."}, next.Args())
+		assert.Equal(t, []string{"--dir", "reports", "./pkg/..."}, rng.Args())
 	})
 
 	t.Run("help requested writes usage", func(t *testing.T) {

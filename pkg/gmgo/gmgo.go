@@ -216,9 +216,10 @@ func (Go) test(ctx context.Context, rng *ring.Ring, verbose bool) error {
 
 // parseDirTarget parses the --dir and --help flags shared by the targets that
 // write output to a directory, using dirHelp as the --dir usage description. It
-// returns the resolved --dir value and the ring with the remaining positional
-// arguments applied. help is true when --help was requested, in which case the
-// usage was already written and the caller should return without further work.
+// returns the resolved --dir value and a clone of the ring with the remaining
+// positional arguments applied; rng itself is left unchanged. help is true
+// when --help was requested, in which case the usage was already written and
+// the caller should return without further work.
 func parseDirTarget(
 	rng *ring.Ring,
 	tgtName, dirHelp string,
@@ -235,7 +236,9 @@ func parseDirTarget(
 	if err = fs.Parse(rng.Args()); err != nil {
 		return "", rng, false, err
 	}
-	rng = rng.SetArgs(fs.Args())
+	// A clone, so the caller's ring keeps its arguments for the next step of
+	// a composite target such as :go:check.
+	rng = rng.Clone().SetArgs(fs.Args())
 	if fs.GetBool("help") {
 		fs.Usage()
 		return "", rng, true, nil
