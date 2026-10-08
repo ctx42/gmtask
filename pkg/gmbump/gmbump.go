@@ -84,7 +84,7 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	fs.SetOutput(rng.Stderr())
 	fs.Usage = func() {
 		head := fmt.Sprintf("Usage of %s:\n", tgtName)
-		_, _ = fmt.Fprint(rng.Stderr(), head+xflag.HelpOptions(fs))
+		_, _ = fmt.Fprint(rng.Stderr(), head+fs.HelpOptions())
 	}
 	fs.BoolSL("help", "h", false, "show help")
 	fs.BoolSL("patch", "p", false, "force a patch version bump")

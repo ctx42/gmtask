@@ -230,7 +230,7 @@ func parseDirTarget(
 	fs.SetOutput(rng.Stderr())
 	fs.Usage = func() {
 		head := fmt.Sprintf("Usage of %s\n", tgtName)
-		_, _ = fmt.Fprint(rng.Stderr(), head+xflag.HelpOptions(fs))
+		_, _ = fmt.Fprint(rng.Stderr(), head+fs.HelpOptions())
 	}
 	if err = fs.Parse(rng.Args()); err != nil {
 		return "", rng, false, err

@@ -453,7 +453,7 @@ func (Image) Info(ctx context.Context, rng *ring.Ring) error {
 		examples := "\nEXAMPLES:\n" +
 			"\t:docker:image:info\n" +
 			"\t:docker:image:info ENV_VAR_NAME\n"
-		_, _ = fmt.Fprint(eout, head+xflag.HelpOptions(fs)+examples)
+		_, _ = fmt.Fprint(eout, head+fs.HelpOptions()+examples)
 	}
 	if err := fs.Parse(rng.Args()); err != nil {
 		return err

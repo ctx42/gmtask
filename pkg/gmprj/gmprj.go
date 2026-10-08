@@ -104,7 +104,7 @@ func (Project) Env(ctx context.Context, rng *ring.Ring) error {
 	fs.SetOutput(rng.Stderr())
 	fs.Usage = func() {
 		head := fmt.Sprintf("Usage of %s:\n", tgtName)
-		_, _ = fmt.Fprint(rng.Stderr(), head+xflag.HelpOptions(fs))
+		_, _ = fmt.Fprint(rng.Stderr(), head+fs.HelpOptions())
 	}
 	fs.BoolSL("help", "h", false, "show help")
 	fs.BoolSL("export", "e", false, "export variables")
@@ -203,7 +203,7 @@ func (Project) Setup(ctx context.Context, rng *ring.Ring) error {
 			"\n" +
 			"  # Set the Go module path explicitly.\n" +
 			"  gomake :project:setup --module github.com/prj/repo\n"
-		_, _ = fmt.Fprint(rng.Stderr(), head+xflag.HelpOptions(fs)+examples)
+		_, _ = fmt.Fprint(rng.Stderr(), head+fs.HelpOptions()+examples)
 	}
 	fs.BoolSL("help", "h", false, "show help")
 	fs.StringSL("origin", "o", "", "remote repository path")

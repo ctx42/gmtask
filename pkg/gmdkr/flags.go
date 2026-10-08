@@ -28,7 +28,7 @@ func NewFlagParser(name string, out io.Writer) *FlagParser {
 	fp.fs.SetOutput(out)
 	fp.fs.Usage = func() {
 		_, _ = fmt.Fprintf(out, "Usage of %s:\n", name)
-		_, _ = fmt.Fprint(out, xflag.HelpOptions(fp.fs))
+		_, _ = fmt.Fprint(out, fp.fs.HelpOptions())
 	}
 	return fp
 }

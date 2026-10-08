@@ -48,7 +48,7 @@ func (Doc) Mce(ctx context.Context, rng *ring.Ring) error {
 	fs.SetOutput(rng.Stderr())
 	fs.Usage = func() {
 		head := fmt.Sprintf("Usage of %s:\n", tgtName)
-		_, _ = fmt.Fprint(rng.Stderr(), head+xflag.HelpOptions(fs))
+		_, _ = fmt.Fprint(rng.Stderr(), head+fs.HelpOptions())
 	}
 	fs.BoolSL("help", "h", false, "show help")
 	fs.StringVar(&dir, "dir", ".", "root directory to scan for Go examples")
