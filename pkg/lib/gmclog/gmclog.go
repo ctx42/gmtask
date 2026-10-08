@@ -112,7 +112,7 @@ func ReadReleases(pth string, elems ...string) (*Changelog, error) {
 	scn := bufio.NewScanner(bytes.NewReader(cl.contents))
 	for scn.Scan() {
 		lin := scn.Text()
-		if releaseHeaderRx.MatchString(lin) {
+		if releaseLineRx.MatchString(lin) {
 			var rel *Release
 			if rel, err = ReleaseFromHeader(lin, WithNoFormatting); err != nil {
 				return nil, fmt.Errorf("parse release header: %w", err)

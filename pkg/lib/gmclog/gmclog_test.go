@@ -186,6 +186,24 @@ func Test_ReadReleases(t *testing.T) {
 		assert.Equal(t, want, cl.Releases[0].Changes)
 	})
 
+	t.Run("parenthesized title is not a release header", func(t *testing.T) {
+		// --- Given ---
+		src := "" +
+			"## v0.1.5 (Sun, 02 Jan 2000 03:04:05 UTC)\n" +
+			"- Change 1.\n" +
+			"## Notes (draft)\n"
+		pth := oskit.Create(t, src, t.TempDir(), "CHANGELOG.md")
+
+		// --- When ---
+		cl, err := ReadReleases(pth)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Len(t, 1, cl.Releases)
+		want := []string{"- Change 1.", "## Notes (draft)"}
+		assert.Equal(t, want, cl.Releases[0].Changes)
+	})
+
 	t.Run("error - changelog not found", func(t *testing.T) {
 		// --- When ---
 		cl, err := ReadReleases("testdata", "not_existing.md")
