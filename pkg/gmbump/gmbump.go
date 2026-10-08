@@ -45,11 +45,8 @@ import (
 
 // Branches a release may be cut from without an approval.
 const (
-	// branchMaster is the primary default branch name.
 	branchMaster = "master"
-
-	// branchMain is the alternative default branch name.
-	branchMain = "main"
+	branchMain   = "main"
 )
 
 // Sentinel errors.
@@ -144,6 +141,8 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		return fmt.Errorf("resolve version: %w", err)
 	}
 
+	// An error means the repository has no tag at all, which leaves nothing
+	// to report; it only suppresses the notice below.
 	closest, err := gitaid.ClosestTag(ctx, repo, "")
 	if err == nil && closest != "" && closest != ver.Tag {
 		// Only version tags are considered, so say which one was passed
@@ -163,8 +162,12 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	}
 
 	rdr := bufio.NewReader(rng.Stdin())
-	if err = approveBranch(rng, rdr, branch); err != nil {
-		return err
+	if branch != branchMaster && branch != branchMain {
+		format := "Release from branch %q? [y/N]: "
+		_, _ = fmt.Fprintf(rng.Stdout(), format, branch)
+		if err = approveBranch(rdr, branch); err != nil {
+			return err
+		}
 	}
 
 	format := "Enter a version number [%s]: "
@@ -252,11 +255,11 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	if err != nil {
 		return nil
 	}
-	msg = "" +
+	format = "" +
 		"\nUse\n" +
 		"\tgo get %s@%s\n" +
 		"to update upstreams.\n"
-	_, _ = fmt.Fprintf(rng.Stdout(), msg, mod, next.Original())
+	_, _ = fmt.Fprintf(rng.Stdout(), format, mod, next.Original())
 
 	return nil
 }
@@ -264,12 +267,7 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 // writeChangelog prepends a release of the given version, dated now and built
 // from changes, to the CHANGELOG.md of the repository rooted at repo. The file
 // is created when it does not exist yet.
-func writeChangelog(
-	repo string,
-	next *semver.Version,
-	changes []string,
-) error {
-
+func writeChangelog(repo string, next *semver.Version, changes []string) error {
 	rel := gmclog.NewSemVerRelease(next, time.Now())
 	rel.AddChange(changes...)
 
@@ -277,12 +275,12 @@ func writeChangelog(
 	if err := gmclog.CreateFile(pth); err != nil {
 		return fmt.Errorf("create changelog: %w", err)
 	}
-	cl, err := gmclog.ReadChangelog(pth)
+	clg, err := gmclog.ReadChangelog(pth)
 	if err != nil {
 		return fmt.Errorf("read changelog: %w", err)
 	}
-	cl.AddRelease(rel)
-	if err = cl.Save(); err != nil {
+	clg.AddRelease(rel)
+	if err = clg.Save(); err != nil {
 		return fmt.Errorf("save changelog: %w", err)
 	}
 	return nil
@@ -293,7 +291,8 @@ func writeChangelog(
 // no version tag yet, and every commit is then a change.
 func collectChanges(
 	ctx context.Context,
-	repo, tag string,
+	repo string,
+	tag string,
 ) ([]string, string, error) {
 
 	changes, err := gitaid.ChangeLog(ctx, repo, tag)
@@ -309,17 +308,10 @@ func collectChanges(
 	return changes, tag, nil
 }
 
-// approveBranch asks to confirm a release cut from branch and returns nil when
-// it is approved. A default branch is approved without asking; anywhere else
-// only "y" or "yes", in any case, goes on, and any other answer yields an error
-// wrapping [ErrNotDefBranch].
-func approveBranch(rng *ring.Ring, rdr *bufio.Reader, branch string) error {
-	if branch == branchMaster || branch == branchMain {
-		return nil
-	}
-
-	format := "Release from branch %q? [y/N]: "
-	_, _ = fmt.Fprintf(rng.Stdout(), format, branch)
+// approveBranch reads the answer to the question whether to release from
+// branch and returns nil when it is approved: only "y" or "yes", in any case,
+// goes on, and any other answer yields an error wrapping [ErrNotDefBranch].
+func approveBranch(rdr *bufio.Reader, branch string) error {
 	txt, err := readLine(rdr)
 	if err != nil {
 		return fmt.Errorf("read approval input: %w", err)
@@ -329,7 +321,7 @@ func approveBranch(rng *ring.Ring, rdr *bufio.Reader, branch string) error {
 
 		return nil
 	}
-	format = "bump aborted: branch %q is %w (master, main)"
+	format := "bump aborted: branch %q is %w (master, main)"
 	return fmt.Errorf(format, branch, ErrNotDefBranch)
 }
 
