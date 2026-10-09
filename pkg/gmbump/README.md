@@ -32,6 +32,10 @@ exported `Bump` and `BumpTarget` functions are also usable as a plain library.
 - **Automatic version proposal** — the release the repository is already
   heading towards, read off the Conventional Commits since the last tag.
 - **Interactive confirmation** — accept the proposal or type your own version.
+- **Explicit version** — `-s` sets the version up front and skips the question.
+- **Strict validation** — full semantic versions only, asked again if refused.
+- **Tag collision guard** — refuses a version already tagged locally or on
+  origin, before any file is written.
 - **Changelog generation** — a dated release from commits, ready to edit.
 - **Clean-tree guard** — refuses to run when the working tree is dirty.
 - **Branch guard** — refuses a detached HEAD, and asks before releasing from
@@ -94,12 +98,16 @@ import (
 Run from the repository root:
 
 ```shell
-gomake :bump        # propose the release the commits imply
-gomake :bump -p     # force a patch bump instead
-gomake :bump -m     # force a minor bump instead
-gomake :bump -M     # force a major bump instead (minor while on 0.x)
-gomake :bump -h     # show help
+gomake :bump            # propose the release the commits imply
+gomake :bump -p         # force a patch bump instead
+gomake :bump -m         # force a minor bump instead
+gomake :bump -M         # force a major bump instead (minor while on 0.x)
+gomake :bump -s v1.0.0  # release this version without asking for one
+gomake :bump -f         # release even when origin cannot be checked
+gomake :bump -h         # show help
 ```
+
+`-s` cannot be combined with `-p`, `-m`, or `-M`.
 
 A run:
 
@@ -109,7 +117,18 @@ A run:
 4. On a branch other than `master` or `main`, asks to confirm the release —
    only `y` or `yes` goes on, anything else aborts.
 5. Prompts for the next version, pre-filled with the proposal — press ENTER to
-   accept it or type your own.
+   accept it or type your own. With `-s` it prints the given version instead.
+   The version is checked before anything is written:
+   - It must be a full `MAJOR.MINOR.PATCH`, optionally with a `v` prefix and a
+     pre-release; `1.2`, `01.2.3`, and `1.2.3-rc.01` are refused. Build
+     metadata (`+…`) is refused in a Go module, which cannot fetch it.
+   - It must be newer than the current tag; one lower than the proposal is
+     released with a warning.
+   - It must not be a tag yet, locally or on origin. An origin that cannot be
+     reached stops the release unless `-f` is given.
+
+   A typed version that is refused is reported and asked for again; with `-s`
+   the run stops instead.
 6. Prepends the release to `CHANGELOG.md` and pauses so you can edit it; press
    ENTER to continue.
 7. Writes `VER`, commits `CHANGELOG.md` and `VER`, tags the commit, and pushes
@@ -138,6 +157,23 @@ Answering anything else stops the release before it writes a thing:
 
 ```text
 bump aborted: branch "feature/x" is not a default branch (master, main)
+```
+
+A refused version is asked for again:
+
+```text
+Current tag: v0.1.0
+Enter a version number [v0.2.0]: v0.2
+Rejected: invalid version: "v0.2": invalid semantic version
+Enter a version number [v0.2.0]:
+```
+
+With `-s` the version is not asked for:
+
+```text
+Current tag: v0.1.0
+Version: v1.0.0
+Now you may edit CHANGELOG.md. Then press ENTER to continue.
 ```
 
 When the repository is a Go module, the run ends with an upgrade hint:

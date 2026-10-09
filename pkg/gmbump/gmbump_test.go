@@ -4,6 +4,7 @@
 package gmbump
 
 import (
+	"bufio"
 	"bytes"
 	"flag"
 	"io"
@@ -74,10 +75,12 @@ func Test_BumpTarget(t *testing.T) {
 		assert.NoError(t, err)
 		want := "" +
 			"Usage of :bump:\n" +
+			"  -f, --force    release when origin cannot be checked\n" +
 			"  -h, --help     show help\n" +
 			"  -M, --major    force a major version bump\n" +
 			"  -m, --minor    force a minor version bump\n" +
-			"  -p, --patch    force a patch version bump\n"
+			"  -p, --patch    force a patch version bump\n" +
+			"  -s, --set      release the given version without asking\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
 
@@ -111,6 +114,61 @@ func Test_BumpTarget(t *testing.T) {
 		// --- Then ---
 		assert.ErrorIs(t, ErrBumpFlags, err)
 		assert.ErrorContain(t, "--patch and --minor", err)
+	})
+
+	t.Run("error - set with bump flag", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t)
+		rng := tst.Ring("-s", "v1.0.0", "-m")
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrBumpFlags, err)
+		assert.ErrorContain(t, "--set and --minor", err)
+	})
+
+	t.Run("error - invalid set version on dirty tree", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t)
+		rng := tst.Ring("-s", "v1.2")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.CreateFileWith("file0 2", "file0.txt")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrBadVersion, err)
+		assert.ErrorContain(t, `"v1.2"`, err)
+	})
+
+	t.Run("error - set metadata in go module", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t)
+		rng := tst.Ring("-s", "v0.0.2+b")
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrBadVersion, err)
+		assert.ErrorContain(t, "build metadata in a Go module", err)
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
 	})
 
 	t.Run("error - not git repo", func(t *testing.T) {
@@ -888,9 +946,9 @@ func Test_BumpTarget(t *testing.T) {
 		assert.Equal(t, "- commit 2.", rel.Changes[0])
 	})
 
-	t.Run("short custom version", func(t *testing.T) {
+	t.Run("short version asked again", func(t *testing.T) {
 		// --- Given ---
-		sin := bytes.NewBufferString("1.2\n\n")
+		sin := bytes.NewBufferString("v1.2\nv1.0.0\n\n")
 		tst := ringtest.New(t).WetStdout().SetStdin(sin)
 		rng := tst.Ring()
 
@@ -909,19 +967,21 @@ func Test_BumpTarget(t *testing.T) {
 		want := "" +
 			"Current tag: v0.0.1\n" +
 			"Enter a version number [v0.0.2]: " +
+			"Rejected: invalid version: \"v1.2\": invalid semantic version\n" +
+			"Enter a version number [v0.0.2]: " +
 			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
 			"Continuing.\n" +
 			"No remote configured; skip push.\n" +
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
-		assert.Equal(t, "v1.2.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+		assert.Equal(t, "v1.0.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
 		tags := prj.ExeStdout("git", "tag", "--list")
-		assert.Equal(t, "v0.0.1\nv1.2.0\n", tags)
+		assert.Equal(t, "v0.0.1\nv1.0.0\n", tags)
 	})
 
-	t.Run("error - version not newer", func(t *testing.T) {
+	t.Run("not newer version asked again", func(t *testing.T) {
 		// --- Given ---
-		sin := bytes.NewBufferString("v0.4.0\n\n")
+		sin := bytes.NewBufferString("v0.4.0\n\n\n")
 		tst := ringtest.New(t).WetStdout().SetStdin(sin)
 		rng := tst.Ring()
 
@@ -936,14 +996,19 @@ func Test_BumpTarget(t *testing.T) {
 		err := BumpTarget(t.Context(), rng, prj.Root())
 
 		// --- Then ---
-		assert.ErrorIs(t, ErrNotNewer, err)
-		assert.ErrorContain(t, "v0.4.0 is not newer than v0.5.0", err)
+		assert.NoError(t, err)
 		want := "" +
 			"Current tag: v0.5.0\n" +
-			"Enter a version number [v0.5.1]: "
+			"Enter a version number [v0.5.1]: " +
+			"Rejected: version not newer than the current tag: " +
+			"v0.4.0 is not newer than v0.5.0\n" +
+			"Enter a version number [v0.5.1]: " +
+			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
+			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
+			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
-		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
-		assert.NoFileExist(t, filepath.Join(prj.Root(), "CHANGELOG.md"))
+		assert.Equal(t, "v0.5.1", oskit.ReadFileStr(t, prj.Root(), "VER"))
 	})
 
 	t.Run("error - EOF reading version", func(t *testing.T) {
@@ -968,7 +1033,7 @@ func Test_BumpTarget(t *testing.T) {
 		assert.Equal(t, want, tst.Stdout())
 	})
 
-	t.Run("error - invalid version input", func(t *testing.T) {
+	t.Run("error - EOF after invalid version", func(t *testing.T) {
 		// --- Given ---
 		sin := bytes.NewBufferString("not-a-version\n")
 		tst := ringtest.New(t).WetStdout().SetStdin(sin)
@@ -983,11 +1048,16 @@ func Test_BumpTarget(t *testing.T) {
 		err := BumpTarget(t.Context(), rng, prj.Root())
 
 		// --- Then ---
-		assert.ErrorIs(t, semver.ErrInvalidSemVer, err)
+		assert.ErrorIs(t, io.EOF, err)
 		want := "" +
 			"Current tag: \n" +
+			"Enter a version number [v0.0.1]: " +
+			"Rejected: invalid version: \"not-a-version\": " +
+			"invalid semantic version\n" +
 			"Enter a version number [v0.0.1]: "
 		assert.Equal(t, want, tst.Stdout())
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "CHANGELOG.md"))
 	})
 
 	t.Run("last answer without newline", func(t *testing.T) {
@@ -1041,9 +1111,9 @@ func Test_BumpTarget(t *testing.T) {
 		assert.Equal(t, want, tst.Stdout())
 	})
 
-	t.Run("error - tag exists", func(t *testing.T) {
+	t.Run("existing tag asked again", func(t *testing.T) {
 		// --- Given ---
-		sin := bytes.NewBufferString("v0.0.2\n\n")
+		sin := bytes.NewBufferString("v0.0.2\nv0.0.3\n\n")
 		tst := ringtest.New(t).WetStdout().SetStdin(sin)
 		rng := tst.Ring()
 
@@ -1062,13 +1132,21 @@ func Test_BumpTarget(t *testing.T) {
 		err := BumpTarget(t.Context(), rng, prj.Root())
 
 		// --- Then ---
-		assert.ErrorContain(t, "release v0.0.2 committed but not tagged", err)
-		assert.Contain(t, "Continuing.\n", tst.Stdout())
-		msg := prj.ExeStdout("git", "log", "-1", "--format=%s")
-		assert.Equal(t, "Bump version to v0.0.2.\n", msg)
+		assert.NoError(t, err)
+		want := "" +
+			"Current tag: v0.0.1\n" +
+			"Enter a version number [v0.0.2]: " +
+			"Rejected: tag already exists: v0.0.2\n" +
+			"Enter a version number [v0.0.2]: " +
+			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
+			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.Equal(t, "v0.0.3", oskit.ReadFileStr(t, prj.Root(), "VER"))
 	})
 
-	t.Run("error - push fails", func(t *testing.T) {
+	t.Run("error - origin unreachable", func(t *testing.T) {
 		// --- Given ---
 		sin := bytes.NewBufferString("\n\n")
 		tst := ringtest.New(t).WetStdout().SetStdin(sin)
@@ -1084,10 +1162,345 @@ func Test_BumpTarget(t *testing.T) {
 		err := BumpTarget(t.Context(), rng, prj.Root())
 
 		// --- Then ---
+		assert.ErrorIs(t, gitaid.ErrRemote, err)
+		assert.ErrorContain(t, "--force skips", err)
+		want := "" +
+			"Current tag: \n" +
+			"Enter a version number [v0.0.1]: "
+		assert.Equal(t, want, tst.Stdout())
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "CHANGELOG.md"))
+	})
+
+	t.Run("error - push fails when forced", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring("-f")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.GitSetRemote(filepath.Join(t.TempDir(), "missing"))
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
 		want := "release v0.0.1 committed and tagged locally; push it manually"
 		assert.ErrorContain(t, want, err)
 		assert.Contain(t, "Continuing.\n", tst.Stdout())
 		assert.Equal(t, "v0.0.1\n", prj.ExeStdout("git", "tag"))
+	})
+
+	t.Run("set version", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring("-s", "v1.0.0")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.1.0")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("", "fix: a defect")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"Current tag: v0.1.0\n" +
+			"Version: v1.0.0\n" +
+			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
+			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.Equal(t, "v1.0.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+		tags := prj.ExeStdout("git", "tag", "--list")
+		assert.Equal(t, "v0.1.0\nv1.0.0\n", tags)
+	})
+
+	t.Run("set version off default branch", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("y\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring("--set", "1.0.0")
+
+		prj := gmtest.NewProject(t, prjkit.WithGitBranch("feature/x"))
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"Current tag: \n" +
+			"Release from branch \"feature/x\"? [y/N]: " +
+			"Version: v1.0.0\n" +
+			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
+			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.Equal(t, "v1.0.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+	})
+
+	t.Run("set version with HEAD on tag", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("-s", "v1.0.0")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll("v0.1.0")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"Current tag: v0.1.0\n" +
+			"HEAD on tag. Nothing to do.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+	})
+
+	t.Run("set version below proposal", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring("-s", "v0.1.1")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.1.0")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("", "feat: a feature")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"Current tag: v0.1.0\n" +
+			"Version: v0.1.1\n" +
+			"Warning: v0.1.1 is lower than the proposed v0.2.0.\n" +
+			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
+			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.Equal(t, "v0.1.1", oskit.ReadFileStr(t, prj.Root(), "VER"))
+	})
+
+	t.Run("typed version below proposal", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("v0.1.1\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.1.0")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("", "feat: a feature")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "Warning: v0.1.1 is lower than the proposed v0.2.0.\n"
+		assert.Contain(t, want, tst.Stdout())
+		assert.Equal(t, "v0.1.1", oskit.ReadFileStr(t, prj.Root(), "VER"))
+	})
+
+	t.Run("set pre-release of proposal", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring("-s", "v0.2.0-rc.1")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.1.0")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("", "feat: a feature")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.NotContain(t, "Warning:", tst.Stdout())
+		have := oskit.ReadFileStr(t, prj.Root(), "VER")
+		assert.Equal(t, "v0.2.0-rc.1", have)
+	})
+
+	t.Run("set version far ahead", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring("-s", "v7.0.0")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.1.0")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("", "feat: a feature")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.NotContain(t, "Warning:", tst.Stdout())
+		assert.Equal(t, "v7.0.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+	})
+
+	t.Run("set metadata outside go module", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring("-s", "v0.0.2+b")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.0.1")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "Version: v0.0.2+b\n", tst.Stdout())
+		assert.Equal(t, "v0.0.2+b", oskit.ReadFileStr(t, prj.Root(), "VER"))
+		tags := prj.ExeStdout("git", "tag", "--list")
+		assert.Equal(t, "v0.0.1\nv0.0.2+b\n", tags)
+	})
+
+	t.Run("error - set version not newer", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("-s", "v0.5.0")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.5.0")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNotNewer, err)
+		assert.ErrorContain(t, "v0.5.0 is not newer than v0.5.0", err)
+		want := "" +
+			"Current tag: v0.5.0\n" +
+			"Version: v0.5.0\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "CHANGELOG.md"))
+	})
+
+	t.Run("error - set version tag on other branch", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("-s", "v0.0.2")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.0.1")
+		prj.Exe("git", "checkout", "-q", "-b", "other")
+		prj.CreateFileWith("other", "other.txt")
+		prj.GitCommit("v0.0.2")
+		prj.Exe("git", "checkout", "-q", "-")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrTagExists, err)
+		assert.ErrorContain(t, "tag already exists: v0.0.2", err)
+		assert.Contain(t, "Version: v0.0.2\n", tst.Stdout())
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "CHANGELOG.md"))
+	})
+
+	t.Run("error - set version tag only on origin", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("-s", "v0.0.2")
+
+		prj := gmtest.NewProject(t, prjkit.WithGitBranch("main"))
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		origin := t.TempDir()
+		prj.Exe("git", "init", "--bare", origin)
+		prj.GitSetRemote(origin)
+		prj.Exe("git", "push", "origin", "main")
+		prj.Exe("git", "-C", origin, "tag", "v0.0.2", "main")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrTagExists, err)
+		assert.ErrorContain(t, "tag already exists on origin: v0.0.2", err)
+		assert.Contain(t, "Version: v0.0.2\n", tst.Stdout())
+		assert.Empty(t, prj.ExeStdout("git", "tag", "--list"))
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "CHANGELOG.md"))
+	})
+
+	t.Run("error - force keeps local tag check", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("-f", "-s", "v0.0.2")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.0.1")
+		prj.Exe("git", "checkout", "-q", "-b", "other")
+		prj.CreateFileWith("other", "other.txt")
+		prj.GitCommit("v0.0.2")
+		prj.Exe("git", "checkout", "-q", "-")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("")
+		prj.GitSetRemote(filepath.Join(t.TempDir(), "missing"))
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrTagExists, err)
+		assert.Contain(t, "Version: v0.0.2\n", tst.Stdout())
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
 	})
 
 	t.Run("changelog in reverse", func(t *testing.T) {
@@ -1134,6 +1547,279 @@ func Test_BumpTarget(t *testing.T) {
 			"Done.\n"
 		assert.Equal(t, want, tst.Stdout())
 	})
+}
+
+func Test_guard_choose(t *testing.T) {
+	t.Run("set version", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		grd := guard{repo: prj.Root()}
+		out := &bytes.Buffer{}
+		set := semver.MustParse("v1.0.0")
+		proposal := semver.MustParse("v0.0.1")
+
+		// --- When ---
+		have, err := grd.choose(t.Context(), out, nil, set, proposal)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Same(t, set, have)
+		assert.Equal(t, "Version: v1.0.0\n", out.String())
+	})
+
+	t.Run("typed version below proposal", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		grd := guard{repo: prj.Root()}
+		out := &bytes.Buffer{}
+		rdr := bufio.NewReader(bytes.NewBufferString("v0.1.9-rc.1\n"))
+		proposal := semver.MustParse("v0.2.0")
+
+		// --- When ---
+		have, err := grd.choose(t.Context(), out, rdr, nil, proposal)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "v0.1.9-rc.1", have.Original())
+		want := "" +
+			"Enter a version number [v0.2.0]: " +
+			"Warning: v0.1.9-rc.1 is lower than the proposed v0.2.0.\n"
+		assert.Equal(t, want, out.String())
+	})
+
+	t.Run("error - set version refused", func(t *testing.T) {
+		// --- Given ---
+		grd := guard{cur: "v1.0.0"}
+		out := &bytes.Buffer{}
+		set := semver.MustParse("v0.9.0")
+		proposal := semver.MustParse("v1.0.1")
+
+		// --- When ---
+		have, err := grd.choose(t.Context(), out, nil, set, proposal)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNotNewer, err)
+		assert.Nil(t, have)
+		assert.Equal(t, "Version: v0.9.0\n", out.String())
+	})
+}
+
+func Test_guard_ask(t *testing.T) {
+	t.Run("empty answer takes default", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		grd := guard{repo: prj.Root()}
+		out := &bytes.Buffer{}
+		rdr := bufio.NewReader(bytes.NewBufferString("\n"))
+		def := semver.MustParse("v0.0.1")
+
+		// --- When ---
+		have, err := grd.ask(t.Context(), out, rdr, def)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "v0.0.1", have.Original())
+		assert.Equal(t, "Enter a version number [v0.0.1]: ", out.String())
+	})
+
+	t.Run("padded version asked again", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		grd := guard{repo: prj.Root()}
+		out := &bytes.Buffer{}
+		rdr := bufio.NewReader(bytes.NewBufferString(" 1.2.3\r\n1.2.3\r\n"))
+		def := semver.MustParse("v0.0.1")
+
+		// --- When ---
+		have, err := grd.ask(t.Context(), out, rdr, def)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "v1.2.3", have.Original())
+		want := "" +
+			"Enter a version number [v0.0.1]: " +
+			"Rejected: invalid version: \" 1.2.3\": " +
+			"invalid characters in version\n" +
+			"Enter a version number [v0.0.1]: "
+		assert.Equal(t, want, out.String())
+	})
+
+	t.Run("error - check fails", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t)
+		prj.Close()
+
+		grd := guard{repo: prj.Root()}
+		out := &bytes.Buffer{}
+		rdr := bufio.NewReader(bytes.NewBufferString("v1.0.0\n"))
+		def := semver.MustParse("v0.0.1")
+
+		// --- When ---
+		have, err := grd.ask(t.Context(), out, rdr, def)
+
+		// --- Then ---
+		assert.ErrorIs(t, gitaid.ErrNotRepo, err)
+		assert.ErrorContain(t, "check tags", err)
+		assert.Nil(t, have)
+		assert.Equal(t, "Enter a version number [v0.0.1]: ", out.String())
+	})
+}
+
+func Test_guard_check(t *testing.T) {
+	t.Run("no current tag", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		grd := guard{repo: prj.Root()}
+
+		// --- When ---
+		err := grd.check(t.Context(), semver.MustParse("v0.0.1"))
+
+		// --- Then ---
+		assert.NoError(t, err)
+	})
+
+	t.Run("error - same core with other metadata", func(t *testing.T) {
+		// --- Given ---
+		grd := guard{cur: "v1.2.3+a"}
+
+		// --- When ---
+		err := grd.check(t.Context(), semver.MustParse("v1.2.3+b"))
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNotNewer, err)
+	})
+
+	t.Run("unreachable origin forced", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		missing := filepath.Join(t.TempDir(), "missing")
+		prj.GitSetRemote(missing)
+		prj.Close()
+
+		grd := guard{repo: prj.Root(), origin: missing, force: true}
+
+		// --- When ---
+		err := grd.check(t.Context(), semver.MustParse("v0.0.1"))
+
+		// --- Then ---
+		assert.NoError(t, err)
+	})
+
+	t.Run("error - not git repo", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t)
+		prj.Close()
+
+		grd := guard{repo: prj.Root()}
+
+		// --- When ---
+		err := grd.check(t.Context(), semver.MustParse("v0.0.1"))
+
+		// --- Then ---
+		assert.ErrorIs(t, gitaid.ErrNotRepo, err)
+		assert.ErrorContain(t, "check tags", err)
+	})
+}
+
+func Test_parseVersion(t *testing.T) {
+	t.Run("v prefix", func(t *testing.T) {
+		// --- When ---
+		have, err := parseVersion("v1.2.3", false)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "v1.2.3", have.Original())
+	})
+
+	t.Run("no v prefix", func(t *testing.T) {
+		// --- When ---
+		have, err := parseVersion("1.2.3", false)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "v1.2.3", have.Original())
+	})
+
+	t.Run("pre-release in go module", func(t *testing.T) {
+		// --- When ---
+		have, err := parseVersion("v1.0.0-rc.1", true)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "v1.0.0-rc.1", have.Original())
+	})
+
+	t.Run("metadata outside go module", func(t *testing.T) {
+		// --- When ---
+		have, err := parseVersion("1.0.0-rc.1+b.5", false)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "v1.0.0-rc.1+b.5", have.Original())
+	})
+
+	t.Run("error - metadata in go module", func(t *testing.T) {
+		// --- When ---
+		have, err := parseVersion("v1.2.3+b", true)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrBadVersion, err)
+		assert.ErrorContain(t, "build metadata in a Go module", err)
+		assert.Nil(t, have)
+	})
+}
+
+func Test_parseVersion_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		txt string
+	}{
+		{"empty", ""},
+		{"major only", "1"},
+		{"no patch", "v1.2"},
+		{"leading zero major", "01.2.3"},
+		{"leading zero minor", "1.02.3"},
+		{"leading zero pre-release", "1.2.3-rc.01"},
+		{"upper case prefix", "V1.2.3"},
+		{"double prefix", "vv1.2.3"},
+		{"leading space", " 1.2.3"},
+		{"trailing space", "1.2.3 "},
+		{"four parts", "1.2.3.4"},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			have, err := parseVersion(tc.txt, false)
+
+			// --- Then ---
+			assert.ErrorIs(t, ErrBadVersion, err)
+			assert.Nil(t, have)
+		})
+	}
 }
 
 func Test_nextRelease(t *testing.T) {
@@ -1258,6 +1944,65 @@ func Test_nextRelease(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "v0.9.0", ver.Tag)
 		assert.Equal(t, "v0.9.1", have.Original())
+	})
+}
+
+func Test_setVersion(t *testing.T) {
+	t.Run("not given", func(t *testing.T) {
+		// --- Given ---
+		fs := xflag.NewFlagSet("test", flag.ContinueOnError)
+		fs.StringSL("set", "s", "", "")
+		must.Nil(fs.Parse(nil))
+
+		// --- When ---
+		have, err := setVersion(fs, "", false)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Nil(t, have)
+	})
+
+	t.Run("given", func(t *testing.T) {
+		// --- Given ---
+		fs := xflag.NewFlagSet("test", flag.ContinueOnError)
+		fs.StringSL("set", "s", "", "")
+		must.Nil(fs.Parse([]string{"-s", "1.2.3"}))
+
+		// --- When ---
+		have, err := setVersion(fs, "", false)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "v1.2.3", have.Original())
+	})
+
+	t.Run("error - empty", func(t *testing.T) {
+		// --- Given ---
+		fs := xflag.NewFlagSet("test", flag.ContinueOnError)
+		fs.StringSL("set", "s", "", "")
+		must.Nil(fs.Parse([]string{"--set", ""}))
+
+		// --- When ---
+		have, err := setVersion(fs, "", false)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrBadVersion, err)
+		assert.Nil(t, have)
+	})
+
+	t.Run("error - bump level forced", func(t *testing.T) {
+		// --- Given ---
+		fs := xflag.NewFlagSet("test", flag.ContinueOnError)
+		fs.StringSL("set", "s", "", "")
+		must.Nil(fs.Parse([]string{"-s", "1.2.3"}))
+
+		// --- When ---
+		have, err := setVersion(fs, gitaid.BumpMajor, false)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrBumpFlags, err)
+		assert.ErrorContain(t, "--set and --major", err)
+		assert.Nil(t, have)
 	})
 }
 

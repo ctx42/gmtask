@@ -8,9 +8,17 @@
 // here can never name a different release than those builds pointed at. The
 // bump comes from the Conventional Commits since the latest version tag, or
 // from -p, -m or -M to force a patch, minor or major bump; on a 0.x version a
-// major bump advances the minor. You confirm or override the proposal, and it
-// then prepends a CHANGELOG.md entry built from the commits since that tag,
-// writes the version to a VER file, then commits, tags, and pushes to origin.
+// major bump advances the minor. You confirm or override the proposal, or skip
+// the question with -s and a version, and it then prepends a CHANGELOG.md
+// entry built from the commits since that tag, writes the version to a VER
+// file, then commits, tags, and pushes to origin.
+//
+// A version must be a full MAJOR.MINOR.PATCH with an optional pre-release and
+// "v" prefix; partial versions and leading zeros are refused, and so is build
+// metadata in a Go module. It must be newer than the current tag and must not
+// name a tag yet, locally or on origin; one lower than the proposal is warned
+// about. A refused version typed at the prompt is asked for again. An origin
+// that cannot be queried stops the release unless -f is given.
 //
 // A release needs a clean working tree and a branch to cut from. The target
 // refuses a detached HEAD outright, and on a branch other than "master" or
@@ -36,6 +44,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ctx42/gitaid/pkg/gitaid"
+	"github.com/ctx42/gomake/pkg/gomake"
 	"github.com/ctx42/ring/pkg/ring"
 	"github.com/ctx42/xflag/pkg/xflag"
 
@@ -66,6 +75,14 @@ var (
 	// ErrNotNewer is returned when the version to release is not newer than
 	// the current version tag.
 	ErrNotNewer = errors.New("version not newer than the current tag")
+
+	// ErrBadVersion is returned when a version is not a full semantic
+	// version, or carries build metadata in a Go module.
+	ErrBadVersion = errors.New("invalid version")
+
+	// ErrTagExists is returned when the version to release already names a
+	// tag, locally or on origin.
+	ErrTagExists = errors.New("tag already exists")
 )
 
 // Bump runs the ":bump" target against the current working directory. It is the
@@ -80,11 +97,14 @@ func Bump(ctx context.Context, rng *ring.Ring) error {
 // and pushes to origin. The empty string for repo means the current working
 // directory.
 //
-// It returns [ErrBumpFlags] when more than one bump level is forced,
+// It returns [ErrBumpFlags] when more than one bump level is forced, or one is
+// forced together with --set, [ErrBadVersion] for an invalid --set version,
 // [ErrNotClean] for a dirty working tree, [gitaid.ErrDetached] for a detached
-// HEAD, [ErrNotDefBranch] when a release from a branch other than "master"
-// or "main" is not approved, and [ErrNotNewer] when the entered version is not
-// newer than the current version tag.
+// HEAD, and [ErrNotDefBranch] when a release from a branch other than "master"
+// or "main" is not approved. A --set version not newer than the current tag
+// returns [ErrNotNewer], and one already a tag returns [ErrTagExists]. An
+// origin that cannot be queried returns an error wrapping [gitaid.ErrRemote]
+// unless --force is given.
 //
 //nolint:cyclop
 func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
@@ -99,6 +119,8 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	fs.BoolSL(gitaid.BumpPatch, "p", false, "force a patch version bump")
 	fs.BoolSL(gitaid.BumpMinor, "m", false, "force a minor version bump")
 	fs.BoolSL(gitaid.BumpMajor, "M", false, "force a major version bump")
+	fs.StringSL("set", "s", "", "release the given version without asking")
+	fs.BoolSL("force", "f", false, "release when origin cannot be checked")
 	if err := fs.Parse(rng.Args()); err != nil {
 		return err
 	}
@@ -108,6 +130,16 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		return nil
 	}
 	bump, err := forcedBump(fs)
+	if err != nil {
+		return err
+	}
+
+	// Go modules cannot fetch a version carrying build metadata.
+	gomod := gomake.FileExists(filepath.Join(repo, "go.mod"))
+
+	// A version given up front is checked before anything else, so a typo
+	// fails at once whatever the repository state.
+	set, err := setVersion(fs, bump, gomod)
 	if err != nil {
 		return err
 	}
@@ -170,29 +202,24 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		}
 	}
 
-	format := "Enter a version number [%s]: "
-	_, _ = fmt.Fprintf(rng.Stdout(), format, next.Original())
-	txt, err := readLine(rdr)
+	// Ask for the remote rather than read it off a failed push: git words a
+	// missing "origin" differently depending on how the push names it.
+	origin, err := gitaid.ProjectOrigin(ctx, repo)
 	if err != nil {
-		return fmt.Errorf("read version input: %w", err)
-	}
-	if txt = strings.TrimSpace(txt); txt != "" {
-		if next, err = semver.NewVersion(txt); err != nil {
-			return fmt.Errorf("parse version %q: %w", txt, err)
-		}
+		return fmt.Errorf("check repository origin: %w", err)
 	}
 
-	// Tag the canonical form: a "v" prefix and all three version numbers, as
-	// Go modules require. Short input such as "1.2" parses as "1.2.0".
-	next = semver.MustParse("v" + next.String())
-
-	// Refuse to tag backwards or reuse the current tag before any file is
-	// written, so a refused release leaves the working tree clean.
-	if cur, cerr := semver.NewVersion(curStr); cerr == nil &&
-		!next.GreaterThan(cur) {
-
-		format := "%w: %s is not newer than %s"
-		return fmt.Errorf(format, ErrNotNewer, next.Original(), curStr)
+	// Every version is checked before any file is written, so a refused
+	// release leaves the working tree clean.
+	grd := guard{
+		repo:   repo,
+		origin: origin,
+		cur:    curStr,
+		gomod:  gomod,
+		force:  fs.GetBool("force"),
+	}
+	if next, err = grd.choose(ctx, rng.Stdout(), rdr, set, next); err != nil {
+		return err
 	}
 
 	if err = writeChangelog(repo, next, changes); err != nil {
@@ -231,12 +258,6 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		return fmt.Errorf(format, next.Original(), err)
 	}
 
-	// Ask for the remote rather than read it off a failed push: git words a
-	// missing "origin" differently depending on how the push names it.
-	origin, err := gitaid.ProjectOrigin(ctx, repo)
-	if err != nil {
-		return fmt.Errorf("check repository origin: %w", err)
-	}
 	if origin == "" {
 		_, _ = fmt.Fprint(rng.Stdout(), "No remote configured; skip push.\n")
 	} else if err = gitaid.Push(ctx, repo); err != nil {
@@ -255,13 +276,152 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	if err != nil {
 		return nil
 	}
-	format = "" +
+	format := "" +
 		"\nUse\n" +
 		"\tgo get %s@%s\n" +
 		"to update upstreams.\n"
 	_, _ = fmt.Fprintf(rng.Stdout(), format, mod, next.Original())
 
 	return nil
+}
+
+// guard decides whether a version may be released from a repository.
+type guard struct {
+	repo   string // Repository root; empty for the working directory.
+	origin string // Origin URL; empty when no origin is configured.
+	cur    string // Current version tag; empty when there is none.
+	gomod  bool   // Whether the repository is a Go module.
+	force  bool   // Whether an origin that cannot be queried is ignored.
+}
+
+// choose returns the version to release: set when it is not nil, else the
+// one [guard.ask] reads, proposing proposal. Either one must pass
+// [guard.check]. A version whose core is lower than proposal is released with
+// a warning on out.
+func (grd guard) choose(
+	ctx context.Context,
+	out io.Writer,
+	rdr *bufio.Reader,
+	set *semver.Version,
+	proposal *semver.Version,
+) (*semver.Version, error) {
+
+	ver := set
+	var err error
+	if ver != nil {
+		_, _ = fmt.Fprintf(out, "Version: %s\n", ver.Original())
+		err = grd.check(ctx, ver)
+	} else {
+		ver, err = grd.ask(ctx, out, rdr, proposal)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Only the cores are compared, so a pre-release of the proposed release
+	// does not count as lower.
+	core := semver.New(ver.Major(), ver.Minor(), ver.Patch(), "", "")
+	if core.LessThan(proposal) {
+		format := "Warning: %s is lower than the proposed %s.\n"
+		_, _ = fmt.Fprintf(out, format, ver.Original(), proposal.Original())
+	}
+	return ver, nil
+}
+
+// ask prompts on out for the version to release, proposing def, and reads
+// answers from rdr until one passes [guard.check]; an empty answer takes def.
+// A version that is invalid, not newer, or already a tag is reported on out
+// and asked for again. Any other failure, and running out of input, ends it.
+func (grd guard) ask(
+	ctx context.Context,
+	out io.Writer,
+	rdr *bufio.Reader,
+	def *semver.Version,
+) (*semver.Version, error) {
+
+	for {
+		format := "Enter a version number [%s]: "
+		_, _ = fmt.Fprintf(out, format, def.Original())
+		txt, err := readLine(rdr)
+		if err != nil {
+			return nil, fmt.Errorf("read version input: %w", err)
+		}
+		// Only the line ending goes: a version padded with spaces is not
+		// one, and is refused like any other.
+		ver := def
+		if txt = strings.TrimRight(txt, "\r\n"); txt != "" {
+			ver, err = parseVersion(txt, grd.gomod)
+		}
+		if err == nil {
+			if err = grd.check(ctx, ver); err == nil {
+				return ver, nil
+			}
+		}
+		if !errors.Is(err, ErrBadVersion) &&
+			!errors.Is(err, ErrNotNewer) &&
+			!errors.Is(err, ErrTagExists) {
+
+			return nil, err
+		}
+		_, _ = fmt.Fprintf(out, "Rejected: %s\n", err)
+	}
+}
+
+// check returns nil when ver may be released: it is newer than the current
+// tag and names no tag yet, locally or on origin. It returns [ErrNotNewer],
+// [ErrTagExists], or - unless forced - an error wrapping [gitaid.ErrRemote]
+// when origin cannot be queried.
+func (grd guard) check(ctx context.Context, ver *semver.Version) error {
+	if cur, err := semver.NewVersion(grd.cur); err == nil &&
+		!ver.GreaterThan(cur) {
+
+		format := "%w: %s is not newer than %s"
+		return fmt.Errorf(format, ErrNotNewer, ver.Original(), grd.cur)
+	}
+
+	// The current tag is only the closest one reachable from HEAD; the tag
+	// may still exist on another branch.
+	tag := ver.Original()
+	has, err := gitaid.HasTag(ctx, grd.repo, tag)
+	if err != nil {
+		return fmt.Errorf("check tags: %w", err)
+	}
+	if has {
+		return fmt.Errorf("%w: %s", ErrTagExists, tag)
+	}
+
+	// A tag only someone else has pushed is invisible locally.
+	if grd.origin == "" {
+		return nil
+	}
+	has, err = gitaid.HasRemoteTag(ctx, grd.repo, "origin", tag)
+	if err != nil {
+		if grd.force && errors.Is(err, gitaid.ErrRemote) {
+			return nil
+		}
+		return fmt.Errorf("check origin tags (--force skips): %w", err)
+	}
+	if has {
+		return fmt.Errorf("%w on origin: %s", ErrTagExists, tag)
+	}
+	return nil
+}
+
+// parseVersion parses txt as a full semantic version with an optional "v"
+// prefix and returns it in the canonical "v"-prefixed form Go modules require.
+// Partial versions and leading zeros are refused, and so is build metadata
+// when gomod is true, because Go cannot fetch a module version carrying it.
+// Every refusal wraps [ErrBadVersion].
+func parseVersion(txt string, gomod bool) (*semver.Version, error) {
+	ver, err := semver.StrictNewVersion(strings.TrimPrefix(txt, "v"))
+	if err != nil {
+		return nil, fmt.Errorf("%w: %q: %w", ErrBadVersion, txt, err)
+	}
+	if gomod && ver.Metadata() != "" {
+		format := "%w: %q: build metadata in a Go module"
+		return nil, fmt.Errorf(format, ErrBadVersion, txt)
+	}
+	return semver.MustParse("v" + ver.String()), nil
 }
 
 // writeChangelog prepends a release of the given version, dated now and built
@@ -347,6 +507,24 @@ func nextRelease(ver gitaid.Version) (*semver.Version, error) {
 	}
 	core := fmt.Sprintf("v%d.%d.%d", sem.Major(), sem.Minor(), sem.Patch())
 	return semver.NewVersion(core)
+}
+
+// setVersion returns the version the --set flag gives, parsed by
+// [parseVersion], or nil when the flag is not given. It returns
+// [ErrBumpFlags] when bump, a forced bump level, is not empty as well.
+func setVersion(
+	fs *xflag.FlagSet,
+	bump string,
+	gomod bool,
+) (*semver.Version, error) {
+
+	if !fs.WasSet("set") {
+		return nil, nil
+	}
+	if bump != "" {
+		return nil, fmt.Errorf("%w: --set and --%s", ErrBumpFlags, bump)
+	}
+	return parseVersion(fs.GetString("set"), gomod)
 }
 
 // forcedBump returns the bump level the flags force, or the empty string when
