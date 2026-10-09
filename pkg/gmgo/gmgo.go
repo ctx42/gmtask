@@ -168,7 +168,9 @@ func (tgt Go) Test(ctx context.Context, rng *ring.Ring) error {
 //
 // Additional arguments may be passed to "go test" with the "-- arg0 arg1"
 // construct. A -timeout among them takes precedence over the configured and
-// environment timeouts.
+// environment timeouts. The "./..." pattern is always appended after them, so
+// a package named among them does not narrow the run; the whole module is
+// tested. Run "go test" directly to test selected packages.
 //
 //nolint:cyclop
 func (Go) test(ctx context.Context, rng *ring.Ring, verbose bool) error {

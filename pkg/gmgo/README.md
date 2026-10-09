@@ -174,6 +174,10 @@ extra flags straight to `go test` after `--`:
 gomake :go:test -dir build/reports -- -run TestFoo
 ```
 
+`:go:test` always tests the whole module: it appends `./...` after the extra
+flags, so a package named after `--` does not narrow the run. To test selected
+packages, run `go test` directly.
+
 Set a `go test -timeout` in `gomake.yaml` or via `GOMAKE_GO_TEST_TIMEOUT` — see
 [Configuration](#configuration).
 
