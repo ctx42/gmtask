@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/ctx42/gomake/pkg/gomake"
 )
@@ -76,15 +77,27 @@ func trimMajor(module string) string {
 
 // GoPkgName returns the Go package name derived from name — a directory path,
 // git remote, or Go import spec. It takes the [ProjectName] and, when that name
-// is "-"-separated, keeps only its last segment (so "acme-cool-svc" yields
-// "svc"). It returns an empty string when the name resolves to none.
+// is "-"-separated, keeps only its last non-empty segment (so "acme-cool-svc"
+// yields "svc"). Runes that cannot appear in a Go identifier are dropped, and
+// a name starting with a digit gets a "pkg" prefix. It returns an empty string
+// when the name resolves to none.
 func GoPkgName(name string) string {
-	name = ProjectName(name)
-	names := strings.Split(name, "-")
-	if len(names) == 1 {
-		return names[0]
+	segs := strings.FieldsFunc(ProjectName(name), func(r rune) bool {
+		return r == '-'
+	})
+	if len(segs) == 0 {
+		return ""
 	}
-	return names[len(names)-1]
+	pkg := strings.Map(func(r rune) rune {
+		if r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return r
+		}
+		return -1
+	}, segs[len(segs)-1])
+	if pkg != "" && unicode.IsDigit([]rune(pkg)[0]) {
+		pkg = "pkg" + pkg
+	}
+	return pkg
 }
 
 // Root returns the absolute path to a project root directory, located by

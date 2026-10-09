@@ -134,6 +134,10 @@ func Test_GoPkgName_tabular(t *testing.T) {
 		{"go import spec", "example.com/comp/acme-proj", "proj"},
 		{"empty", "", ""},
 		{"multiple", "acme-dki-proj", "proj"},
+		{"dot", "example.com/comp/my.app", "myapp"},
+		{"trailing dash", "acme-", "acme"},
+		{"leading digit", "123x", "pkg123x"},
+		{"no valid rune", "---", ""},
 	}
 
 	for _, tc := range tt {
