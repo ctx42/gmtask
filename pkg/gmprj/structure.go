@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"text/template"
 
 	"github.com/ctx42/gomake/pkg/gomake"
@@ -159,6 +160,9 @@ func loadStructure(rng *ring.Ring) (structure, error) {
 // the rules.
 func (str structure) validate() error {
 	for name, nod := range str {
+		if !validName(name) {
+			return fmt.Errorf("%s: invalid name", name)
+		}
 		if nod == nil {
 			return fmt.Errorf("%s: empty node", name)
 		}
@@ -170,9 +174,10 @@ func (str structure) validate() error {
 }
 
 // validate checks the node and its descendants, returning the first violation
-// found named by its path. A valid node has type file or dir; a file carries no
-// children; a directory carries no content; a non-empty mode is an octal
-// permission string no greater than 07777.
+// found named by its path. A valid node is named by a single path element and
+// has type file or dir; a file carries no children; a directory carries no
+// content; a non-empty mode is an octal permission string no greater than
+// 07777.
 func (nod *structNode) validate(path string) error {
 	switch nod.Type {
 	case typeFile:
@@ -202,6 +207,9 @@ func (nod *structNode) validate(path string) error {
 
 	for name, child := range nod.Children {
 		sub := path + "/" + name
+		if !validName(name) {
+			return fmt.Errorf("%s: invalid name", sub)
+		}
 		if child == nil {
 			return fmt.Errorf("%s: empty node", sub)
 		}
@@ -210,6 +218,14 @@ func (nod *structNode) validate(path string) error {
 		}
 	}
 	return nil
+}
+
+// validName returns true when name can name a node: a single path element
+// that keeps the node below its parent, so not empty, ".", "..", or holding a
+// path separator.
+func validName(name string) bool {
+	return name != "" && name != "." && name != ".." &&
+		!strings.ContainsAny(name, `/\`)
 }
 
 // tmplVars are the values exposed to a file node's content template.

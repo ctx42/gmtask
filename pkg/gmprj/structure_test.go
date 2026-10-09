@@ -6,6 +6,7 @@ package gmprj
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -322,6 +323,48 @@ func Test_structure_validate(t *testing.T) {
 		// --- Then ---
 		assert.ErrorContain(t, "dev/idea: empty node", err)
 	})
+}
+
+func Test_structure_validate_names_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		name string
+	}{
+		{"empty", ""},
+		{"dot", "."},
+		{"dot dot", ".."},
+		{"parent escape", "../outside"},
+		{"absolute", "/abs"},
+		{"separator", "a/b"},
+		{"backslash", `a\b`},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- Given ---
+			kids := map[string]*structNode{tc.name: {Type: typeFile}}
+			str := structure{"dir": {Type: typeDir, Children: kids}}
+
+			// --- When ---
+			err := str.validate()
+
+			// --- Then ---
+			want := fmt.Sprintf("dir/%s: invalid name", tc.name)
+			assert.ErrorContain(t, want, err)
+		})
+	}
+}
+
+func Test_structure_validate_top_level_name(t *testing.T) {
+	// --- Given ---
+	str := structure{"../x": {Type: typeFile}}
+
+	// --- When ---
+	err := str.validate()
+
+	// --- Then ---
+	assert.ErrorContain(t, "../x: invalid name", err)
 }
 
 func Test_tmplVars_render(t *testing.T) {
