@@ -97,7 +97,8 @@ func GetInfo(ctx context.Context, env []string, root string) (*Info, error) {
 	inf.Set(xdef.EnvScmState, ScmNo)
 	inf.Set(xdef.EnvBldDate, inf.BuildDateFmt())
 
-	spec, err := inf.setProjectName(ctx, env, root)
+	inf.Set(xdef.EnvPrjName, ProjectName(root))
+	spec, err := getGoSpec(ctx, env, root)
 	if err != nil {
 		return nil, err
 	}
@@ -180,22 +181,6 @@ func (inf *Info) String() string {
 	return buf.String()
 }
 
-// setProjectName sets the project name based on the Go module name or the root
-// directory name.
-func (inf *Info) setProjectName(
-	ctx context.Context,
-	env []string,
-	root string,
-) (string, error) {
-
-	inf.Set(xdef.EnvPrjName, ProjectName(root))
-	spec, err := getGoSpec(ctx, env, root)
-	if err != nil {
-		return "", err
-	}
-	return spec, nil
-}
-
 // setConfig loads the project configuration from the given path.
 func (inf *Info) setConfig(pth string) error {
 	cfg, err := getConfig(pth)
@@ -273,9 +258,12 @@ func (inf *Info) setLDFlags(spec string) {
 }
 
 // getGoSpec returns the Go import spec for the Go project in the root directory.
-// It returns an empty string and no error when root is not a Go project, and an
-// error on any filesystem error.
+// It returns an empty string and no error when root holds no go.mod file, even
+// when an ancestor directory does, and an error on any filesystem error.
 func getGoSpec(ctx context.Context, env []string, root string) (string, error) {
+	if !gomake.FileExists(filepath.Join(root, "go.mod")) {
+		return "", nil
+	}
 	rng := ring.New(ring.WithEnv(env))
 	spec, err := gmgo.ImpPath(ctx, rng, root)
 	if err != nil {

@@ -14,6 +14,7 @@ import (
 	"github.com/ctx42/ring/pkg/ring/ringtest"
 	"github.com/ctx42/testing/pkg/assert"
 	"github.com/ctx42/testing/pkg/must"
+	"github.com/ctx42/testkit/pkg/oskit"
 	"github.com/ctx42/testkit/pkg/prjkit"
 	"github.com/ctx42/xdef/pkg/xdef"
 
@@ -97,6 +98,25 @@ func Test_NewInfo(t *testing.T) {
 }
 
 func Test_GetInfo(t *testing.T) {
+	t.Run("no go.mod under an ancestor module", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvUnset(EnvSSHAuthSock)
+
+		parent := t.TempDir()
+		mod := "module example.com/parent\n\ngo 1.26\n"
+		oskit.Write(t, mod, parent, "go.mod")
+		root := oskit.MkdirAll(t, parent, "proj")
+		oskit.Write(t, "", oskit.MkdirAll(t, root, "configs"), CfgFile)
+
+		// --- When ---
+		have, err := GetInfo(t.Context(), rng.EnvAll(), root)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Empty(t, have.LDFlags)
+	})
+
 	t.Run("error - invalid build date", func(t *testing.T) {
 		// --- Given ---
 		rng := ringtest.New(t).Ring()
