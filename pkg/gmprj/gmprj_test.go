@@ -403,6 +403,22 @@ func Test_Project_Info(t *testing.T) {
 		assert.ErrorIs(t, ErrTooManyArgs, err)
 	})
 
+	t.Run("help", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("--help")
+
+		// --- When ---
+		err := Project{}.Info(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"Usage of :project:info:\n" +
+			"  -h, --help    show help\n"
+		assert.Equal(t, want, tst.Stderr())
+	})
+
 	t.Run("needs project config", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
@@ -633,6 +649,23 @@ func Test_Project_Setup(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrMkdirNeedsName, err)
+	})
+
+	t.Run("error - positional argument", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring("myproj")
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Project{}.Setup(t.Context(), rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrTooManyArgs, err)
+		assert.ErrorContain(t, "[myproj]", err)
+		assert.Equal(t, []string{}, oskit.Readdirnames(t, prj.Root()))
 	})
 
 	t.Run("default module name", func(t *testing.T) {

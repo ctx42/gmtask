@@ -111,12 +111,12 @@ func (Project) Env(ctx context.Context, rng *ring.Ring) error {
 	if err := fs.Parse(rng.Args()); err != nil {
 		return err
 	}
-	rng = rng.SetArgs(fs.Args())
 	if fs.GetBool("help") {
 		fs.Usage()
 		return nil
 	}
-	if len(rng.Args()) > 1 {
+	args := fs.Args()
+	if len(args) > 1 {
 		return ErrTooManyArgs
 	}
 
@@ -129,7 +129,6 @@ func (Project) Env(ctx context.Context, rng *ring.Ring) error {
 		return err
 	}
 
-	args := rng.Args()
 	switch len(args) {
 	case 0:
 		env := inf.Env()
@@ -152,7 +151,22 @@ func (Project) Env(ctx context.Context, rng *ring.Ring) error {
 //
 //	gomake :project:info
 func (Project) Info(ctx context.Context, rng *ring.Ring) error {
-	args := rng.Args()
+	tgtName := ":project:info"
+	fs := xflag.NewFlagSet(tgtName, flag.ContinueOnError)
+	fs.SetOutput(rng.Stderr())
+	fs.Usage = func() {
+		head := fmt.Sprintf("Usage of %s:\n", tgtName)
+		_, _ = fmt.Fprint(rng.Stderr(), head+fs.HelpOptions())
+	}
+	fs.BoolSL("help", "h", false, "show help")
+	if err := fs.Parse(rng.Args()); err != nil {
+		return err
+	}
+	if fs.GetBool("help") {
+		fs.Usage()
+		return nil
+	}
+	args := fs.Args()
 	if len(args) > 1 {
 		return ErrTooManyArgs
 	}
@@ -211,10 +225,12 @@ func (Project) Setup(ctx context.Context, rng *ring.Ring) error {
 	if err := fs.Parse(rng.Args()); err != nil {
 		return err
 	}
-	rng = rng.SetArgs(fs.Args())
 	if fs.GetBool("help") {
 		fs.Usage()
 		return nil
+	}
+	if fs.NArg() > 0 {
+		return fmt.Errorf("%w: %v", ErrTooManyArgs, fs.Args())
 	}
 
 	opts := []func(*Setup){
