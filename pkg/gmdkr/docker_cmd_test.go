@@ -1511,8 +1511,8 @@ func Test_DockerCmd_Sh(t *testing.T) {
 			"" +
 			"#gomake INFO# docker run --rm -it" +
 			" -v %s:/ctx42/project:ro" +
-			" -v ssh-sock:/ssh-sock" +
-			" -e SSH_AUTH_SOCK=/ssh-sock" +
+			" -v ssh-sock:/ctx42/ssh-auth-sock" +
+			" -e SSH_AUTH_SOCK=/ctx42/ssh-auth-sock" +
 			" dki-project:v0.0.1-dev.1_g%s /bin/sh --login\n"
 		want = fmt.Sprintf(want, prj.Root(), cm.Hash)
 		assert.Equal(t, want, tst.Stderr())

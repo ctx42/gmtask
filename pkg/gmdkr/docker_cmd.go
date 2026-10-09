@@ -210,8 +210,8 @@ func (dc *DockerCmd) Sh(ctx context.Context, rng *ring.Ring) error {
 	if dc.Config.ssh != "" {
 		args = append(
 			args,
-			"-v", dc.Config.ssh+":/ssh-sock",
-			"-e", "SSH_AUTH_SOCK=/ssh-sock",
+			"-v", dc.Config.ssh+":"+ctrSSHSock,
+			"-e", EnvSSHSock+"="+ctrSSHSock,
 		)
 	}
 
