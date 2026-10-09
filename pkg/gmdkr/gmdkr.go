@@ -140,7 +140,7 @@ var (
 // Docker groups the ":docker:*" gomake targets.
 type Docker struct{} //gomake:ns_root
 
-// Login logs in to the private Docker repository.
+// Login logs in to the private Docker registry host.
 func (Docker) Login(ctx context.Context, rng *ring.Ring) error {
 	fp := NewFlagParser(":docker:login", rng.Stderr())
 	fp.Add(FlagHelp)
@@ -156,13 +156,13 @@ func (Docker) Login(ctx context.Context, rng *ring.Ring) error {
 	if err != nil {
 		return err
 	}
-	dkrPrvRepo := inf.CfgGet(xdef.EnvRegRepo)
-	if dkrPrvRepo == "" {
-		format := "docker private repo not configured in %s"
+	host := inf.CfgGet(xdef.EnvRegHost)
+	if host == "" {
+		format := "docker registry host not configured in %s"
 		return fmt.Errorf(format, gmprj.CfgPath)
 	}
-	_, _ = fmt.Fprintf(rng.Stdout(), "login to %s\n", dkrPrvRepo)
-	rngDC := rng.Clone().SetArgs([]string{"login", dkrPrvRepo})
+	_, _ = fmt.Fprintf(rng.Stdout(), "login to %s\n", host)
+	rngDC := rng.Clone().SetArgs([]string{"login", host})
 	_, _, err = runDockerCmd(ctx, rngDC)
 	return err
 }

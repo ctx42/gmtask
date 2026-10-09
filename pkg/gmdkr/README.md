@@ -261,16 +261,16 @@ C42_REG_REPO=my.nexus.dev/repo       # private repository the image lives in
 C42_BLD_IMG_TARGETS=api,worker,migrate  # Dockerfile stages to build (optional)
 ```
 
-| Key                   | Meaning                                 | Required |
-|-----------------------|-----------------------------------------|----------|
-| `C42_REG_HOST`        | Private registry host.                  | push     |
-| `C42_REG_REPO`        | Private repo to build from and push to. | push     |
-| `C42_BLD_IMG_TARGETS` | Comma-separated `Dockerfile` stages.    | no       |
+| Key                   | Meaning                              | Required    |
+|-----------------------|--------------------------------------|-------------|
+| `C42_REG_HOST`        | Private registry host.               | push, login |
+| `C42_REG_REPO`        | Private repo to build from, push to. | push        |
+| `C42_BLD_IMG_TARGETS` | Comma-separated `Dockerfile` stages. | no          |
 
 `C42_REG_HOST` and `C42_REG_REPO` together mark the remote as configured;
-`:push` and `:login` need both. `C42_BLD_IMG_TARGETS` switches a project from
-a single image to one image per listed stage — each stage must exist in the
-`Dockerfile`.
+`:push` needs both, and `:login` logs in to `C42_REG_HOST`.
+`C42_BLD_IMG_TARGETS` switches a project from a single image to one image per
+listed stage — each stage must exist in the `Dockerfile`.
 
 ### Image naming
 

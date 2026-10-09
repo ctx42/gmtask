@@ -16,6 +16,7 @@ import (
 	"github.com/ctx42/testing/pkg/assert"
 	"github.com/ctx42/testkit/pkg/dkrkit"
 	"github.com/ctx42/testkit/pkg/exekit"
+	"github.com/ctx42/xdef/pkg/xdef"
 
 	"github.com/ctx42/gmtask/internal/gmtest"
 	"github.com/ctx42/gmtask/pkg/gmprj"
@@ -54,13 +55,13 @@ func Test_Docker_Login(t *testing.T) {
 		assert.ErrorIs(t, gmprj.ErrNoConfig, err)
 	})
 
-	t.Run("error - project without private repo in config", func(t *testing.T) {
+	t.Run("error - no registry host in config", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
-		prj.WithConfig()
+		prj.CfgAdd(xdef.EnvRegRepo, "my.nexus.dev/repo")
 		prj.Close()
 		prj.Chdir()
 
@@ -68,7 +69,7 @@ func Test_Docker_Login(t *testing.T) {
 		err := Docker{}.Login(t.Context(), rng)
 
 		// --- Then ---
-		want := "docker private repo not configured in " +
+		want := "docker registry host not configured in " +
 			regexp.QuoteMeta(gmprj.CfgPath)
 		assert.ErrorRegexp(t, want, err)
 	})
@@ -87,7 +88,7 @@ func Test_Docker_Login(t *testing.T) {
 		err := Docker{}.Login(t.Context(), rng)
 
 		// --- Then ---
-		assert.Equal(t, "login to my.nexus.dev/repo\n", tst.Stdout())
+		assert.Equal(t, "login to my.nexus.dev\n", tst.Stdout())
 		// Docker's exact wording/case varies by CLI version; match the
 		// version-stable fragment.
 		assert.ErrorContain(t, "interactive login", err)
