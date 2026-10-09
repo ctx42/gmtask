@@ -894,6 +894,27 @@ func Test_Image_Reference(t *testing.T) {
 }
 
 func Test_Image_Env(t *testing.T) {
+	t.Run("caller ring keeps its arguments", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("--export")
+
+		prj := gmtest.NewProject(t)
+		prj.WithConfig()
+		prj.WithDockerfile()
+		prj.GitInitAddAll("v1.1.1")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Image{}.Env(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"--export"}, rng.Args())
+		assert.Contain(t, "export ", tst.Stdout())
+	})
+
 	t.Run("single target", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()

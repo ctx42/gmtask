@@ -141,7 +141,7 @@ func (Docker) Login(ctx context.Context, rng *ring.Ring) error {
 	if err := fp.Parse(rng.Args()); err != nil {
 		return err
 	}
-	rng = rng.SetArgs(fp.fs.Args())
+	rng = rng.Clone().SetArgs(fp.fs.Args())
 	if fp.fls.Help {
 		fp.fs.Usage()
 		return nil
@@ -156,7 +156,7 @@ func (Docker) Login(ctx context.Context, rng *ring.Ring) error {
 		return fmt.Errorf(format, gmprj.CfgPath)
 	}
 	_, _ = fmt.Fprintf(rng.Stdout(), "login to %s\n", dkrPrvRepo)
-	rngDC := rng.SetArgs([]string{"login", dkrPrvRepo})
+	rngDC := rng.Clone().SetArgs([]string{"login", dkrPrvRepo})
 	_, _, err = runDockerCmd(ctx, rngDC)
 	return err
 }
@@ -180,7 +180,7 @@ func initTarget(
 	if err := fp.Parse(rng.Args()); err != nil {
 		return nil, rng, err
 	}
-	rng = rng.SetArgs(fp.fs.Args())
+	rng = rng.Clone().SetArgs(fp.fs.Args())
 	if fp.fls.Help {
 		fp.fs.Usage()
 		return nil, rng, nil
@@ -264,7 +264,7 @@ func (Image) RunProj(ctx context.Context, rng *ring.Ring) error {
 	if err := fp.Parse(rng.Args()); err != nil {
 		return err
 	}
-	rng = rng.SetArgs(fp.fs.Args())
+	rng = rng.Clone().SetArgs(fp.fs.Args())
 	if fp.fls.Help {
 		fp.fs.Usage()
 		return nil
@@ -349,7 +349,7 @@ func (Image) RunProj(ctx context.Context, rng *ring.Ring) error {
 		strings.Join(args, " "),
 	)
 	if !fls.DryRun {
-		rngDC := rng.SetArgs(args)
+		rngDC := rng.Clone().SetArgs(args)
 		if _, _, err := runDockerCmd(ctx, rngDC); err != nil {
 			return err
 		}
@@ -385,7 +385,7 @@ func (Image) Reference(ctx context.Context, rng *ring.Ring) error {
 	if err := fp.Parse(rng.Args()); err != nil {
 		return err
 	}
-	rng = rng.SetArgs(fp.fs.Args())
+	rng = rng.Clone().SetArgs(fp.fs.Args())
 	if fp.fls.Help {
 		fp.fs.Usage()
 		return nil
@@ -413,7 +413,7 @@ func (Image) Env(ctx context.Context, rng *ring.Ring) error {
 	if err := fp.Parse(rng.Args()); err != nil {
 		return err
 	}
-	rng = rng.SetArgs(fp.fs.Args())
+	rng = rng.Clone().SetArgs(fp.fs.Args())
 	if fp.fls.Help {
 		fp.fs.Usage()
 		return nil
@@ -463,7 +463,7 @@ func (Image) Info(ctx context.Context, rng *ring.Ring) error {
 	if err := fs.Parse(rng.Args()); err != nil {
 		return err
 	}
-	rng = rng.SetArgs(fs.Args())
+	rng = rng.Clone().SetArgs(fs.Args())
 	if fs.GetBool("help") {
 		fs.Usage()
 		return nil
