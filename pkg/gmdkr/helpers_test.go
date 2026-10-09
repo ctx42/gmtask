@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ctx42/ring/pkg/ring/ringtest"
 	"github.com/ctx42/testing/pkg/assert"
@@ -421,6 +422,19 @@ func Test_runDockerCmd(t *testing.T) {
 	})
 }
 
+func Test_runDockerCmd_context_done(t *testing.T) {
+	// --- Given ---
+	ctx, cancel := context.WithTimeout(t.Context(), 300*time.Millisecond)
+	defer cancel()
+	rng := ringtest.New(t).Ring("events")
+
+	// --- When ---
+	_, _, err := runDockerCmd(ctx, rng)
+
+	// --- Then ---
+	assert.ErrorIs(t, context.DeadlineExceeded, err)
+}
+
 func Test_filterError_tabular(t *testing.T) {
 	tt := []struct {
 		testN string
@@ -480,6 +494,24 @@ func Test_dockerErrorOr(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorEqual(t, "empty docker error message and nil error parameter", err)
+	})
+
+	t.Run("message and error", func(t *testing.T) {
+		// --- When ---
+		err := dockerErrorOr("abc", errTest)
+
+		// --- Then ---
+		assert.ErrorIs(t, errTest, err)
+		assert.ErrorEqual(t, "abc: "+errTest.Error(), err)
+	})
+
+	t.Run("sentinel keeps error", func(t *testing.T) {
+		// --- When ---
+		err := dockerErrorOr("ERROR: failed to solve: target stage", errTest)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrUnkTarget, err)
+		assert.ErrorIs(t, errTest, err)
 	})
 
 	t.Run("empty message custom error", func(t *testing.T) {

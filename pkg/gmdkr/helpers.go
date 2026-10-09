@@ -160,7 +160,12 @@ func runDockerCmd(ctx context.Context, rng *ring.Ring) (string, string, error) {
 
 	if err != nil {
 		both := strings.TrimSpace(soutS + "\n" + eoutS)
-		return soutS, eoutS, dockerErrorOr(both, err)
+		err = dockerErrorOr(both, err)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			// A killed process exits with a signal, not ctx.Err.
+			err = fmt.Errorf("%w: %w", ctxErr, err)
+		}
+		return soutS, eoutS, err
 	}
 
 	return soutS, eoutS, nil
@@ -182,9 +187,10 @@ func filterError(msg string) string {
 	return strings.Join(ret, "\n")
 }
 
-// dockerErrorOr takes error message printed by the docker command and returns
-// a matching sentinel error or an error with the message text. If the message
-// text is empty err will be returned.
+// dockerErrorOr takes the error message printed by the docker command and the
+// execution error err, and returns a matching sentinel error or an error with
+// the message text, either wrapping err when it is not nil. An empty message
+// yields err itself.
 func dockerErrorOr(msg string, err error) error {
 	msg = filterError(msg)
 	switch {
@@ -196,10 +202,16 @@ func dockerErrorOr(msg string, err error) error {
 		return err
 
 	case strings.Contains(msg, "failed to solve: target stage"):
-		return ErrUnkTarget
+		if err == nil {
+			return ErrUnkTarget
+		}
+		return fmt.Errorf("%w: %w", ErrUnkTarget, err)
 
 	default:
-		return errors.New(msg)
+		if err == nil {
+			return errors.New(msg)
+		}
+		return fmt.Errorf("%s: %w", msg, err)
 	}
 }
 
