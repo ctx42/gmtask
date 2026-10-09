@@ -188,7 +188,9 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	}
 	_, _ = fmt.Fprintf(rng.Stdout(), "Current tag: %s\n", curStr)
 
-	if len(changes) == 0 {
+	// A version given up front is released even without new commits, so a
+	// release candidate can be promoted to the release it names.
+	if len(changes) == 0 && set == nil {
 		_, _ = fmt.Fprint(rng.Stdout(), "HEAD on tag. Nothing to do.\n")
 		return nil
 	}

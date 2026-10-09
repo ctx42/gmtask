@@ -1255,8 +1255,37 @@ func Test_BumpTarget(t *testing.T) {
 
 	t.Run("set version with HEAD on tag", func(t *testing.T) {
 		// --- Given ---
-		tst := ringtest.New(t).WetStdout()
+		sin := bytes.NewBufferString("\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
 		rng := tst.Ring("-s", "v1.0.0")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll("v1.0.0-rc.1")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"Current tag: v1.0.0-rc.1\n" +
+			"Version: v1.0.0\n" +
+			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
+			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.Equal(t, "v1.0.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+		tags := prj.ExeStdout("git", "tag", "--list")
+		assert.Equal(t, "v1.0.0\nv1.0.0-rc.1\n", tags)
+	})
+
+	t.Run("error - set version not newer with HEAD on tag", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("-s", "v0.1.0")
 
 		prj := gmtest.NewProject(t)
 		prj.CreateFileWith("file0 1", "file0.txt")
@@ -1267,12 +1296,14 @@ func Test_BumpTarget(t *testing.T) {
 		err := BumpTarget(t.Context(), rng, prj.Root())
 
 		// --- Then ---
-		assert.NoError(t, err)
+		assert.ErrorIs(t, ErrNotNewer, err)
+		assert.ErrorContain(t, "v0.1.0 is not newer than v0.1.0", err)
 		want := "" +
 			"Current tag: v0.1.0\n" +
-			"HEAD on tag. Nothing to do.\n"
+			"Version: v0.1.0\n"
 		assert.Equal(t, want, tst.Stdout())
 		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "CHANGELOG.md"))
 	})
 
 	t.Run("set version below proposal", func(t *testing.T) {

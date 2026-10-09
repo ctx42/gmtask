@@ -113,7 +113,8 @@ A run:
 
 1. Verifies the working tree is clean; aborts otherwise.
 2. Reads the current branch; aborts on a detached HEAD.
-3. Prints the current tag, and stops here when there is nothing to release.
+3. Prints the current tag, and stops here when there is nothing to release —
+   unless `-s` is given, which releases even with no new commits.
 4. On a branch other than `master` or `main`, asks to confirm the release —
    only `y` or `yes` goes on, anything else aborts.
 5. Prompts for the next version, pre-filled with the proposal — press ENTER to
