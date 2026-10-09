@@ -30,7 +30,6 @@ import (
 func Test_ImpPath(t *testing.T) {
 	t.Run("error - not go module - dir arg", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -38,7 +37,7 @@ func Test_ImpPath(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		have, err := ImpPath(ctx, rng, prj.Root())
+		have, err := ImpPath(t.Context(), rng, prj.Root())
 
 		// --- Then ---
 		assert.ErrorIs(t, gomake.ErrNoGoMod, err)
@@ -48,7 +47,6 @@ func Test_ImpPath(t *testing.T) {
 
 	t.Run("error - not go module - cwd", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -57,7 +55,7 @@ func Test_ImpPath(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		have, err := ImpPath(ctx, rng, "")
+		have, err := ImpPath(t.Context(), rng, "")
 
 		// --- Then ---
 		assert.ErrorIs(t, gomake.ErrNoGoMod, err)
@@ -67,7 +65,6 @@ func Test_ImpPath(t *testing.T) {
 
 	t.Run("error - invalid go.mod file", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -77,7 +74,7 @@ func Test_ImpPath(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		have, err := ImpPath(ctx, rng, "")
+		have, err := ImpPath(t.Context(), rng, "")
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrImpPath, err)
@@ -87,7 +84,6 @@ func Test_ImpPath(t *testing.T) {
 
 	t.Run("error - go list fails", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet("GOFLAGS", "-mod=bogus")
@@ -98,18 +94,17 @@ func Test_ImpPath(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		have, err := ImpPath(ctx, rng, "")
+		have, err := ImpPath(t.Context(), rng, "")
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrImpPath, err)
 		assert.ErrorContain(t, prj.Root(), err)
-		assert.ErrorContain(t, "cannot determine Go module import path", err)
+		assert.ErrorContain(t, "-mod=bogus", err)
 		assert.Empty(t, have)
 	})
 
 	t.Run("success", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -118,7 +113,7 @@ func Test_ImpPath(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		have, err := ImpPath(ctx, rng, prj.Root())
+		have, err := ImpPath(t.Context(), rng, prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -220,7 +215,6 @@ func Test_pinGoMajorMinor(t *testing.T) {
 func Test_InitModule(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -228,23 +222,21 @@ func Test_InitModule(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		err := InitModule(ctx, rng, prj.Root(), "package")
+		err := InitModule(t.Context(), rng, prj.Root(), "package")
 
 		// --- Then ---
 		assert.NoError(t, err)
-		have := prj.ReadFileStr("go.mod")
-		assert.Contain(t, "module package", have)
-
+		mod := prj.ReadFileStr("go.mod")
+		assert.Contain(t, "module package", mod)
 		// The "go" directive is pinned to "major.minor", not the toolchain's
 		// patch version.
 		ver := semver.MustParse(strings.TrimPrefix(runtime.Version(), "go"))
 		want := fmt.Sprintf("go %d.%d\n", ver.Major(), ver.Minor())
-		assert.Contain(t, want, have)
+		assert.Contain(t, want, mod)
 	})
 
 	t.Run("error - directory does not exist", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -253,7 +245,7 @@ func Test_InitModule(t *testing.T) {
 		dir := prj.Path("not_existing")
 
 		// --- When ---
-		err := InitModule(ctx, rng, dir, "package")
+		err := InitModule(t.Context(), rng, dir, "package")
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrModInit, err)
@@ -262,7 +254,6 @@ func Test_InitModule(t *testing.T) {
 
 	t.Run("error - invalid module name", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -271,7 +262,7 @@ func Test_InitModule(t *testing.T) {
 		module := "example.com:project/abc-proj"
 
 		// --- When ---
-		err := InitModule(ctx, rng, prj.Root(), module)
+		err := InitModule(t.Context(), rng, prj.Root(), module)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrModInit, err)
@@ -455,7 +446,7 @@ func Test_gitGetFile(t *testing.T) {
 }
 
 func Test_freeAddr(t *testing.T) {
-	t.Run("returns a bindable loopback address", func(t *testing.T) {
+	t.Run("bindable loopback address", func(t *testing.T) {
 		// --- When ---
 		have, err := freeAddr()
 
@@ -469,7 +460,7 @@ func Test_freeAddr(t *testing.T) {
 }
 
 func Test_BldDateFmt(t *testing.T) {
-	t.Run("truncates to millisecond and normalizes to UTC", func(t *testing.T) {
+	t.Run("millisecond precision in UTC", func(t *testing.T) {
 		// --- Given ---
 		loc := time.FixedZone("CET", 2*60*60)
 		tim := time.Date(2026, 7, 9, 12, 0, 0, 123_456_789, loc)
@@ -481,7 +472,7 @@ func Test_BldDateFmt(t *testing.T) {
 		assert.Equal(t, "2026-07-09T10:00:00.123Z", have)
 	})
 
-	t.Run("keeps a trailing zero xdef also keeps", func(t *testing.T) {
+	t.Run("trailing zero kept", func(t *testing.T) {
 		// --- Given ---
 		tim := time.Date(2000, 1, 2, 3, 4, 5, 600_000_000, time.UTC)
 
@@ -492,7 +483,7 @@ func Test_BldDateFmt(t *testing.T) {
 		assert.Equal(t, "2000-01-02T03:04:05.600Z", have)
 	})
 
-	t.Run("agrees with the xdef rendering", func(t *testing.T) {
+	t.Run("matches xdef rendering", func(t *testing.T) {
 		// --- Given ---
 		want := xdef.BldDateStr()
 		tim := must.Value(time.Parse(time.RFC3339Nano, want))
@@ -512,37 +503,35 @@ func Test_extractGolangCiVersion(t *testing.T) {
 		line := "version v1.53.3 built with go1.20.5"
 
 		// --- When ---
-		ver, err := extractGolangCiVersion(line)
+		have, err := extractGolangCiVersion(line)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, "v1.53.3", ver.Original())
+		assert.Equal(t, "v1.53.3", have.Original())
 	})
 
 	t.Run("success - long", func(t *testing.T) {
 		// --- Given ---
-		line := "golangci-lint has version v1.55.2 built with go1.21.3 from " +
+		line := "" +
+			"golangci-lint has version v1.55.2 built with go1.21.3 from " +
 			"(unknown, " +
 			"mod sum: \"h1:yllEIsSJ7MtlDBwDJ9IMBkyEUz2fYE0b5B8IUgO1oP8=\") " +
 			"on (unknown)"
 
 		// --- When ---
-		ver, err := extractGolangCiVersion(line)
+		have, err := extractGolangCiVersion(line)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, "v1.55.2", ver.Original())
+		assert.Equal(t, "v1.55.2", have.Original())
 	})
 
 	t.Run("error - invalid version line", func(t *testing.T) {
-		// --- Given ---
-		line := "v1.53.3"
-
 		// --- When ---
-		ver, err := extractGolangCiVersion(line)
+		have, err := extractGolangCiVersion("v1.53.3")
 
 		// --- Then ---
 		assert.ErrorIs(t, semver.ErrInvalidSemVer, err)
-		assert.Nil(t, ver)
+		assert.Nil(t, have)
 	})
 }

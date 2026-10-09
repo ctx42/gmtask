@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -30,8 +31,8 @@ import (
 func Test_Go_Vet(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -39,10 +40,8 @@ func Test_Go_Vet(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Go{}.Vet(ctx, rng)
+		err := Go{}.Vet(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -50,8 +49,8 @@ func Test_Go_Vet(t *testing.T) {
 
 	t.Run("error - vet detects issue", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -59,10 +58,8 @@ func Test_Go_Vet(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Go{}.Vet(ctx, rng)
+		err := Go{}.Vet(t.Context(), rng)
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
@@ -71,8 +68,8 @@ func Test_Go_Vet(t *testing.T) {
 
 	t.Run("tmp exists", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -81,10 +78,8 @@ func Test_Go_Vet(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Go{}.Vet(ctx, rng)
+		err := Go{}.Vet(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -92,8 +87,8 @@ func Test_Go_Vet(t *testing.T) {
 
 	t.Run("ignores delivered config block", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -101,13 +96,13 @@ func Test_Go_Vet(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-		// Vet never decodes; a stray key in the delivered block must not fail it.
+		// Vet never decodes; a stray key in the delivered block must not fail
+		// it.
 		cfg := jsonkit.To(t, map[string]any{"nonsense": "x"})
 		rng.MetaSet(gomake.ConfigMetaKey, cfg)
 
 		// --- When ---
-		err := Go{}.Vet(ctx, rng)
+		err := Go{}.Vet(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -117,8 +112,8 @@ func Test_Go_Vet(t *testing.T) {
 func Test_Go_Check(t *testing.T) {
 	t.Run("success - lint ignores the sibling timeout", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
 		repo := setupConfigRepo(t)
 
 		prj := gmtest.NewProject(t, prjkit.WithProjectEnv(os.Environ()))
@@ -128,16 +123,15 @@ func Test_Go_Check(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		rng.EnvSet(GoLintConfigRepoEnvKey, repo)
-		// gomake delivers :go:check the go-node block ({timeout}). The lint step
-		// reads only its own "version"/"file" keys and ignores the sibling
+		// gomake delivers :go:check the go-node block ({timeout}). The lint
+		// step reads only its own "version"/"file" keys and ignores the sibling
 		// "timeout", so the whole block passes through to Test unchanged.
 		cfg := jsonkit.To(t, map[string]any{"timeout": "10m"})
 		rng.MetaSet(gomake.ConfigMetaKey, cfg)
 
 		// --- When ---
-		err := Go{}.Check(ctx, rng)
+		err := Go{}.Check(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -149,8 +143,8 @@ func Test_Go_Check(t *testing.T) {
 
 	t.Run("error - vet fails first", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -158,10 +152,8 @@ func Test_Go_Check(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Go{}.Check(ctx, rng)
+		err := Go{}.Check(t.Context(), rng)
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
@@ -172,9 +164,7 @@ func Test_Go_Check(t *testing.T) {
 func Test_Go_TestV(t *testing.T) {
 	t.Run("success - tmp dir does not exist", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
-
 		rng := tst.Ring("--", "-timeout", "10m")
 
 		prj := gmtest.NewProject(t, prjkit.WithProjectEnv(os.Environ()))
@@ -184,7 +174,7 @@ func Test_Go_TestV(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		err := Go{}.TestV(ctx, rng)
+		err := Go{}.TestV(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -193,7 +183,6 @@ func Test_Go_TestV(t *testing.T) {
 		assert.Equal(t, want, have)
 		assert.Contain(t, "--- PASS: Test_Hello (", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
-
 		want = "" +
 			"mode: atomic\n" +
 			"example.com/comp/project/source.go:4.21,4.45 1 1\n"
@@ -203,8 +192,8 @@ func Test_Go_TestV(t *testing.T) {
 
 	t.Run("success - tmp dir exists", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -213,10 +202,8 @@ func Test_Go_TestV(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Go{}.TestV(ctx, rng)
+		err := Go{}.TestV(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -225,7 +212,6 @@ func Test_Go_TestV(t *testing.T) {
 		assert.Equal(t, want, have)
 		assert.Contain(t, "--- PASS: Test_Hello (", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
-
 		want = "" +
 			"mode: atomic\n" +
 			"example.com/comp/project/source.go:4.21,4.45 1 1\n"
@@ -235,7 +221,6 @@ func Test_Go_TestV(t *testing.T) {
 
 	t.Run("success - existing custom tmp dir", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
 
 		prj := gmtest.NewProject(t)
@@ -248,7 +233,7 @@ func Test_Go_TestV(t *testing.T) {
 		rng := tst.Ring("--dir", tmp)
 
 		// --- When ---
-		err := Go{}.TestV(ctx, rng)
+		err := Go{}.TestV(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -257,7 +242,6 @@ func Test_Go_TestV(t *testing.T) {
 		assert.Equal(t, want, have)
 		assert.Contain(t, "--- PASS: Test_Hello (", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
-
 		want = "" +
 			"mode: atomic\n" +
 			"example.com/comp/project/source.go:4.21,4.45 1 1\n"
@@ -267,9 +251,7 @@ func Test_Go_TestV(t *testing.T) {
 
 	t.Run("set timeout using environment variable", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
-
 		rng := tst.Ring()
 		rng.EnvSet(GoTestTimeoutEnvKey, "1ns")
 
@@ -280,7 +262,7 @@ func Test_Go_TestV(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		err := Go{}.TestV(ctx, rng)
+		err := Go{}.TestV(t.Context(), rng)
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
@@ -289,9 +271,7 @@ func Test_Go_TestV(t *testing.T) {
 
 	t.Run("set timeout using configuration", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
-
 		rng := tst.Ring()
 		cfg := jsonkit.To(t, map[string]any{"timeout": "1ns"})
 		rng.MetaSet(gomake.ConfigMetaKey, cfg)
@@ -303,7 +283,7 @@ func Test_Go_TestV(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		err := Go{}.TestV(ctx, rng)
+		err := Go{}.TestV(t.Context(), rng)
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
@@ -312,12 +292,11 @@ func Test_Go_TestV(t *testing.T) {
 
 	t.Run("set timeout using numeric configuration", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
-
 		rng := tst.Ring()
 		// A JSON number is read as the nanosecond count, so 1 is 1ns.
-		rng.MetaSet(gomake.ConfigMetaKey, jsonkit.To(t, map[string]any{"timeout": 1}))
+		cfg := jsonkit.To(t, map[string]any{"timeout": 1})
+		rng.MetaSet(gomake.ConfigMetaKey, cfg)
 
 		prj := gmtest.NewProject(t, prjkit.WithProjectEnv(os.Environ()))
 		prj.GoModInit()
@@ -326,7 +305,7 @@ func Test_Go_TestV(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		err := Go{}.TestV(ctx, rng)
+		err := Go{}.TestV(t.Context(), rng)
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
@@ -335,9 +314,7 @@ func Test_Go_TestV(t *testing.T) {
 
 	t.Run("environment timeout overrides configuration", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
-
 		rng := tst.Ring()
 		cfg := jsonkit.To(t, map[string]any{"timeout": "10m"})
 		rng.MetaSet(gomake.ConfigMetaKey, cfg)
@@ -350,7 +327,7 @@ func Test_Go_TestV(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		err := Go{}.TestV(ctx, rng)
+		err := Go{}.TestV(t.Context(), rng)
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
@@ -359,9 +336,7 @@ func Test_Go_TestV(t *testing.T) {
 
 	t.Run("error - config type mismatch", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
-
 		rng := tst.Ring()
 		cfg := jsonkit.To(t, map[string]any{"timeout": "nope"})
 		rng.MetaSet(gomake.ConfigMetaKey, cfg)
@@ -373,7 +348,7 @@ func Test_Go_TestV(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		err := Go{}.TestV(ctx, rng)
+		err := Go{}.TestV(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gomake.ErrType, err)
@@ -382,9 +357,7 @@ func Test_Go_TestV(t *testing.T) {
 
 	t.Run("additional args passed to test", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
-
 		rng := tst.Ring("--", "-timeout", "1ns")
 
 		prj := gmtest.NewProject(t, prjkit.WithProjectEnv(os.Environ()))
@@ -394,7 +367,7 @@ func Test_Go_TestV(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		err := Go{}.TestV(ctx, rng)
+		err := Go{}.TestV(t.Context(), rng)
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
@@ -477,8 +450,8 @@ func Test_Go_TestV(t *testing.T) {
 
 	t.Run("error - custom tmp dir does not exist", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("--dir", "not_existing")
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -486,10 +459,8 @@ func Test_Go_TestV(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--dir", "not_existing")
-
 		// --- When ---
-		err := Go{}.TestV(ctx, rng)
+		err := Go{}.TestV(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, fs.ErrNotExist, err)
@@ -498,8 +469,8 @@ func Test_Go_TestV(t *testing.T) {
 
 	t.Run("error - failing tests", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -508,10 +479,8 @@ func Test_Go_TestV(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Go{}.TestV(ctx, rng)
+		err := Go{}.TestV(t.Context(), rng)
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
@@ -521,7 +490,6 @@ func Test_Go_TestV(t *testing.T) {
 		assert.Contain(t, "source_test.go:9: expected different result", have)
 		assert.Contain(t, "--- FAIL: Test_Hello (", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
-
 		want = "" +
 			"mode: atomic\n" +
 			"example.com/comp/project/source.go:7.21,7.70 1 1\n"
@@ -531,17 +499,15 @@ func Test_Go_TestV(t *testing.T) {
 
 	t.Run("error - not go module", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Go{}.TestV(ctx, rng)
+		err := Go{}.TestV(t.Context(), rng)
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
@@ -551,47 +517,45 @@ func Test_Go_TestV(t *testing.T) {
 
 	t.Run("show help", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("--help")
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--help")
-
 		// --- When ---
-		err := Go{}.TestV(ctx, rng)
+		err := Go{}.TestV(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		want := "" +
 			"Usage of :go:test-v\n" +
-			"      --dir     directory to put reports to (default: \".\" or \"tmp\" if exists)\n" +
+			"      --dir     directory to put reports to " +
+			"(default: \".\" or \"tmp\" if exists)\n" +
 			"  -h, --help    show help\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
 
 	t.Run("error - unknown argument", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("-unknown")
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("-unknown")
-
 		// --- When ---
-		err := Go{}.TestV(ctx, rng)
+		err := Go{}.TestV(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "flag provided but not defined: -unknown", err)
 		want := "" +
 			"flag provided but not defined: -unknown\n" +
 			"Usage of :go:test-v\n" +
-			"      --dir     directory to put reports to (default: \".\" or \"tmp\" if exists)\n" +
+			"      --dir     directory to put reports to " +
+			"(default: \".\" or \"tmp\" if exists)\n" +
 			"  -h, --help    show help\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
@@ -600,8 +564,8 @@ func Test_Go_TestV(t *testing.T) {
 func Test_Go_Test(t *testing.T) {
 	t.Run("success - tmp dir does not exist", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -609,10 +573,8 @@ func Test_Go_Test(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Go{}.Test(ctx, rng)
+		err := Go{}.Test(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -621,7 +583,6 @@ func Test_Go_Test(t *testing.T) {
 		assert.Equal(t, want, have)
 		assert.Contain(t, "ok  \texample.com/comp/project\t", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
-
 		want = "" +
 			"mode: atomic\n" +
 			"example.com/comp/project/source.go:4.21,4.45 1 1\n"
@@ -631,8 +592,8 @@ func Test_Go_Test(t *testing.T) {
 
 	t.Run("success - tmp dir exists", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -641,10 +602,8 @@ func Test_Go_Test(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Go{}.Test(ctx, rng)
+		err := Go{}.Test(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -653,7 +612,6 @@ func Test_Go_Test(t *testing.T) {
 		assert.Equal(t, want, have)
 		assert.Contain(t, "ok  \texample.com/comp/project\t", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
-
 		want = "" +
 			"mode: atomic\n" +
 			"example.com/comp/project/source.go:4.21,4.45 1 1\n"
@@ -663,7 +621,6 @@ func Test_Go_Test(t *testing.T) {
 
 	t.Run("success - existing custom tmp dir", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
 
 		prj := gmtest.NewProject(t)
@@ -676,7 +633,7 @@ func Test_Go_Test(t *testing.T) {
 		rng := tst.Ring("--dir", tmp)
 
 		// --- When ---
-		err := Go{}.Test(ctx, rng)
+		err := Go{}.Test(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -685,7 +642,6 @@ func Test_Go_Test(t *testing.T) {
 		assert.Equal(t, want, have)
 		assert.Contain(t, "ok  \texample.com/comp/project\t", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
-
 		want = "" +
 			"mode: atomic\n" +
 			"example.com/comp/project/source.go:4.21,4.45 1 1\n"
@@ -695,8 +651,8 @@ func Test_Go_Test(t *testing.T) {
 
 	t.Run("error - custom tmp dir does not exist", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("--dir", "not_existing")
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -704,10 +660,8 @@ func Test_Go_Test(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--dir", "not_existing")
-
 		// --- When ---
-		err := Go{}.Test(ctx, rng)
+		err := Go{}.Test(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, fs.ErrNotExist, err)
@@ -716,8 +670,8 @@ func Test_Go_Test(t *testing.T) {
 
 	t.Run("error - failing tests", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -726,10 +680,8 @@ func Test_Go_Test(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Go{}.Test(ctx, rng)
+		err := Go{}.Test(t.Context(), rng)
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
@@ -739,7 +691,6 @@ func Test_Go_Test(t *testing.T) {
 		assert.Contain(t, "source_test.go:9: expected different result", have)
 		assert.Contain(t, "--- FAIL: Test_Hello (", have)
 		assert.Contain(t, "coverage: 100.0% of statements", have)
-
 		want = "" +
 			"mode: atomic\n" +
 			"example.com/comp/project/source.go:7.21,7.70 1 1\n"
@@ -749,9 +700,7 @@ func Test_Go_Test(t *testing.T) {
 
 	t.Run("error - not go module", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout().WetStderr()
-
 		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
@@ -759,7 +708,7 @@ func Test_Go_Test(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		err := Go{}.Test(ctx, rng)
+		err := Go{}.Test(t.Context(), rng)
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
@@ -769,47 +718,45 @@ func Test_Go_Test(t *testing.T) {
 
 	t.Run("show help", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("-h")
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("-h")
-
 		// --- When ---
-		err := Go{}.Test(ctx, rng)
+		err := Go{}.Test(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		want := "" +
 			"Usage of :go:test\n" +
-			"      --dir     directory to put reports to (default: \".\" or \"tmp\" if exists)\n" +
+			"      --dir     directory to put reports to " +
+			"(default: \".\" or \"tmp\" if exists)\n" +
 			"  -h, --help    show help\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
 
 	t.Run("error - unknown argument", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("-unknown")
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("-unknown")
-
 		// --- When ---
-		err := Go{}.Test(ctx, rng)
+		err := Go{}.Test(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "flag provided but not defined: -unknown", err)
 		want := "" +
 			"flag provided but not defined: -unknown\n" +
 			"Usage of :go:test\n" +
-			"      --dir     directory to put reports to (default: \".\" or \"tmp\" if exists)\n" +
+			"      --dir     directory to put reports to " +
+			"(default: \".\" or \"tmp\" if exists)\n" +
 			"  -h, --help    show help\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
@@ -903,17 +850,15 @@ func Test_parseDirTarget(t *testing.T) {
 func Test_Go_Doc(t *testing.T) {
 	t.Run("error - not go project", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Go{}.Doc(ctx, rng)
+		err := Go{}.Doc(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gomake.ErrNoGoMod, err)
@@ -924,17 +869,15 @@ func Test_Go_Doc(t *testing.T) {
 func Test_Go_Pkgsite(t *testing.T) {
 	t.Run("error - not go project", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Go{}.Pkgsite(ctx, rng)
+		err := Go{}.Pkgsite(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gomake.ErrNoGoMod, err)
@@ -945,7 +888,6 @@ func Test_Go_Pkgsite(t *testing.T) {
 func Test_serveDocServer(t *testing.T) {
 	t.Run("error - not a go module", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		rng := ringtest.New(t).Ring()
 
 		prj := gmtest.NewProject(t)
@@ -957,15 +899,14 @@ func Test_serveDocServer(t *testing.T) {
 		}
 
 		// --- When ---
-		err := serveDocServer(ctx, rng, serve, "/pkg/")
+		err := serveDocServer(t.Context(), rng, serve, "/pkg/")
 
 		// --- Then ---
 		assert.ErrorIs(t, gomake.ErrNoGoMod, err)
 	})
 
-	t.Run("returns the serve error", func(t *testing.T) {
+	t.Run("error - serve fails", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		rng := ringtest.New(t).Ring()
 
 		prj := gmtest.NewProject(t)
@@ -979,7 +920,7 @@ func Test_serveDocServer(t *testing.T) {
 		}
 
 		// --- When ---
-		err := serveDocServer(ctx, rng, serve, "/pkg/")
+		err := serveDocServer(t.Context(), rng, serve, "/pkg/")
 
 		// --- Then ---
 		assert.ErrorIs(t, wantErr, err)
@@ -989,31 +930,28 @@ func Test_serveDocServer(t *testing.T) {
 func Test_serveDoc(t *testing.T) {
 	t.Run("error - godoc fails before context is done", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		rng := ringtest.New(t).Ring()
-		addr := "localhost:0"
 
 		// Point PATH at an empty directory, so the "godoc" binary cannot be
 		// resolved, and its launch fails immediately, whether godoc is
-		// installed on the host.
+		// installed on the host. exec resolves binaries on the process PATH.
 		t.Setenv("PATH", t.TempDir())
 
 		// --- When ---
-		err := serveDoc(ctx, rng, addr)
+		err := serveDoc(t.Context(), rng, "localhost:0")
 
 		// --- Then ---
-		assert.Error(t, err)
+		assert.ErrorIs(t, exec.ErrNotFound, err)
 	})
 
 	t.Run("no error when context cancelled", func(t *testing.T) {
 		// --- Given ---
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
 		rng := ringtest.New(t).Ring()
-		addr := "localhost:0"
 
 		// --- When ---
-		err := serveDoc(ctx, rng, addr)
+		err := serveDoc(ctx, rng, "localhost:0")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1023,31 +961,28 @@ func Test_serveDoc(t *testing.T) {
 func Test_servePkgsite(t *testing.T) {
 	t.Run("error - pkgsite fails before context is done", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		rng := ringtest.New(t).Ring()
-		addr := "localhost:0"
 
 		// Point PATH at an empty directory so the "pkgsite" binary cannot be
 		// resolved and its launch fails immediately, whether or not pkgsite is
-		// installed on the host.
+		// installed on the host. exec resolves binaries on the process PATH.
 		t.Setenv("PATH", t.TempDir())
 
 		// --- When ---
-		err := servePkgsite(ctx, rng, addr)
+		err := servePkgsite(t.Context(), rng, "localhost:0")
 
 		// --- Then ---
-		assert.Error(t, err)
+		assert.ErrorIs(t, exec.ErrNotFound, err)
 	})
 
 	t.Run("no error when context cancelled", func(t *testing.T) {
 		// --- Given ---
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
 		rng := ringtest.New(t).Ring()
-		addr := "localhost:0"
 
 		// --- When ---
-		err := servePkgsite(ctx, rng, addr)
+		err := servePkgsite(ctx, rng, "localhost:0")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1058,9 +993,9 @@ func Test_browserCmd_tabular(t *testing.T) {
 	tt := []struct {
 		testN string
 
-		goos     string
-		wantName string
-		wantArgs []string
+		goos  string
+		wName string
+		wArgs []string
 	}{
 		{"linux", "linux", "xdg-open", []string{"http://x/"}},
 		{"macos", "darwin", "open", []string{"http://x/"}},
@@ -1076,11 +1011,11 @@ func Test_browserCmd_tabular(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.testN, func(t *testing.T) {
 			// --- When ---
-			name, args := browserCmd(tc.goos, "http://x/")
+			hName, hArgs := browserCmd(tc.goos, "http://x/")
 
 			// --- Then ---
-			assert.Equal(t, tc.wantName, name)
-			assert.Equal(t, tc.wantArgs, args)
+			assert.Equal(t, tc.wName, hName)
+			assert.Equal(t, tc.wArgs, hArgs)
 		})
 	}
 }
@@ -1088,7 +1023,6 @@ func Test_browserCmd_tabular(t *testing.T) {
 func Test_waitForServer(t *testing.T) {
 	t.Run("true once the server responds", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 
 		srv := httptest.NewServer(http.HandlerFunc(
 			func(w http.ResponseWriter, _ *http.Request) {},
@@ -1096,33 +1030,29 @@ func Test_waitForServer(t *testing.T) {
 		defer srv.Close()
 
 		// --- When ---
-		have := waitForServer(ctx, srv.URL+"/")
+		have := waitForServer(t.Context(), srv.URL+"/")
 
 		// --- Then ---
 		assert.True(t, have)
 	})
 
-	t.Run("false when context cancelled before server responds", func(t *testing.T) {
+	t.Run("false when context cancelled", func(t *testing.T) {
 		// --- Given ---
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
 
 		// Port 0 is never listening, so the poll depends on ctx to stop.
-		url := "http://localhost:0/"
 
 		// --- When ---
-		have := waitForServer(ctx, url)
+		have := waitForServer(ctx, "http://localhost:0/")
 
 		// --- Then ---
 		assert.False(t, have)
 	})
 
 	t.Run("error - false on malformed url", func(t *testing.T) {
-		// --- Given ---
-		ctx := context.Background()
-
 		// --- When ---
-		have := waitForServer(ctx, "://bad")
+		have := waitForServer(t.Context(), "://bad")
 
 		// --- Then ---
 		assert.False(t, have)
@@ -1142,8 +1072,8 @@ func setBuildConfig(t tester.T, rng *ring.Ring, modules map[string]any) {
 func Test_Go_Build(t *testing.T) {
 	t.Run("inject with name overrides", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("cmd/project.go")
 		tim := time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC)
 
 		prj := gmtest.NewProject(t)
@@ -1154,7 +1084,6 @@ func Test_Go_Build(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("cmd/project.go")
 		rng.EnvSet(xdef.EnvBldDate, tim.Format(time.RFC3339Nano))
 		setBuildConfig(t, rng, map[string]any{
 			"example.com/comp/project": map[string]any{
@@ -1169,14 +1098,14 @@ func Test_Go_Build(t *testing.T) {
 		})
 
 		// --- When ---
-		err := Go{}.Build(ctx, rng)
+		err := Go{}.Build(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		want := "" +
 			"#gomake INFO# go build -ldflags=" +
-			"-X 'example.com/comp/project.BuildDate=2000-01-02T03:04:05.000Z' " +
+			"-X 'example.com/comp/project.BuildDate=" +
+			"2000-01-02T03:04:05.000Z' " +
 			"-X 'example.com/comp/project.ScmRev=v1.2.3' " +
 			"-X 'example.com/comp/project.ScmHash=%s' " +
 			"-X 'example.com/comp/project.ScmWDState=clean' " +
@@ -1195,8 +1124,8 @@ func Test_Go_Build(t *testing.T) {
 
 	t.Run("inject with default names", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("cmd/project.go")
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -1206,7 +1135,6 @@ func Test_Go_Build(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("cmd/project.go")
 		setBuildConfig(t, rng, map[string]any{
 			"example.com/comp/project": map[string]any{
 				"package": "example.com/comp/project",
@@ -1214,21 +1142,22 @@ func Test_Go_Build(t *testing.T) {
 		})
 
 		// --- When ---
-		err := Go{}.Build(ctx, rng)
+		err := Go{}.Build(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		out := tst.Stderr()
 		assert.Contain(t, "-X 'example.com/comp/project.bldDate=", out)
 		assert.Contain(t, "-X 'example.com/comp/project.scmRev=v2.0.0'", out)
-		assert.Contain(t, "-X 'example.com/comp/project.scmHash="+cm.Hash+"'", out)
+		want := "-X 'example.com/comp/project.scmHash=" + cm.Hash + "'"
+		assert.Contain(t, want, out)
 		assert.Contain(t, "-X 'example.com/comp/project.scmState=clean'", out)
 	})
 
 	t.Run("no matching config injects nothing", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("cmd/project.go")
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -1238,13 +1167,12 @@ func Test_Go_Build(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("cmd/project.go")
 		setBuildConfig(t, rng, map[string]any{
 			"other.com/unrelated": map[string]any{"package": "other.com/x"},
 		})
 
 		// --- When ---
-		err := Go{}.Build(ctx, rng)
+		err := Go{}.Build(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1253,8 +1181,8 @@ func Test_Go_Build(t *testing.T) {
 
 	t.Run("configured outside git repo uses placeholders", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("cmd/project.go")
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -1263,7 +1191,6 @@ func Test_Go_Build(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("cmd/project.go")
 		setBuildConfig(t, rng, map[string]any{
 			"example.com/comp/project": map[string]any{
 				"package": "example.com/comp/project",
@@ -1276,7 +1203,7 @@ func Test_Go_Build(t *testing.T) {
 		})
 
 		// --- When ---
-		err := Go{}.Build(ctx, rng)
+		err := Go{}.Build(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1292,8 +1219,8 @@ func Test_Go_Build(t *testing.T) {
 
 	t.Run("error - invalid config missing package", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("cmd/project.go")
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -1303,7 +1230,6 @@ func Test_Go_Build(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("cmd/project.go")
 		setBuildConfig(t, rng, map[string]any{
 			"example.com/comp/project": map[string]any{
 				"names": map[string]any{xdef.VarScmRev: "ScmRev"},
@@ -1311,7 +1237,7 @@ func Test_Go_Build(t *testing.T) {
 		})
 
 		// --- When ---
-		err := Go{}.Build(ctx, rng)
+		err := Go{}.Build(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrConfig, err)
@@ -1403,8 +1329,8 @@ func Test_Go_Build(t *testing.T) {
 
 	t.Run("error - invalid names config type", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("cmd/project.go")
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -1414,7 +1340,6 @@ func Test_Go_Build(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("cmd/project.go")
 		setBuildConfig(t, rng, map[string]any{
 			"example.com/comp/project": map[string]any{
 				"package": "example.com/comp/project",
@@ -1423,7 +1348,7 @@ func Test_Go_Build(t *testing.T) {
 		})
 
 		// --- When ---
-		err := Go{}.Build(ctx, rng)
+		err := Go{}.Build(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gomake.ErrType, err)
@@ -1431,27 +1356,26 @@ func Test_Go_Build(t *testing.T) {
 
 	t.Run("error - invalid target config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("cmd/project.go")
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("cmd/project.go")
 		rng.MetaSet(gomake.ConfigMetaKey, []byte("{bad"))
 
 		// --- When ---
-		err := Go{}.Build(ctx, rng)
+		err := Go{}.Build(t.Context(), rng)
 
 		// --- Then ---
-		assert.ErrorContain(t, "target config", err)
+		assert.ErrorIs(t, gomake.ErrConfig, err)
 	})
 
 	t.Run("error - not a go module", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("cmd/project.go")
 
 		prj := gmtest.NewProject(t)
 		prj.CreateFileWith(tstBuildMain, "cmd", "project.go")
@@ -1459,10 +1383,8 @@ func Test_Go_Build(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("cmd/project.go")
-
 		// --- When ---
-		err := Go{}.Build(ctx, rng)
+		err := Go{}.Build(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gomake.ErrNoGoMod, err)
@@ -1470,8 +1392,8 @@ func Test_Go_Build(t *testing.T) {
 
 	t.Run("error - invalid program", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("project.go")
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -1480,10 +1402,8 @@ func Test_Go_Build(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("project.go")
-
 		// --- When ---
-		err := Go{}.Build(ctx, rng)
+		err := Go{}.Build(t.Context(), rng)
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
@@ -1495,8 +1415,8 @@ func Test_Go_Build(t *testing.T) {
 
 	t.Run("cross-compile with environment variables", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("-o", "project-linux", "cmd/project.go")
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -1506,7 +1426,6 @@ func Test_Go_Build(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("-o", "project-linux", "cmd/project.go")
 		rng.EnvSet("GOOS", "linux")
 		rng.EnvSet("GOARCH", "amd64")
 		rng.EnvSet("CGO_ENABLED", "0")
@@ -1517,7 +1436,7 @@ func Test_Go_Build(t *testing.T) {
 		})
 
 		// --- When ---
-		err := Go{}.Build(ctx, rng)
+		err := Go{}.Build(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1531,8 +1450,8 @@ func Test_Go_Build(t *testing.T) {
 
 	t.Run("cross-compile for windows", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("-o", "project.exe", "cmd/project.go")
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -1542,7 +1461,6 @@ func Test_Go_Build(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("-o", "project.exe", "cmd/project.go")
 		rng.EnvSet("GOOS", "windows")
 		rng.EnvSet("GOARCH", "amd64")
 		rng.EnvSet("CGO_ENABLED", "0")
@@ -1553,7 +1471,7 @@ func Test_Go_Build(t *testing.T) {
 		})
 
 		// --- When ---
-		err := Go{}.Build(ctx, rng)
+		err := Go{}.Build(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1606,7 +1524,6 @@ func main() {}
 func Test_buildValues(t *testing.T) {
 	t.Run("outside git repo uses placeholders", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		rng := ringtest.New(t).Ring()
 
 		prj := gmtest.NewProject(t)
@@ -1614,7 +1531,7 @@ func Test_buildValues(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		have, err := buildValues(ctx, rng)
+		have, err := buildValues(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1626,7 +1543,6 @@ func Test_buildValues(t *testing.T) {
 
 	t.Run("git repo with build date override", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		rng := ringtest.New(t).Ring()
 		tim := time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC)
 		rng.EnvSet(xdef.EnvBldDate, tim.Format(time.RFC3339Nano))
@@ -1638,7 +1554,7 @@ func Test_buildValues(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		have, err := buildValues(ctx, rng)
+		have, err := buildValues(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)

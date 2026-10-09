@@ -38,7 +38,7 @@ func TestMain(m *testing.M) {
 // setupConfigRepo creates a local git repository on the "master" branch
 // holding the shared configuration and returns its path. The config file is
 // named ".golangci.yml" unless name overrides it. Tests point [Lint.Config] at
-// it through the GOMAKE_GOLINT_CONFIG_REPO environment variable so linting
+// it through the [GoLintConfigRepoEnvKey] environment variable so linting
 // configuration downloads without network access.
 func setupConfigRepo(t tester.T, name ...string) string {
 	t.Helper()
@@ -70,6 +70,7 @@ func setupConfigRepo(t tester.T, name ...string) string {
 // tests can force LookPath / exec to miss an otherwise-installed tool.
 func pathWithoutBinary(name string) string {
 	var keep []string
+	// The process PATH, deliberately: exec resolves binaries on it.
 	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
 		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
 			continue

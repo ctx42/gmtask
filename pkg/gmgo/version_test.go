@@ -4,7 +4,6 @@
 package gmgo
 
 import (
-	"context"
 	"testing"
 
 	"github.com/ctx42/gitaid/pkg/gitaid"
@@ -16,7 +15,6 @@ import (
 func Test_ProjectVersion(t *testing.T) {
 	t.Run("infers the bump from the commits", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		rng := ringtest.New(t).Ring()
 		rng.EnvUnset(EnvBldBump)
 
@@ -28,7 +26,7 @@ func Test_ProjectVersion(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		have, err := ProjectVersion(ctx, rng, prj.Root(), "")
+		have, err := ProjectVersion(t.Context(), rng, prj.Root(), "")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -37,7 +35,6 @@ func Test_ProjectVersion(t *testing.T) {
 
 	t.Run("the environment overrides the scan", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		rng := ringtest.New(t).Ring()
 		rng.EnvSet(EnvBldBump, gitaid.BumpMajor)
 
@@ -49,7 +46,7 @@ func Test_ProjectVersion(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		have, err := ProjectVersion(ctx, rng, prj.Root(), "")
+		have, err := ProjectVersion(t.Context(), rng, prj.Root(), "")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -58,7 +55,6 @@ func Test_ProjectVersion(t *testing.T) {
 
 	t.Run("a release needs no bump at all", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		rng := ringtest.New(t).Ring()
 		rng.EnvUnset(EnvBldBump)
 
@@ -68,7 +64,7 @@ func Test_ProjectVersion(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		have, err := ProjectVersion(ctx, rng, prj.Root(), "")
+		have, err := ProjectVersion(t.Context(), rng, prj.Root(), "")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -78,14 +74,13 @@ func Test_ProjectVersion(t *testing.T) {
 
 	t.Run("error - not a git repository", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		rng := ringtest.New(t).Ring()
 
 		prj := prjkit.New(t, t.TempDir())
 		prj.Close()
 
 		// --- When ---
-		have, err := ProjectVersion(ctx, rng, prj.Root(), "")
+		have, err := ProjectVersion(t.Context(), rng, prj.Root(), "")
 
 		// --- Then ---
 		assert.ErrorIs(t, gitaid.ErrNotRepo, err)
@@ -96,7 +91,6 @@ func Test_ProjectVersion(t *testing.T) {
 func Test_InferBump(t *testing.T) {
 	t.Run("anything unrecognized is a patch", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		prj := prjkit.New(t, t.TempDir())
 		prj.CreateFileWith("file0 1", "file0.txt")
 		prj.GitInitAddAll("v0.4.0")
@@ -105,7 +99,7 @@ func Test_InferBump(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		have, err := InferBump(ctx, prj.Root())
+		have, err := InferBump(t.Context(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -114,7 +108,6 @@ func Test_InferBump(t *testing.T) {
 
 	t.Run("a feat subject is a minor", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		prj := prjkit.New(t, t.TempDir())
 		prj.CreateFileWith("file0 1", "file0.txt")
 		prj.GitInitAddAll("v0.4.0")
@@ -123,7 +116,7 @@ func Test_InferBump(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		have, err := InferBump(ctx, prj.Root())
+		have, err := InferBump(t.Context(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -132,7 +125,6 @@ func Test_InferBump(t *testing.T) {
 
 	t.Run("a bang subject is a major", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		prj := prjkit.New(t, t.TempDir())
 		prj.CreateFileWith("file0 1", "file0.txt")
 		prj.GitInitAddAll("v0.4.0")
@@ -141,7 +133,7 @@ func Test_InferBump(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		have, err := InferBump(ctx, prj.Root())
+		have, err := InferBump(t.Context(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -150,7 +142,6 @@ func Test_InferBump(t *testing.T) {
 
 	t.Run("a breaking footer outranks a feat", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		prj := prjkit.New(t, t.TempDir())
 		prj.CreateFileWith("file0 1", "file0.txt")
 		prj.GitInitAddAll("v0.4.0")
@@ -161,7 +152,7 @@ func Test_InferBump(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		have, err := InferBump(ctx, prj.Root())
+		have, err := InferBump(t.Context(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -170,7 +161,6 @@ func Test_InferBump(t *testing.T) {
 
 	t.Run("a feat in the body is not a subject", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		prj := prjkit.New(t, t.TempDir())
 		prj.CreateFileWith("file0 1", "file0.txt")
 		prj.GitInitAddAll("v0.4.0")
@@ -179,16 +169,15 @@ func Test_InferBump(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		have, err := InferBump(ctx, prj.Root())
+		have, err := InferBump(t.Context(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, gitaid.BumpPatch, have)
 	})
 
-	t.Run("with no version tag the whole history is scanned", func(t *testing.T) {
+	t.Run("no version tag scans whole history", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		prj := prjkit.New(t, t.TempDir())
 		prj.CreateFileWith("file0 1", "file0.txt")
 		prj.GitInitAddAll()
@@ -199,7 +188,7 @@ func Test_InferBump(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		have, err := InferBump(ctx, prj.Root())
+		have, err := InferBump(t.Context(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -208,12 +197,11 @@ func Test_InferBump(t *testing.T) {
 
 	t.Run("error - not a git repository", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		prj := prjkit.New(t, t.TempDir())
 		prj.Close()
 
 		// --- When ---
-		have, err := InferBump(ctx, prj.Root())
+		have, err := InferBump(t.Context(), prj.Root())
 
 		// --- Then ---
 		assert.ErrorIs(t, gitaid.ErrNotRepo, err)
