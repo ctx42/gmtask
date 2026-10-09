@@ -172,6 +172,15 @@ func Test_pickTargets(t *testing.T) {
 	})
 }
 
+func Test_pickTargets_duplicate(t *testing.T) {
+	// --- When ---
+	have, err := pickTargets([]string{"a", "b"}, []string{"a", "a"})
+
+	// --- Then ---
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"a"}, have)
+}
+
 func Test_pickTargets_tabular(t *testing.T) {
 	tt := []struct {
 		testN string

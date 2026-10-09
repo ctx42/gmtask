@@ -75,8 +75,15 @@ func pickTargets(haveTgs, wantTgs []string) ([]string, error) {
 		return haveTgs, nil
 	}
 
-	// Clone so the caller-owned slice is not mutated by slices.Delete below.
-	wantTgs = slices.Clone(wantTgs)
+	// Copy without duplicates, so a name asked for twice is picked once and
+	// the caller-owned slice is not mutated by slices.Delete below.
+	uniq := make([]string, 0, len(wantTgs))
+	for _, tgt := range wantTgs {
+		if !slices.Contains(uniq, tgt) {
+			uniq = append(uniq, tgt)
+		}
+	}
+	wantTgs = uniq
 	var picked []string
 	for _, haveTgt := range haveTgs {
 		if i := slices.Index(wantTgs, haveTgt); i > -1 {
