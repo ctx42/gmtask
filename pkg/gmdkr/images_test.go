@@ -196,6 +196,9 @@ func Test_ImgLs(t *testing.T) {
 		exekit.WithTimeout(10*time.Second),
 	)
 	exe.Exe("docker", "build", "-t", tstImgRef, "--label="+tstImgLabel, ".")
+	t.Cleanup(func() {
+		dkrkit.NewT(t).ImgRm(tstImgRef, dkrkit.WithImgRmIgnoreErrors())
+	})
 
 	t.Run("error - cannot connect to docker host", func(t *testing.T) {
 		// --- Given ---

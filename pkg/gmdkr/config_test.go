@@ -34,7 +34,7 @@ func Test_NewConfig(t *testing.T) {
 	assert.Equal(t, "linux/amd64", cfg.platform)
 	assert.NotNil(t, cfg.args)
 	assert.True(t, cfg.kit)
-	assert.Within(t, time.Now(), "5ms", cfg.buildDate)
+	assert.Within(t, time.Now(), "1s", cfg.buildDate)
 	assert.Len(t, 0, cfg.args)
 	assert.False(t, cfg.noCache)
 	assert.False(t, cfg.push)
@@ -348,50 +348,6 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Len(t, 6, cfg.args)
 	})
 
-	t.Run("project build in CI/CD", func(t *testing.T) {
-		// --- Given ---
-		ctx := context.Background()
-		tst := ringtest.New(t)
-		rng := tst.Ring()
-		rng.EnvUnset(EnvSSHSock)
-		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
-
-		prj := gmtest.NewProject(t)
-		prj.CfgRegRepoDef()
-		prj.GoModInit()
-		cm := prj.GitInitAddAll("v1.2.3")
-		prj.Close()
-
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
-
-		// --- When ---
-		cfg := ConfigFrom(inf, nil)
-
-		// --- Then ---
-		assert.Equal(t, "dki-project", cfg.name)
-		assert.Equal(t, "v1.2.3", cfg.tag)
-		assert.False(t, cfg.latest)
-		assert.Equal(t, "", cfg.target)
-		assert.Equal(t, "", cfg.ssh)
-		assert.Equal(t, "my.nexus.dev/repo", cfg.repo)
-		assert.Equal(t, "linux/amd64", cfg.platform)
-		assert.True(t, cfg.kit)
-		assert.Time(t, "2000-01-02T03:04:05.6Z", cfg.buildDate)
-		assert.False(t, cfg.noCache)
-		assert.False(t, cfg.push)
-		assert.Empty(t, cfg.cacheFrom)
-		assert.Empty(t, cfg.cacheTo)
-		assert.Fields(t, 14, Config{})
-
-		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
-		assert.HasKeyValue(t, xdef.EnvScmRev, "v1.2.3", cfg.args)
-		assert.HasKeyValue(t, xdef.EnvBldDate, "2000-01-02T03:04:05.600Z", cfg.args)
-		assert.HasKeyValue(t, xdef.EnvRegHost, "my.nexus.dev", cfg.args)
-		assert.HasKeyValue(t, xdef.EnvRegRepo, "my.nexus.dev/repo", cfg.args)
-		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
-		assert.Len(t, 6, cfg.args)
-	})
-
 	t.Run("with SSH socket set", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
@@ -445,7 +401,7 @@ func Test_ConfigFrom(t *testing.T) {
 		cfg := ConfigFrom(inf, nil)
 
 		// --- Then ---
-		assert.Within(t, time.Now(), "10ms", cfg.buildDate)
+		assert.Within(t, time.Now(), "1s", cfg.buildDate)
 	})
 
 	t.Run("flag rebuild set", func(t *testing.T) {

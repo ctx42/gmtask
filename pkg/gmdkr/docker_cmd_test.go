@@ -407,7 +407,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		fls.Push = true
 		fls.DryRun = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Build(ctx, rng)
@@ -434,7 +434,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Build(ctx, rng)
@@ -478,7 +478,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Build(ctx, rng)
@@ -530,7 +530,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = false
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Build(ctx, rng)
@@ -581,7 +581,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		fls.ImgLatest = true
 		fls.DryRun = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Build(ctx, rng)
@@ -626,7 +626,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Build(ctx, rng)
@@ -683,7 +683,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Build(ctx, rng)
@@ -739,7 +739,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Build(ctx, rng)
@@ -788,7 +788,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Build(ctx, rng)
@@ -844,7 +844,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Build(ctx, rng)
@@ -884,7 +884,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Build(ctx, rng)
@@ -919,7 +919,7 @@ func Test_DockerCmd_Push(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Push(ctx, rng)
@@ -946,7 +946,7 @@ func Test_DockerCmd_Push(t *testing.T) {
 		fls.ImgLatest = true
 		fls.DryRun = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Push(ctx, rng)
@@ -979,7 +979,7 @@ func Test_DockerCmd_Push(t *testing.T) {
 		fls.ImgLatest = true
 		fls.DryRun = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Push(ctx, rng)
@@ -1010,7 +1010,7 @@ func Test_DockerCmd_Push(t *testing.T) {
 		fls := NewFlags("name")
 		fls.DryRun = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Push(ctx, rng)
@@ -1059,7 +1059,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Run(ctx, rng)
@@ -1094,7 +1094,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Run(ctx, rng)
@@ -1129,7 +1129,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Run(ctx, rng)
@@ -1167,7 +1167,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 		fls := NewFlags("name")
 		fls.DryRun = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Run(ctx, rng)
@@ -1214,7 +1214,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Run(ctx, rng)
@@ -1249,7 +1249,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Run(ctx, rng)
@@ -1277,10 +1277,10 @@ func Test_DockerCmd_Run(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// Build once.
-		assert.NoError(t, dc.Build(ctx, rng))
+		must.Nil(dc.Build(ctx, rng))
 		tst.ResetStdout()
 		tst.ResetStderr()
 
@@ -1318,10 +1318,10 @@ func Test_DockerCmd_Run(t *testing.T) {
 		fls.ImgLatest = true
 		fls.Rebuild = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// Build once.
-		assert.NoError(t, dc.Build(ctx, rng))
+		must.Nil(dc.Build(ctx, rng))
 		tst.ResetStdout()
 		tst.ResetStderr()
 
@@ -1357,7 +1357,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Run(ctx, rng)
@@ -1385,7 +1385,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Run(ctx, rng)
@@ -1413,7 +1413,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Run(ctx, rng)
@@ -1461,7 +1461,7 @@ func Test_DockerCmd_Sh(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Sh(ctx, rng)
@@ -1489,7 +1489,7 @@ func Test_DockerCmd_Sh(t *testing.T) {
 		fls := NewFlags("name")
 		fls.DryRun = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Sh(ctx, rng)
@@ -1537,7 +1537,7 @@ func Test_DockerCmd_Sh(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Sh(ctx, rng)
@@ -1569,7 +1569,7 @@ func Test_DockerCmd_Sh(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.Sh(ctx, rng)
@@ -1600,12 +1600,7 @@ func Test_DockerCmd_Reference(t *testing.T) {
 		fls.ImgTag = imgTag
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
-
-		// Build once.
-		assert.NoError(t, dc.Build(ctx, rng))
-		tst.ResetStdout()
-		tst.ResetStderr()
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		have, err := dc.Reference()
@@ -1636,12 +1631,7 @@ func Test_DockerCmd_Reference(t *testing.T) {
 		fls.ImgTag = imgTag
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
-
-		// Build once.
-		assert.NoError(t, dc.Build(ctx, rng))
-		tst.ResetStdout()
-		tst.ResetStderr()
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		have, err := dc.Reference()
@@ -1671,12 +1661,7 @@ func Test_DockerCmd_Reference(t *testing.T) {
 		fls.ImgTag = imgTag
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
-
-		// Build once.
-		assert.NoError(t, dc.Build(ctx, rng))
-		tst.ResetStdout()
-		tst.ResetStderr()
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		have, err := dc.Reference()
@@ -1707,12 +1692,7 @@ func Test_DockerCmd_Reference(t *testing.T) {
 		fls.ImgTag = imgTag
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
-
-		// Build once.
-		assert.NoError(t, dc.Build(ctx, rng))
-		tst.ResetStdout()
-		tst.ResetStderr()
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		have, err := dc.Reference()
@@ -1742,7 +1722,7 @@ func Test_DockerCmd_build(t *testing.T) {
 		fls.ImgName = prj.ImgName()
 		fls.ImgTag = prj.ImgTag()
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		assert.NoError(t, dc.build(ctx, rng, prj.TgtRef("third"), false))
@@ -1781,7 +1761,7 @@ func Test_DockerCmd_build(t *testing.T) {
 		fls.ImgName = prj.ImgName()
 		fls.ImgTag = prj.ImgTag()
 		dc := NewDockerCmd(fls)
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		assert.NoError(t, dc.build(ctx, rng, prj.TgtRef("third"), false))
@@ -1825,14 +1805,14 @@ func Test_DockerCmd_build(t *testing.T) {
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
 
-		assert.NoError(t, dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		err := dc.build(ctx, rng, prj.TgtRef("third"), false)
 
 		// --- Then ---
 		assert.ErrorContain(t, "Cannot connect to the Docker daemon", err)
-		ref, refLatest := prj.ImgRef(), prj.ImgRefLatest()
+		ref, refLatest := prj.TgtRef("third"), prj.TgtRefLatest("third")
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(ref))
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(refLatest))
 	})
