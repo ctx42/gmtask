@@ -259,9 +259,10 @@ func (inf *Info) setLDFlags(spec string) {
 	inf.LDFlags = gmgo.LDFlags(spec, vars)
 }
 
-// getGoSpec returns the Go import spec for the Go project in the root directory.
-// It returns an empty string and no error when root holds no go.mod file, even
-// when an ancestor directory does, and an error on any filesystem error.
+// getGoSpec returns the Go import spec for the Go project in the root
+// directory. It returns an empty string and no error when root holds no go.mod
+// file, even when an ancestor directory does, and an error on any filesystem
+// error.
 func getGoSpec(ctx context.Context, env []string, root string) (string, error) {
 	if !gomake.FileExists(filepath.Join(root, "go.mod")) {
 		return "", nil

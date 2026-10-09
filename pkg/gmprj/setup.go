@@ -319,7 +319,8 @@ func (sup *Setup) initScmRepo(ctx context.Context, rng *ring.Ring) error {
 	}
 	_, _ = fmt.Fprintf(rng.Stdout(), "git: empty initial commit made\n")
 
-	if err = gitaid.Tag(ctx, sup.root, tagInitial, "initial tag\n"); err != nil {
+	err = gitaid.Tag(ctx, sup.root, tagInitial, "initial tag\n")
+	if err != nil {
 		return fmt.Errorf("git tag %s: %w", tagInitial, err)
 	}
 	format := "git: %s tagged with %s\n"

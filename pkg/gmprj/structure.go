@@ -327,7 +327,8 @@ func (nod *structNode) create(
 
 	for _, name := range sortedNames(nod.Children) {
 		sub := filepath.Join(rel, name)
-		if err = nod.Children[name].create(w, root, sub, vrs, enabled); err != nil {
+		err = nod.Children[name].create(w, root, sub, vrs, enabled)
+		if err != nil {
 			return err
 		}
 	}
