@@ -156,9 +156,12 @@ func (inf *Info) Get(name string) string {
 // and the boolean is true. Otherwise, the returned value will be empty and the
 // boolean will be false.
 func (inf *Info) Lookup(name string) (string, bool) {
-	env := gomake.EnvSplit(inf.Env())
-	val, exist := env[name]
-	return val, exist
+	// Other overrides Config, as in [Info.Env].
+	if val, ok := inf.Other[name]; ok {
+		return val, true
+	}
+	val, ok := inf.Config[name]
+	return val, ok
 }
 
 // Custom returns custom environment variables in alphabetical order.
