@@ -145,11 +145,11 @@ func sshAuthSock(env []string) string {
 func runDockerCmd(ctx context.Context, rng *ring.Ring) (string, string, error) {
 	sin, sout, eout := rng.Stdin(), rng.Stdout(), rng.Stderr()
 
-	// Printing to standard output and returning it so the caller can examine it.
+	// Print to standard output and keep a copy for the caller to examine.
 	soutCatch := &bytes.Buffer{}
 	soutMulti := io.MultiWriter(sout, soutCatch)
 
-	// Printing to standard error and returning it so the caller can examine it.
+	// Print to standard error and keep a copy for the caller to examine.
 	eoutCatch := &bytes.Buffer{}
 	eoutMulti := io.MultiWriter(eout, eoutCatch)
 
@@ -326,7 +326,8 @@ func DockerSocket() string {
 			return "/var/run/docker.sock"
 		}
 		if dst.Current {
-			if after, ok := strings.CutPrefix(dst.DockerEndpoint, "unix://"); ok {
+			ep := dst.DockerEndpoint
+			if after, ok := strings.CutPrefix(ep, "unix://"); ok {
 				return after
 			}
 			return "/var/run/docker.sock"
