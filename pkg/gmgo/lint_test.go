@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"testing"
 
@@ -189,9 +188,8 @@ func Test_Lint_Default(t *testing.T) {
 func Test_Lint_checkVersion(t *testing.T) {
 	t.Run("gets the current version", func(t *testing.T) {
 		// --- Given ---
-		want := exekit.New(t).ExeStdout("golangci-lint", "version")
-		want = regexp.MustCompile("version (.*) built").
-			FindAllStringSubmatch(want, 1)[0][1]
+		out := exekit.New(t).ExeStdout("golangci-lint", "version")
+		want := must.Value(extractGolangCiVersion(out)).Original()
 
 		ctx := context.Background()
 		tst := ringtest.New(t)

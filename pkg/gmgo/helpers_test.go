@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"net"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -274,9 +275,9 @@ func Test_InitModule(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrModInit, err)
-		msg := err.Error()
-		assert.Contain(t, prj.Root(), msg)
-		assert.Contain(t, fmt.Sprintf("malformed module path %q", module), msg)
+		want := regexp.QuoteMeta(prj.Root()) + ".*" +
+			regexp.QuoteMeta(fmt.Sprintf("malformed module path %q", module))
+		assert.ErrorRegexp(t, want, err)
 	})
 }
 
@@ -460,13 +461,9 @@ func Test_freeAddr(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
-		_, port, err := net.SplitHostPort(have)
-		assert.NoError(t, err)
+		_, port := must.Values(net.SplitHostPort(have))
 		assert.NotEqual(t, "0", port)
-
-		lis, err := net.Listen("tcp", have)
-		assert.NoError(t, err)
+		lis := must.Value(net.Listen("tcp", have))
 		_ = lis.Close()
 	})
 }

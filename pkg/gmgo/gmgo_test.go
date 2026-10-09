@@ -815,31 +815,6 @@ func Test_Go_Test(t *testing.T) {
 	})
 }
 
-func Test_Go_test(t *testing.T) {
-	t.Run("tmp directory created", func(t *testing.T) {
-		// --- Given ---
-		ctx := context.Background()
-		tst := ringtest.New(t).WetStdout()
-
-		prj := gmtest.NewProject(t)
-		prj.GoModInit()
-		prj.ProjectFrom("testdata/vet/success/project")
-		prj.CreateDir("tmp")
-		prj.Close()
-		prj.Chdir()
-
-		rng := tst.Ring()
-
-		// --- When ---
-		err := Go{}.Test(ctx, rng)
-
-		// --- Then ---
-		assert.NoError(t, err)
-		assert.FileExist(t, prj.Path("tmp", TestLogFilename(rng)))
-		assert.Contain(t, "ok  \texample.com/comp/project", tst.Stdout())
-	})
-}
-
 func Test_ldValues(t *testing.T) {
 	// --- Given ---
 	vars := []LDVar{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}}
@@ -1591,7 +1566,7 @@ func Test_Go_Build(t *testing.T) {
 }
 
 // tstBuildMain represents file used to test :go:build target.
-var tstBuildMain = `package main
+const tstBuildMain = `package main
 
 import (
 	"fmt"
@@ -1608,7 +1583,7 @@ func main() {
 `
 
 // tstBuildVersion represents file used to test :go:build target.
-var tstBuildVersion = `package project
+const tstBuildVersion = `package project
 
 // Variables set by ldflags.
 var (
@@ -1620,7 +1595,7 @@ var (
 `
 
 // tstInvalidProgram represents an invalid program to test :go:build target.
-var tstInvalidProgram = `package main
+const tstInvalidProgram = `package main
 
 func main() {}
 func main() {}
