@@ -64,7 +64,10 @@ func ImpPath(ctx context.Context, rng *ring.Ring, dir string) (string, error) {
 		if dir == "" {
 			dir, _ = os.Getwd()
 		}
-		return "", fmt.Errorf(format, gomake.ErrNoGoMod, dir, eout.String())
+		if msg := strings.TrimSpace(eout.String()); msg != "" {
+			return "", fmt.Errorf(format, gomake.ErrNoGoMod, dir, msg)
+		}
+		return "", fmt.Errorf("%w: %s", gomake.ErrNoGoMod, dir)
 	}
 	return rsp, nil
 }

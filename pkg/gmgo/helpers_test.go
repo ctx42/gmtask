@@ -41,7 +41,7 @@ func Test_ImpPath(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, gomake.ErrNoGoMod, err)
-		assert.ErrorContain(t, prj.Root(), err)
+		assert.ErrorEqual(t, gomake.ErrNoGoMod.Error()+": "+prj.Root(), err)
 		assert.Empty(t, have)
 	})
 
