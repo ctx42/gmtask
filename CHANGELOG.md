@@ -1,3 +1,6 @@
+## v0.13.0 (Fri, 09 Oct 2026 19:41:41 UTC)
+- feat(gmbump)!: add --set and validate release versions.
+
 ## v0.12.0 (Fri, 09 Oct 2026 13:01:58 UTC)
 - fix(gmtest): validate project names and fail on nil projects.
 - fix(gmclog): keep the changelog file mode on save.
