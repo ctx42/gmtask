@@ -60,12 +60,14 @@ type Config struct {
 	cacheTo   string
 }
 
-// NewConfig returns new instance of Config with default field values.
+// NewConfig returns new instance of Config with default field values. It does
+// not move the "latest" tag; only [ConfigFrom] sets that, and only for a
+// release asked for with the latest flag.
 func NewConfig(name, tag string) *Config {
 	return &Config{
 		name:      name,
 		tag:       tag,
-		latest:    true,
+		latest:    false,
 		platform:  "linux/amd64",
 		args:      make(map[string]string),
 		kit:       true,

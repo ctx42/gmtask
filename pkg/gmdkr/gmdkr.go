@@ -284,7 +284,6 @@ func (Image) RunProj(ctx context.Context, rng *ring.Ring) error {
 	}
 
 	cfg := NewConfig(inf.Get(xdef.EnvPrjName), "latest")
-	cfg.latest = false
 	cfg.args[xdef.EnvBldImgBase] = goImageLatest
 	cfg.args["C42_USR_UID"] = strconv.Itoa(usrUID)
 	cfg.args["C42_USR_GID"] = strconv.Itoa(usrGID)

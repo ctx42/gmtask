@@ -441,7 +441,6 @@ func Test_Build_Cmd(t *testing.T) {
 			"--platform", "linux/amd64",
 			"--ssh", "default=ssh-socket",
 			"-t", "dki-project:v1.2.3",
-			"-t", "dki-project:latest",
 			"--build-arg", "C42_BLD_DATE=2000-01-02T03:04:05.600Z",
 			"--build-arg", "C42_PRJ_NAME=project",
 			"--build-arg", "C42_SCM_HASH=" + cm.Hash,
@@ -454,7 +453,7 @@ func Test_Build_Cmd(t *testing.T) {
 		assert.Equal(t, want, have)
 	})
 
-	t.Run("full example without latest", func(t *testing.T) {
+	t.Run("full example with latest", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
 		tst := ringtest.New(t)
@@ -471,7 +470,7 @@ func Test_Build_Cmd(t *testing.T) {
 
 		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
 		bld := must.Value(NewBuild(*ConfigFrom(inf, nil)))
-		bld.latest = false
+		bld.latest = true
 
 		// --- When ---
 		have := bld.Cmd()
@@ -482,6 +481,7 @@ func Test_Build_Cmd(t *testing.T) {
 			"--platform", "linux/amd64",
 			"--ssh", "default=ssh-socket",
 			"-t", "dki-project:v1.2.3",
+			"-t", "dki-project:latest",
 			"--build-arg", "C42_BLD_DATE=2000-01-02T03:04:05.600Z",
 			"--build-arg", "C42_PRJ_NAME=project",
 			"--build-arg", "C42_SCM_HASH=" + cm.Hash,
@@ -523,7 +523,6 @@ func Test_Build_Cmd(t *testing.T) {
 			"--platform", "linux/amd64",
 			"--ssh", "default=ssh-socket",
 			"-t", "dki-project:v1.2.3",
-			"-t", "dki-project:latest",
 			"--no-cache",
 			"--build-arg", "C42_BLD_DATE=2000-01-02T03:04:05.600Z",
 			"--build-arg", "C42_PRJ_NAME=project",
@@ -564,7 +563,6 @@ func Test_Build_Cmd(t *testing.T) {
 			"--platform", "linux/amd64",
 			"--ssh", "default=ssh-socket",
 			"-t", "my.nexus.dev/repo/dki-project:v1.2.3",
-			"-t", "my.nexus.dev/repo/dki-project:latest",
 			"--build-arg", "C42_BLD_DATE=2000-01-02T03:04:05.600Z",
 			"--build-arg", "C42_PRJ_NAME=project",
 			"--build-arg", "C42_REG_HOST=my.nexus.dev",
@@ -606,7 +604,6 @@ func Test_Build_Cmd(t *testing.T) {
 			"build",
 			"--platform", "linux/amd64",
 			"-t", "dki-project:v1.2.3",
-			"-t", "dki-project:latest",
 			"--build-arg", "C42_BLD_DATE=2000-01-02T03:04:05.600Z",
 			"--build-arg", "C42_PRJ_NAME=project",
 			"--build-arg", "C42_SCM_HASH=" + cm.Hash,
@@ -648,7 +645,6 @@ func Test_Build_Cmd(t *testing.T) {
 			"build",
 			"--platform", "linux/amd64",
 			"-t", "dki-project-target:v1.2.3",
-			"-t", "dki-project-target:latest",
 			"--target", "target",
 			"--build-arg", "C42_BLD_DATE=2000-01-02T03:04:05.600Z",
 			"--build-arg", "C42_PRJ_NAME=project",
@@ -750,7 +746,6 @@ func Test_Build_String(t *testing.T) {
 			" --platform linux/amd64" +
 			" --ssh default=ssh-socket" +
 			" -t dki-project:v1.2.3" +
-			" -t dki-project:latest" +
 			" --build-arg C42_BLD_DATE=2000-01-02T03:04:05.600Z" +
 			" --build-arg C42_PRJ_NAME=project" +
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
@@ -790,7 +785,6 @@ func Test_Build_String(t *testing.T) {
 			" --platform linux/amd64" +
 			" --ssh default=ssh-socket" +
 			" -t dki-project:v1.2.3" +
-			" -t dki-project:latest" +
 			" --build-arg C42_BLD_DATE=2000-01-02T03:04:05.600Z" +
 			" --build-arg C42_PRJ_NAME=project" +
 			" --build-arg C42_SCM_HASH=" + cm.Hash +

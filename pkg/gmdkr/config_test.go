@@ -27,7 +27,7 @@ func Test_NewConfig(t *testing.T) {
 	// --- Then ---
 	assert.Equal(t, "project", cfg.name)
 	assert.Equal(t, "tag", cfg.tag)
-	assert.True(t, cfg.latest)
+	assert.False(t, cfg.latest)
 	assert.Equal(t, "", cfg.target)
 	assert.Equal(t, "", cfg.ssh)
 	assert.Equal(t, "", cfg.repo)
@@ -65,7 +65,7 @@ func Test_ConfigFrom(t *testing.T) {
 		// --- Then ---
 		assert.Equal(t, "", cfg.name)
 		assert.Equal(t, "", cfg.tag)
-		assert.True(t, cfg.latest)
+		assert.False(t, cfg.latest)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "", cfg.ssh)
 		assert.Equal(t, "", cfg.repo)
@@ -107,7 +107,7 @@ func Test_ConfigFrom(t *testing.T) {
 		// --- Then ---
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, "", cfg.tag)
-		assert.True(t, cfg.latest)
+		assert.False(t, cfg.latest)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "", cfg.ssh)
 		assert.Equal(t, "", cfg.repo)
@@ -147,7 +147,7 @@ func Test_ConfigFrom(t *testing.T) {
 		// --- Then ---
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, "v0.0.1-dev.1_g"+cm.Hash, cfg.tag)
-		assert.True(t, cfg.latest)
+		assert.False(t, cfg.latest)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "", cfg.ssh)
 		assert.Equal(t, "", cfg.repo)
@@ -191,7 +191,7 @@ func Test_ConfigFrom(t *testing.T) {
 		// --- Then ---
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, "v0.0.1-dev.1_g"+cm.Hash, cfg.tag)
-		assert.True(t, cfg.latest)
+		assert.False(t, cfg.latest)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "", cfg.ssh)
 		assert.Equal(t, "", cfg.repo)
@@ -235,7 +235,7 @@ func Test_ConfigFrom(t *testing.T) {
 		// --- Then ---
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, cm.Rev, cfg.tag)
-		assert.True(t, cfg.latest)
+		assert.False(t, cfg.latest)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "", cfg.ssh)
 		assert.Equal(t, "", cfg.repo)
@@ -284,7 +284,7 @@ func Test_ConfigFrom(t *testing.T) {
 
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, imgTag, cfg.tag)
-		assert.True(t, cfg.latest)
+		assert.False(t, cfg.latest)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "", cfg.ssh)
 		assert.Equal(t, "", cfg.repo)
@@ -326,7 +326,7 @@ func Test_ConfigFrom(t *testing.T) {
 		// --- Then ---
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, "v1.2.3", cfg.tag)
-		assert.True(t, cfg.latest)
+		assert.False(t, cfg.latest)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "", cfg.ssh)
 		assert.Equal(t, "my.nexus.dev/repo", cfg.repo)
@@ -370,7 +370,7 @@ func Test_ConfigFrom(t *testing.T) {
 		// --- Then ---
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, "v1.2.3", cfg.tag)
-		assert.True(t, cfg.latest)
+		assert.False(t, cfg.latest)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "", cfg.ssh)
 		assert.Equal(t, "my.nexus.dev/repo", cfg.repo)
@@ -414,7 +414,7 @@ func Test_ConfigFrom(t *testing.T) {
 		// --- Then ---
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, "v1.2.3", cfg.tag)
-		assert.True(t, cfg.latest)
+		assert.False(t, cfg.latest)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "ssh-sock", cfg.ssh)
 		assert.Equal(t, "my.nexus.dev/repo", cfg.repo)
