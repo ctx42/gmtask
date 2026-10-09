@@ -8,10 +8,32 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"testing"
 
 	"github.com/ctx42/testing/pkg/tester"
 	"github.com/ctx42/testkit/pkg/oskit"
+	"github.com/ctx42/xdef/pkg/xdef"
 )
+
+// TestMain clears the environment variables the targets read, so a value the
+// host exports cannot change what a test sees: rings created by ringtest start
+// from the process environment.
+func TestMain(m *testing.M) {
+	keys := []string{
+		BuildIDEnvKey,
+		EnvBldBump,
+		GoLintConfigForceEnvKey,
+		GoLintConfigRepoEnvKey,
+		GoTestTimeoutEnvKey,
+		xdef.EnvBldDate,
+	}
+	for _, key := range keys {
+		if err := os.Unsetenv(key); err != nil {
+			panic(err)
+		}
+	}
+	os.Exit(m.Run())
+}
 
 // setupConfigRepo creates a local git repository on the "master" branch
 // holding the shared configuration and returns its path. The config file is
