@@ -1347,6 +1347,7 @@ func Test_Go_Build(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrConfig, err)
+		assert.ErrorContain(t, "invalid build modules configuration: ", err)
 		assert.ErrorContain(t, "empty package", err)
 		assert.NoFileExist(t, prj.Path("project"))
 	})

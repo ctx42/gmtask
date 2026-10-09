@@ -28,9 +28,10 @@ import (
 	"github.com/ctx42/xflag/pkg/xflag"
 )
 
-// ErrConfig is returned when a module with an entry in the target's "modules"
-// configuration omits its package.
-var ErrConfig = errors.New("invalid target configuration")
+// ErrConfig is returned when a module's entry in the target's "modules"
+// configuration cannot be used to inject build metadata. Its message differs
+// from that of [gomake.ErrConfig], which reports a malformed configuration.
+var ErrConfig = errors.New("invalid build modules configuration")
 
 // expLintVer is the minimum expected version of golangci-lint.
 var expLintVer = semver.MustParse("v2.12.2")
