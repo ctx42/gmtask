@@ -733,6 +733,17 @@ func Test_Info_CfgLookup(t *testing.T) {
 }
 
 func Test_Info_Set_Get(t *testing.T) {
+	t.Run("zero value", func(t *testing.T) {
+		// --- Given ---
+		var inf Info
+
+		// --- When ---
+		inf.Set("FLD0", "FV0")
+
+		// --- Then ---
+		assert.Equal(t, "FV0", inf.Get("FLD0"))
+	})
+
 	t.Run("get set values", func(t *testing.T) {
 		// --- Given ---
 		inf := &Info{

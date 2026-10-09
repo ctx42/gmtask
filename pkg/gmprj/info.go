@@ -136,6 +136,9 @@ func (inf *Info) CfgLookup(name string) (string, bool) {
 
 // Set adds a custom environment variable to the Info instance.
 func (inf *Info) Set(name, value string) {
+	if inf.Other == nil {
+		inf.Other = make(map[string]string)
+	}
 	inf.Other[name] = value
 }
 
