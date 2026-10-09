@@ -67,7 +67,7 @@ func Test_Lint_Default(t *testing.T) {
 
 		rng.EnvSet(GoLintConfigRepoEnvKey, repo)
 
-		assert.NoError(t, Lint{}.Default(ctx, rng))
+		must.Nil(Lint{}.Default(ctx, rng))
 		rng.EnvSet(GoLintConfigForceEnvKey, "1")
 
 		// --- When ---
