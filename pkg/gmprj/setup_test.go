@@ -907,6 +907,7 @@ func Test_Setup_initScmRepo(t *testing.T) {
 		err := sup.initScmRepo(ctx, rng)
 
 		// --- Then ---
-		assert.True(t, os.IsNotExist(err))
+		assert.ErrorIs(t, os.ErrNotExist, err)
+		assert.ErrorContain(t, "git init: ", err)
 	})
 }

@@ -137,20 +137,20 @@ func (nod *structNode) UnmarshalJSON(data []byte) error {
 func loadStructure(rng *ring.Ring) (structure, error) {
 	cfg, err := gomake.TargetConfig(rng)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read structure: %w", err)
 	}
 	str, err := gomake.GetCfg[structure](cfg, "structure")
 	if err != nil {
 		if errors.Is(err, gomake.ErrMiss) {
 			return nil, ErrNoStructure
 		}
-		return nil, err
+		return nil, fmt.Errorf("read structure: %w", err)
 	}
 	if len(str) == 0 {
 		return nil, ErrNoStructure
 	}
 	if err = str.validate(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid structure: %w", err)
 	}
 	return str, nil
 }

@@ -112,7 +112,7 @@ func NewSetup(root string, opts ...func(*Setup)) (*Setup, error) {
 	var err error
 	if sup.root == "" {
 		if sup.root, err = os.Getwd(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("get working directory: %w", err)
 		}
 	}
 	if sup.root, err = filepath.Abs(sup.root); err != nil {
@@ -303,40 +303,41 @@ func (sup *Setup) addRegRepo(rng *ring.Ring) (err error) {
 func (sup *Setup) initScmRepo(ctx context.Context, rng *ring.Ring) error {
 	err := gitaid.InitBranch(ctx, sup.root, branchMaster)
 	if err != nil {
-		return err
+		return fmt.Errorf("git init: %w", err)
 	}
 	_, _ = fmt.Fprintf(rng.Stdout(), "git: repository initialized\n")
 
 	if sup.origin != "" {
 		if err = gitaid.AddRemote(ctx, sup.root, sup.origin); err != nil {
-			return err
+			return fmt.Errorf("git remote add: %w", err)
 		}
 		_, _ = fmt.Fprintf(rng.Stdout(), "git: remote origin added\n")
 	}
 
 	if err = gitaid.CommitEmpty(ctx, sup.root, "Initial commit."); err != nil {
-		return err
+		return fmt.Errorf("git initial commit: %w", err)
 	}
 	_, _ = fmt.Fprintf(rng.Stdout(), "git: empty initial commit made\n")
 
 	if err = gitaid.Tag(ctx, sup.root, tagInitial, "initial tag\n"); err != nil {
-		return err
+		return fmt.Errorf("git tag %s: %w", tagInitial, err)
 	}
 	format := "git: %s tagged with %s\n"
 	_, _ = fmt.Fprintf(rng.Stdout(), format, branchMaster, tagInitial)
 
 	if err = gitaid.CreateBranch(ctx, sup.root, branchDevelop); err != nil {
-		return err
+		return fmt.Errorf("git branch %s: %w", branchDevelop, err)
 	}
 	_, _ = fmt.Fprintf(rng.Stdout(), "git: branch %s created\n", branchDevelop)
 
 	if err = gitaid.AddAll(ctx, sup.root); err != nil {
-		return err
+		return fmt.Errorf("git add: %w", err)
 	}
 	_, _ = fmt.Fprintf(rng.Stdout(), "git: all files added\n")
 
-	if err = gitaid.Commit(ctx, sup.root, "chore: scaffold project"); err != nil {
-		return err
+	msg := "chore: scaffold project"
+	if err = gitaid.Commit(ctx, sup.root, msg); err != nil {
+		return fmt.Errorf("git commit: %w", err)
 	}
 	_, _ = fmt.Fprintf(rng.Stdout(), "git: project files committed\n")
 	return nil

@@ -108,7 +108,7 @@ func Root(pth string, elem ...string) (string, error) {
 	var err error
 	pth, err = filepath.Abs(pth)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("resolve path: %w", err)
 	}
 	start := pth
 	for !gomake.FileExists(filepath.Join(pth, CfgPath)) {

@@ -82,7 +82,7 @@ func NewInfo(env []string) *Info {
 func GetInfo(ctx context.Context, env []string, root string) (*Info, error) {
 	var err error
 	if root, err = filepath.Abs(root); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("resolve project root: %w", err)
 	}
 
 	if ev, ok := ring.EnvLookup(env, xdef.EnvBldDate); ok {
@@ -207,7 +207,7 @@ func (inf *Info) setScm(
 		if errors.Is(err, gitaid.ErrNotRepo) {
 			return nil
 		}
-		return err
+		return fmt.Errorf("check repository: %w", err)
 	}
 	if empty {
 		return nil
@@ -215,7 +215,7 @@ func (inf *Info) setScm(
 
 	value, err := gitaid.ProjectOrigin(ctx, root)
 	if err != nil {
-		return err
+		return fmt.Errorf("read origin: %w", err)
 	}
 	if value != "" {
 		inf.Set(xdef.EnvScmRepo, value)
@@ -223,20 +223,20 @@ func (inf *Info) setScm(
 
 	value, err = gitaid.LatestHash(ctx, root)
 	if err != nil && !errors.Is(err, gitaid.ErrEmptyRepo) {
-		return err
+		return fmt.Errorf("read latest hash: %w", err)
 	}
 	inf.Set(xdef.EnvScmHash, value)
 
 	if inf.Version, err = gmgo.ProjectVersion(ctx, rng, root, ""); err != nil {
 		if !errors.Is(err, gitaid.ErrEmptyRepo) {
-			return err
+			return fmt.Errorf("derive version: %w", err)
 		}
 	}
 	inf.Set(xdef.EnvScmRev, inf.Version.Rev)
 
 	value, err = gitaid.WorkTreeStatus(ctx, root)
 	if err != nil {
-		return err
+		return fmt.Errorf("read work tree status: %w", err)
 	}
 	inf.Set(xdef.EnvScmState, value)
 	return nil
