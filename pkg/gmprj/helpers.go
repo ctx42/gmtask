@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -28,10 +29,16 @@ func ProjectName(origin string) string {
 }
 
 // GoModuleName returns the Go module path derived from name — a directory path,
-// git remote, or Go import spec. It strips a leading "ssh://" or "git@" and a
-// trailing ".git", reduces an absolute path to its base name, and rewrites ":"
-// to "/" so an "git@host:owner/repo" remote becomes "host/owner/repo".
+// git remote, or Go import spec. A URL remote such as
+// "https://user@host/owner/repo.git" or "ssh://git@host:2222/owner/repo"
+// yields its host and path, without scheme, user, port and a trailing ".git".
+// Otherwise it strips a leading "ssh://" or "git@" and a trailing ".git",
+// reduces an absolute path to its base name, and rewrites ":" to "/" so a
+// "git@host:owner/repo" remote becomes "host/owner/repo".
 func GoModuleName(name string) string {
+	if u, err := url.Parse(name); err == nil && u.Scheme != "" && u.Host != "" {
+		return strings.TrimSuffix(u.Hostname()+u.Path, ".git")
+	}
 	name = strings.TrimPrefix(name, "ssh://")
 	name = strings.TrimPrefix(name, "git@")
 	name = strings.TrimSuffix(name, ".git")

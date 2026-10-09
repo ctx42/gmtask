@@ -51,6 +51,21 @@ func Test_GoModuleName_tabular(t *testing.T) {
 		{"go import spec", "example.com/comp/acme-proj", "example.com/comp/acme-proj"},
 		{"empty", "", ""},
 		{"multiple", "acme-dki-proj", "acme-dki-proj"},
+		{
+			"https",
+			"https://github.com/prj/repo.git",
+			"github.com/prj/repo",
+		},
+		{
+			"https with user",
+			"https://user@github.com/prj/repo",
+			"github.com/prj/repo",
+		},
+		{
+			"ssh with port",
+			"ssh://git@example.com:2222/comp/acme-proj.git",
+			"example.com/comp/acme-proj",
+		},
 	}
 
 	for _, tc := range tt {
