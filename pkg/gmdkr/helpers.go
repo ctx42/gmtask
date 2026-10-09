@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ctx42/gomake/pkg/gomake"
@@ -306,4 +307,63 @@ func deleteImage(ctx context.Context, rng *ring.Ring, id string) error {
 	rngDC.SetArgs(argsRm)
 	_, _, err := runDockerCmd(ctx, rngDC)
 	return err
+}
+
+// splitArgs splits cmd into arguments the way a POSIX shell would, without
+// expanding anything: white space separates arguments, single quotes keep
+// their content verbatim, double quotes keep it but honor backslash escapes,
+// and a backslash outside quotes escapes the next character. It returns an
+// error for an unterminated quote or a trailing backslash.
+func splitArgs(cmd string) ([]string, error) {
+	var args []string
+	var cur strings.Builder
+	inArg := false // An argument is open, possibly empty ("").
+	var quote rune
+	escaped := false
+	for _, chr := range cmd {
+		switch {
+		case escaped:
+			cur.WriteRune(chr)
+			escaped = false
+
+		case quote == '\'':
+			if chr == '\'' {
+				quote = 0
+			} else {
+				cur.WriteRune(chr)
+			}
+
+		case chr == '\\':
+			escaped, inArg = true, true
+
+		case quote == '"':
+			if chr == '"' {
+				quote = 0
+			} else {
+				cur.WriteRune(chr)
+			}
+
+		case chr == '\'' || chr == '"':
+			quote, inArg = chr, true
+
+		case unicode.IsSpace(chr):
+			if inArg {
+				args = append(args, cur.String())
+				cur.Reset()
+				inArg = false
+			}
+
+		default:
+			cur.WriteRune(chr)
+			inArg = true
+		}
+	}
+	if quote != 0 || escaped {
+		format := "unterminated quote or escape in command: %s"
+		return nil, fmt.Errorf(format, cmd)
+	}
+	if inArg {
+		args = append(args, cur.String())
+	}
+	return args, nil
 }

@@ -220,8 +220,12 @@ func (dc *DockerCmd) Sh(ctx context.Context, rng *ring.Ring) error {
 	if cmd == "" {
 		cmd = "/bin/sh --login"
 	}
+	cmdArgs, err := splitArgs(cmd)
+	if err != nil {
+		return err
+	}
 	args = append(args, ref)
-	args = append(args, strings.Fields(cmd)...)
+	args = append(args, cmdArgs...)
 	args = append(args, dc.Flags.Args...)
 	_, _ = fmt.Fprintf(
 		rng.Stderr(),

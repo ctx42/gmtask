@@ -710,3 +710,51 @@ func Test_deleteImage(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func Test_splitArgs_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		cmd  string
+		want []string
+	}{
+		{"empty", "", nil},
+		{"plain", "/bin/sh --login", []string{"/bin/sh", "--login"}},
+		{"extra spaces", "  a   b ", []string{"a", "b"}},
+		{
+			"double quotes",
+			`bash -c "ls -la"`,
+			[]string{"bash", "-c", "ls -la"},
+		},
+		{
+			"single quotes",
+			`sh -c 'echo "$HOME"'`,
+			[]string{"sh", "-c", `echo "$HOME"`},
+		},
+		{"escaped space", `a\ b c`, []string{"a b", "c"}},
+		{"empty quoted", `a "" b`, []string{"a", "", "b"}},
+		{"adjacent parts", `a"b c"d`, []string{"ab cd"}},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			have, err := splitArgs(tc.cmd)
+
+			// --- Then ---
+			assert.NoError(t, err)
+			assert.Equal(t, tc.want, have)
+		})
+	}
+}
+
+func Test_splitArgs(t *testing.T) {
+	t.Run("error - unterminated quote", func(t *testing.T) {
+		// --- When ---
+		have, err := splitArgs(`bash -c "ls`)
+
+		// --- Then ---
+		assert.ErrorContain(t, "unterminated quote", err)
+		assert.Nil(t, have)
+	})
+}

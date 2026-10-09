@@ -335,7 +335,11 @@ func (Image) RunProj(ctx context.Context, rng *ring.Ring) error {
 	if cmd == "" {
 		cmd = "/bin/bash"
 	}
-	args = append(args, strings.Fields(cmd)...)
+	cmdArgs, err := splitArgs(cmd)
+	if err != nil {
+		return err
+	}
+	args = append(args, cmdArgs...)
 	args = append(args, fls.Args...)
 
 	_, _ = fmt.Fprintf(

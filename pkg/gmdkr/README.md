@@ -348,7 +348,7 @@ Targets take only the flags relevant to them; all support `-h`/`--help`.
 | `--push`       | `-p`  | build                           | Push while building (`--push`).        |
 | `--cache-from` |       | build                           | `docker build --cache-from` spec.      |
 | `--cache-to`   |       | build                           | `docker build --cache-to` spec.        |
-| `--cmd`        | `-c`  | sh                              | Command to run inside the container.   |
+| `--cmd`        | `-c`  | sh                              | Command to run; shell quoting applies. |
 | `--export`     | `-e`  | env                             | Print `export KEY='value'` lines.      |
 | `--dry-run`    | `-d`  | build, push, run, sh            | Print the `docker` command only.       |
 | `--help`       | `-h`  | all                             | Show the target's help.                |
