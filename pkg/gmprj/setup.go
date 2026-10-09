@@ -115,6 +115,9 @@ func NewSetup(root string, opts ...func(*Setup)) (*Setup, error) {
 			return nil, err
 		}
 	}
+	if sup.root, err = filepath.Abs(sup.root); err != nil {
+		return nil, fmt.Errorf("resolve project root: %w", err)
+	}
 
 	// Captured before the switch, which fills the module and the name from the
 	// root when the caller supplied neither.

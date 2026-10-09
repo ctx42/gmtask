@@ -102,6 +102,21 @@ func Test_NewSetup(t *testing.T) {
 		assert.Equal(t, "acme", sup.module)
 	})
 
+	t.Run("relative root", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		oskit.Chdir(t, dir)
+
+		// --- When ---
+		sup, err := NewSetup(filepath.Join("sub", "proj"))
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, filepath.Join(oskit.Getwd(t), "sub", "proj"), sup.root)
+		assert.Equal(t, "proj", sup.module)
+		assert.Equal(t, "proj", sup.name)
+	})
+
 	t.Run("module with major version suffix", func(t *testing.T) {
 		// --- Given ---
 		prj := gmtest.NewNamedProject(t, "acme")
