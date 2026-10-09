@@ -437,6 +437,23 @@ func Test_Go_TestV(t *testing.T) {
 		assert.ErrorContain(t, "\"bogus\"", err)
 	})
 
+	t.Run("error - invalid target config", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.MetaSet(gomake.ConfigMetaKey, []byte("{bad"))
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Go{}.TestV(t.Context(), rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, gomake.ErrConfig, err)
+		assert.NoFileExist(t, prj.Path(TestLogFilename(rng)))
+	})
+
 	t.Run("argument timeout overrides configuration", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t).WetStdout()

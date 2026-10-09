@@ -417,6 +417,24 @@ func Test_Lint_Install(t *testing.T) {
 		assert.True(t, have.Equal(want))
 	})
 
+	t.Run("error - install fails", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		rng.EnvSet("GOPROXY", "off")
+		rng.EnvSet("GOFLAGS", "-mod=mod")
+		rng.EnvSet("GOBIN", t.TempDir())
+		cfg := jsonkit.To(t, map[string]any{"version": "v0.0.0-no.such"})
+		rng.MetaSet(gomake.ConfigMetaKey, cfg)
+
+		// --- When ---
+		err := Lint{}.Install(t.Context(), rng)
+
+		// --- Then ---
+		assert.ExitCode(t, 1, err)
+		assert.Contain(t, "v0.0.0-no.such", tst.Stderr())
+	})
+
 	t.Run("error - config type mismatch", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()

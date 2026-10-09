@@ -144,6 +144,78 @@ func Test_ImpPath(t *testing.T) {
 	})
 }
 
+func Test_pinGoMajorMinor(t *testing.T) {
+	t.Run("rewrites patch version", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		dir := t.TempDir()
+		oskit.Write(t, "module x\n\ngo 1.26.3\n", dir, "go.mod")
+
+		// --- When ---
+		err := pinGoMajorMinor(t.Context(), rng, dir)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "\ngo 1.26\n", oskit.ReadFileStr(t, dir, "go.mod"))
+	})
+
+	t.Run("already major minor", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("PATH", "")
+		dir := t.TempDir()
+		oskit.Write(t, "module x\n\ngo 1.26\n", dir, "go.mod")
+
+		// --- When ---
+		err := pinGoMajorMinor(t.Context(), rng, dir)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "module x\n\ngo 1.26\n"
+		assert.Equal(t, want, oskit.ReadFileStr(t, dir, "go.mod"))
+	})
+
+	t.Run("no go directive", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		dir := t.TempDir()
+		oskit.Write(t, "module x\n", dir, "go.mod")
+
+		// --- When ---
+		err := pinGoMajorMinor(t.Context(), rng, dir)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "module x\n", oskit.ReadFileStr(t, dir, "go.mod"))
+	})
+
+	t.Run("error - go.mod missing", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+
+		// --- When ---
+		err := pinGoMajorMinor(t.Context(), rng, t.TempDir())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrModInit, err)
+		assert.ErrorIs(t, fs.ErrNotExist, err)
+	})
+
+	t.Run("error - go mod edit fails", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		dir := t.TempDir()
+		oskit.Write(t, "module x\n\ngo 01.2\n", dir, "go.mod")
+
+		// --- When ---
+		err := pinGoMajorMinor(t.Context(), rng, dir)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrModInit, err)
+		assert.ErrorContain(t, "invalid go version '01.2'", err)
+	})
+}
+
 func Test_InitModule(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// --- Given ---
