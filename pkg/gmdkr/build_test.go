@@ -4,7 +4,6 @@
 package gmdkr
 
 import (
-	"context"
 	"testing"
 
 	"github.com/ctx42/ring/pkg/ring/ringtest"
@@ -20,7 +19,6 @@ import (
 func Test_NewBuild(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -30,7 +28,7 @@ func Test_NewBuild(t *testing.T) {
 		prj.GitInitAddAll("v1.2.3")
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 		cfg := ConfigFrom(inf, nil)
 
 		// --- When ---
@@ -416,7 +414,6 @@ func Test_Build_Env(t *testing.T) {
 func Test_Build_Cmd(t *testing.T) {
 	t.Run("full example", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-socket")
@@ -429,7 +426,7 @@ func Test_Build_Cmd(t *testing.T) {
 		prj.GitSetRemote(prjkit.GitOrigin)
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 		bld := must.Value(NewBuild(*ConfigFrom(inf, nil)))
 
 		// --- When ---
@@ -455,7 +452,6 @@ func Test_Build_Cmd(t *testing.T) {
 
 	t.Run("full example with latest", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-socket")
@@ -468,7 +464,7 @@ func Test_Build_Cmd(t *testing.T) {
 		prj.GitSetRemote(prjkit.GitOrigin)
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 		bld := must.Value(NewBuild(*ConfigFrom(inf, nil)))
 		bld.latest = true
 
@@ -496,7 +492,6 @@ func Test_Build_Cmd(t *testing.T) {
 
 	t.Run("full example with no cache", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-socket")
@@ -509,7 +504,7 @@ func Test_Build_Cmd(t *testing.T) {
 		prj.GitSetRemote(prjkit.GitOrigin)
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 		cfg := ConfigFrom(inf, nil)
 		cfg.noCache = true
 		bld := must.Value(NewBuild(*cfg))
@@ -538,7 +533,6 @@ func Test_Build_Cmd(t *testing.T) {
 
 	t.Run("full example with private repo", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-socket")
@@ -551,7 +545,7 @@ func Test_Build_Cmd(t *testing.T) {
 		prj.GitSetRemote(prjkit.GitOrigin)
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 		bld := must.Value(NewBuild(*ConfigFrom(inf, nil)))
 
 		// --- When ---
@@ -579,7 +573,6 @@ func Test_Build_Cmd(t *testing.T) {
 
 	t.Run("with additional args from project config file", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHSock)
@@ -593,7 +586,7 @@ func Test_Build_Cmd(t *testing.T) {
 		prj.GitSetRemote(prjkit.GitOrigin)
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 		bld := must.Value(NewBuild(*ConfigFrom(inf, nil)))
 
 		// --- When ---
@@ -619,7 +612,6 @@ func Test_Build_Cmd(t *testing.T) {
 
 	t.Run("with target", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHSock)
@@ -632,7 +624,7 @@ func Test_Build_Cmd(t *testing.T) {
 		prj.GitSetRemote(prjkit.GitOrigin)
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 		cfg := ConfigFrom(inf, nil)
 		cfg.target = "target"
 		bld := must.Value(NewBuild(*cfg))
@@ -690,7 +682,7 @@ func Test_Build_Cmd(t *testing.T) {
 		assert.Equal(t, want, have)
 	})
 
-	t.Run("cache spec without placeholder is passed as given", func(t *testing.T) {
+	t.Run("cache spec without placeholder", func(t *testing.T) {
 		// --- Given ---
 		cfg := Config{
 			name:      "project",
@@ -719,7 +711,6 @@ func Test_Build_Cmd(t *testing.T) {
 func Test_Build_String(t *testing.T) {
 	t.Run("with build kit", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-socket")
@@ -732,7 +723,7 @@ func Test_Build_String(t *testing.T) {
 		prj.GitSetRemote(prjkit.GitOrigin)
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 		bld := must.Value(NewBuild(*ConfigFrom(inf, nil)))
 
 		// --- When ---
@@ -758,7 +749,6 @@ func Test_Build_String(t *testing.T) {
 
 	t.Run("without build kit", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-socket")
@@ -771,7 +761,7 @@ func Test_Build_String(t *testing.T) {
 		prj.GitSetRemote(prjkit.GitOrigin)
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 		bld := must.Value(NewBuild(*ConfigFrom(inf, nil)))
 		bld.kit = false
 

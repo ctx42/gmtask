@@ -4,7 +4,6 @@
 package gmdkr
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -35,7 +34,6 @@ func Test_NewDockerCmd(t *testing.T) {
 func Test_DockerCmd_Init(t *testing.T) {
 	t.Run("default target", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-sock")
@@ -53,11 +51,10 @@ func Test_DockerCmd_Init(t *testing.T) {
 		dc := NewDockerCmd(fls)
 
 		// --- When ---
-		err := dc.Init(ctx, rng.EnvAll(), prj.Root())
+		err := dc.Init(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		assert.Equal(t, "dki-project", dc.Config.name)
 		assert.Equal(t, "v1.1.1", dc.Config.tag)
 		assert.True(t, dc.Config.latest)
@@ -101,7 +98,6 @@ func Test_DockerCmd_Init(t *testing.T) {
 
 	t.Run("multiple targets", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-sock")
@@ -120,11 +116,10 @@ func Test_DockerCmd_Init(t *testing.T) {
 		dc := NewDockerCmd(fls)
 
 		// --- When ---
-		err := dc.Init(ctx, rng.EnvAll(), prj.Root())
+		err := dc.Init(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		assert.Equal(t, "dki-project", dc.Config.name)
 		assert.Equal(t, "v1.1.1", dc.Config.tag)
 		assert.True(t, dc.Config.latest)
@@ -210,7 +205,6 @@ func Test_DockerCmd_Init(t *testing.T) {
 
 	t.Run("pick targets", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-sock")
@@ -230,11 +224,10 @@ func Test_DockerCmd_Init(t *testing.T) {
 		dc := NewDockerCmd(fls)
 
 		// --- When ---
-		err := dc.Init(ctx, rng.EnvAll(), prj.Root())
+		err := dc.Init(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		assert.Equal(t, "dki-project", dc.Config.name)
 		assert.Equal(t, "v1.1.1", dc.Config.tag)
 		assert.True(t, dc.Config.latest)
@@ -300,7 +293,6 @@ func Test_DockerCmd_Init(t *testing.T) {
 
 	t.Run("error - not a project directory", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -312,7 +304,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 		dc := NewDockerCmd(fls)
 
 		// --- When ---
-		err := dc.Init(ctx, rng.EnvAll(), prj.Root())
+		err := dc.Init(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.ErrorIs(t, gmprj.ErrNoConfig, err)
@@ -320,7 +312,6 @@ func Test_DockerCmd_Init(t *testing.T) {
 
 	t.Run("error - not a git repo", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -333,7 +324,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 		dc := NewDockerCmd(fls)
 
 		// --- When ---
-		err := dc.Init(ctx, rng.EnvAll(), prj.Root())
+		err := dc.Init(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrEmptyTag, err)
@@ -341,7 +332,6 @@ func Test_DockerCmd_Init(t *testing.T) {
 
 	t.Run("error - no Dockerfile", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -354,7 +344,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 		dc := NewDockerCmd(fls)
 
 		// --- When ---
-		err := dc.Init(ctx, rng.EnvAll(), prj.Root())
+		err := dc.Init(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoDockerfile, err)
@@ -362,7 +352,6 @@ func Test_DockerCmd_Init(t *testing.T) {
 
 	t.Run("error - pick not existing target", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -380,7 +369,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 		dc := NewDockerCmd(fls)
 
 		// --- When ---
-		err := dc.Init(ctx, rng.EnvAll(), prj.Root())
+		err := dc.Init(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoTarget, err)
@@ -392,7 +381,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 func Test_DockerCmd_Build(t *testing.T) {
 	t.Run("error - push without private repo", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -418,7 +407,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 
 	t.Run("default target no SCM", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
@@ -441,16 +430,14 @@ func Test_DockerCmd_Build(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		ref, refLatest := prj.ImgRef(), prj.ImgRefLatest()
 		eoutS := tst.Stderr()
-
 		// Test build log. A project outside a git repository is never a
 		// release, so "latest" is withheld even though the flag asks for it.
 		assert.Contain(t, ref, eoutS)
 		assert.NotContain(t, refLatest, eoutS)
-		assert.Count(t, 1, "#gomake INFO# DOCKER_BUILDKIT=1 docker build", eoutS)
-
+		bldLog := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
+		assert.Count(t, 1, bldLog, eoutS)
 		// Test image exist.
 		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(ref))
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(refLatest))
@@ -461,7 +448,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 
 	t.Run("env-labels when no SCM", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
@@ -488,7 +475,6 @@ func Test_DockerCmd_Build(t *testing.T) {
 		assert.NotEmpty(t, tst.Stderr())
 		ref := prj.TgtRef("third")
 		assert.Equal(t, "third image", dkrkit.NewT(t).CtrRun(ref))
-
 		wEnv := map[string]string{
 			xdef.EnvBldDate:      "2000-01-02T03:04:05.600Z",
 			xdef.EnvPrjName:      "project",
@@ -511,7 +497,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 
 	t.Run("env-labels with SCM", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
@@ -540,7 +526,6 @@ func Test_DockerCmd_Build(t *testing.T) {
 		assert.NotEmpty(t, tst.Stderr())
 		ref := prj.TgtRef("third")
 		assert.Equal(t, "third image", dkrkit.NewT(t).CtrRun(ref))
-
 		wEnv := map[string]string{
 			xdef.EnvBldDate:      "2000-01-02T03:04:05.600Z",
 			xdef.EnvPrjName:      "project",
@@ -563,7 +548,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 
 	t.Run("dry run default target", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-sock")
@@ -602,15 +587,14 @@ func Test_DockerCmd_Build(t *testing.T) {
 			" --build-arg SSH_AUTH_SOCK=ssh-sock" +
 			" --file Dockerfile .\n"
 		assert.Equal(t, want, tst.Stderr())
-
 		ref, refLatest := prj.ImgRef(), prj.ImgRefLatest()
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(ref))
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(refLatest))
 	})
 
-	t.Run("many targets and C42_BLD_TARGETS has all of them", func(t *testing.T) {
+	t.Run("all targets in C42_BLD_TARGETS", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -633,12 +617,13 @@ func Test_DockerCmd_Build(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
-		refFirst, refFirstLatest := prj.TgtRef("first"), prj.TgtRefLatest("first")
-		refSecond, refSecondLatest := prj.TgtRef("second"), prj.TgtRefLatest("second")
-		refThird, refThirdLatest := prj.TgtRef("third"), prj.TgtRefLatest("third")
+		refFirst := prj.TgtRef("first")
+		refFirstLatest := prj.TgtRefLatest("first")
+		refSecond := prj.TgtRef("second")
+		refSecondLatest := prj.TgtRefLatest("second")
+		refThird := prj.TgtRef("third")
+		refThirdLatest := prj.TgtRefLatest("third")
 		eoutS := tst.Stderr()
-
 		// Test build log.
 		assert.Contain(t, refFirst, eoutS)
 		assert.Contain(t, refFirstLatest, eoutS)
@@ -646,8 +631,8 @@ func Test_DockerCmd_Build(t *testing.T) {
 		assert.Contain(t, refSecondLatest, eoutS)
 		assert.Contain(t, refThird, eoutS)
 		assert.Contain(t, refThirdLatest, eoutS)
-		assert.Count(t, 3, "#gomake INFO# DOCKER_BUILDKIT=1 docker build", eoutS)
-
+		bldLog := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
+		assert.Count(t, 3, bldLog, eoutS)
 		// Test images exist.
 		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(refFirst))
 		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(refFirstLatest))
@@ -665,9 +650,9 @@ func Test_DockerCmd_Build(t *testing.T) {
 		assert.Equal(t, "third image", dkrkit.NewT(t).CtrRun(refThirdLatest))
 	})
 
-	t.Run("many targets C42_BLD_TARGETS set for some of them", func(t *testing.T) {
+	t.Run("some targets in C42_BLD_TARGETS", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -690,12 +675,13 @@ func Test_DockerCmd_Build(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
-		refFirst, refFirstLatest := prj.TgtRef("first"), prj.TgtRefLatest("first")
-		refSecond, refSecondLatest := prj.TgtRef("second"), prj.TgtRefLatest("second")
-		refThird, refThirdLatest := prj.TgtRef("third"), prj.TgtRefLatest("third")
+		refFirst := prj.TgtRef("first")
+		refFirstLatest := prj.TgtRefLatest("first")
+		refSecond := prj.TgtRef("second")
+		refSecondLatest := prj.TgtRefLatest("second")
+		refThird := prj.TgtRef("third")
+		refThirdLatest := prj.TgtRefLatest("third")
 		eoutS := tst.Stderr()
-
 		// Test build log.
 		assert.Contain(t, refFirst, eoutS)
 		assert.Contain(t, refFirstLatest, eoutS)
@@ -703,8 +689,8 @@ func Test_DockerCmd_Build(t *testing.T) {
 		assert.Contain(t, refSecondLatest, eoutS)
 		assert.NotContain(t, refThird, eoutS)
 		assert.NotContain(t, refThirdLatest, eoutS)
-		assert.Count(t, 2, "#gomake INFO# DOCKER_BUILDKIT=1 docker build", eoutS)
-
+		bldLog := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
+		assert.Count(t, 2, bldLog, eoutS)
 		// Test images exist.
 		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(refFirst))
 		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(refFirstLatest))
@@ -722,7 +708,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 
 	t.Run("build single target out of multiple", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -746,18 +732,18 @@ func Test_DockerCmd_Build(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
-		refFirst, refFirstLatest := prj.TgtRef("first"), prj.TgtRefLatest("first")
-		refSecond, refSecondLatest := prj.TgtRef("second"), prj.TgtRefLatest("second")
+		refFirst := prj.TgtRef("first")
+		refFirstLatest := prj.TgtRefLatest("first")
+		refSecond := prj.TgtRef("second")
+		refSecondLatest := prj.TgtRefLatest("second")
 		eoutS := tst.Stderr()
-
 		// Test build log.
 		assert.Contain(t, refFirst, eoutS)
 		assert.Contain(t, refFirstLatest, eoutS)
 		assert.NotContain(t, refSecond, eoutS)
 		assert.NotContain(t, refSecondLatest, eoutS)
-		assert.Count(t, 1, "#gomake INFO# DOCKER_BUILDKIT=1 docker build", eoutS)
-
+		bldLog := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
+		assert.Count(t, 1, bldLog, eoutS)
 		// Test images exist.
 		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(refFirst))
 		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(refFirstLatest))
@@ -771,7 +757,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 
 	t.Run("build multiple targets", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -795,12 +781,13 @@ func Test_DockerCmd_Build(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
-		refFirst, refFirstLatest := prj.TgtRef("first"), prj.TgtRefLatest("first")
-		refSecond, refSecondLatest := prj.TgtRef("second"), prj.TgtRefLatest("second")
-		refThird, refThirdLatest := prj.TgtRef("third"), prj.TgtRefLatest("third")
+		refFirst := prj.TgtRef("first")
+		refFirstLatest := prj.TgtRefLatest("first")
+		refSecond := prj.TgtRef("second")
+		refSecondLatest := prj.TgtRefLatest("second")
+		refThird := prj.TgtRef("third")
+		refThirdLatest := prj.TgtRefLatest("third")
 		eoutS := tst.Stderr()
-
 		// Test build log.
 		assert.Contain(t, refFirst, eoutS)
 		assert.Contain(t, refFirstLatest, eoutS)
@@ -808,8 +795,8 @@ func Test_DockerCmd_Build(t *testing.T) {
 		assert.NotContain(t, refSecondLatest, eoutS)
 		assert.Contain(t, refThird, eoutS)
 		assert.Contain(t, refThirdLatest, eoutS)
-		assert.Count(t, 2, "#gomake INFO# DOCKER_BUILDKIT=1 docker build", eoutS)
-
+		bldLog := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
+		assert.Count(t, 2, bldLog, eoutS)
 		// Test images exist.
 		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(refFirst))
 		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(refFirstLatest))
@@ -827,7 +814,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 
 	t.Run("warn SSH_AUTH_SOCK not set", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHSock)
@@ -851,10 +838,8 @@ func Test_DockerCmd_Build(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		ref, refLatest := prj.ImgRef(), prj.ImgRefLatest()
 		eoutS := tst.Stderr()
-
 		assert.Contain(t, ref, eoutS)
 		assert.Contain(t, refLatest, eoutS)
 		assert.Contain(t, "#gomake WARN# SSH_AUTH_SOCK", eoutS)
@@ -868,7 +853,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 		port := must.Value(netkit.GetFreePort())
 		host := fmt.Sprintf("tcp://127.0.0.1:%d", port)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 		rng.EnvSet("DOCKER_HOST", host)
@@ -903,7 +888,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 func Test_DockerCmd_Push(t *testing.T) {
 	t.Run("error - no private repo in project config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -930,7 +915,7 @@ func Test_DockerCmd_Push(t *testing.T) {
 
 	t.Run("dry run default target", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -961,9 +946,9 @@ func Test_DockerCmd_Push(t *testing.T) {
 		assert.Equal(t, want, tst.Stderr())
 	})
 
-	t.Run("dry run pre-release tag keeps latest", func(t *testing.T) {
+	t.Run("dry run pre-release tag withholds latest", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -994,7 +979,7 @@ func Test_DockerCmd_Push(t *testing.T) {
 
 	t.Run("dry run multi target", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -1018,9 +1003,12 @@ func Test_DockerCmd_Push(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		want := "" +
-			"#gomake INFO# docker push my.nexus.dev/repo/dki-project-first:v1.1.1\n" +
-			"#gomake INFO# docker push my.nexus.dev/repo/dki-project-second:v1.1.1\n" +
-			"#gomake INFO# docker push my.nexus.dev/repo/dki-project-third:v1.1.1\n"
+			"#gomake INFO# docker push " +
+			"my.nexus.dev/repo/dki-project-first:v1.1.1\n" +
+			"#gomake INFO# docker push " +
+			"my.nexus.dev/repo/dki-project-second:v1.1.1\n" +
+			"#gomake INFO# docker push " +
+			"my.nexus.dev/repo/dki-project-third:v1.1.1\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
 }
@@ -1028,14 +1016,13 @@ func Test_DockerCmd_Push(t *testing.T) {
 func Test_DockerCmd_Run(t *testing.T) {
 	t.Run("error - no targets", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
 		dc := &DockerCmd{}
 
 		// --- When ---
-		err := dc.Run(ctx, rng)
+		err := dc.Run(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoBuilds, err)
@@ -1043,7 +1030,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 
 	t.Run("run default target", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
 
@@ -1066,7 +1053,6 @@ func Test_DockerCmd_Run(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		want := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
 		assert.Count(t, 1, want, tst.Stderr())
 		want = "#gomake INFO# docker run --rm -v %s:/ctx42/project:ro %s"
@@ -1077,7 +1063,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 
 	t.Run("run command custom command in the container", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
 
@@ -1101,7 +1087,6 @@ func Test_DockerCmd_Run(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		want := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
 		assert.Count(t, 1, want, tst.Stderr())
 		want = "#gomake INFO# docker run --rm -v %s:/ctx42/project:ro %s ls"
@@ -1112,7 +1097,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 
 	t.Run("error - running command in the container", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -1140,17 +1125,18 @@ func Test_DockerCmd_Run(t *testing.T) {
 		// Docker's exact wording varies by CLI version; match the
 		// version-stable fragment.
 		assert.Contain(t, "executable file not found in $PATH", tst.Stderr())
-
 		want := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
 		assert.Count(t, 1, want, tst.Stderr())
-		want = "#gomake INFO# docker run --rm -v %s:/ctx42/project:ro %s unknown"
+		want = "" +
+			"#gomake INFO# docker run --rm" +
+			" -v %s:/ctx42/project:ro %s unknown"
 		want = fmt.Sprintf(want, prj.Root(), prj.ImgRef())
 		assert.Contain(t, want, tst.Stderr())
 	})
 
 	t.Run("dry run default target", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-sock")
@@ -1186,7 +1172,6 @@ func Test_DockerCmd_Run(t *testing.T) {
 			" --build-arg C42_SCM_REV=v0.0.1-dev.1+g" + cm.Hash +
 			" --build-arg SSH_AUTH_SOCK=ssh-sock" +
 			" --file Dockerfile .\n" +
-			"" +
 			"#gomake INFO# docker run --rm" +
 			" -v %s:/ctx42/project:ro" +
 			" dki-project:v0.0.1-dev.1_g" + cm.Hash +
@@ -1197,7 +1182,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 
 	t.Run("pick target to run", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
 
@@ -1221,7 +1206,6 @@ func Test_DockerCmd_Run(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		want := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
 		assert.Count(t, 1, want, tst.Stderr())
 		want = "#gomake INFO# docker run --rm -v %s:/ctx42/project:ro %s"
@@ -1232,7 +1216,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 
 	t.Run("error - can run only one target", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -1260,7 +1244,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 
 	t.Run("builds target only once", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
 
@@ -1289,7 +1273,6 @@ func Test_DockerCmd_Run(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		want := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
 		assert.Count(t, 0, want, tst.Stderr())
 		want = "#gomake INFO# docker run --rm -v %s:/ctx42/project:ro %s"
@@ -1298,9 +1281,9 @@ func Test_DockerCmd_Run(t *testing.T) {
 		assert.Equal(t, "second image\n", tst.Stdout())
 	})
 
-	t.Run("builds target only once unless rebuild flag used", func(t *testing.T) {
+	t.Run("builds once without rebuild", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
 
@@ -1330,7 +1313,6 @@ func Test_DockerCmd_Run(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		want := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
 		assert.Count(t, 1, want, tst.Stderr())
 		want = "#gomake INFO# docker run --rm -v %s:/ctx42/project:ro %s"
@@ -1341,7 +1323,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 
 	t.Run("error - must pick target when multiple defined", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -1368,7 +1350,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 
 	t.Run("error - cannot pick more than one target", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -1396,7 +1378,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 
 	t.Run("error - unknown target name", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -1430,14 +1412,13 @@ func Test_DockerCmd_Run(t *testing.T) {
 func Test_DockerCmd_Sh(t *testing.T) {
 	t.Run("error - no targets", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
 		dc := &DockerCmd{}
 
 		// --- When ---
-		err := dc.Sh(ctx, rng)
+		err := dc.Sh(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoBuilds, err)
@@ -1445,7 +1426,7 @@ func Test_DockerCmd_Sh(t *testing.T) {
 
 	t.Run("error - must pick target when multiple defined", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -1472,7 +1453,7 @@ func Test_DockerCmd_Sh(t *testing.T) {
 
 	t.Run("dry run default target", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-sock")
@@ -1508,7 +1489,6 @@ func Test_DockerCmd_Sh(t *testing.T) {
 			" --build-arg C42_SCM_REV=v0.0.1-dev.1+g" + cm.Hash +
 			" --build-arg SSH_AUTH_SOCK=ssh-sock" +
 			" --file Dockerfile .\n" +
-			"" +
 			"#gomake INFO# docker run --rm -it" +
 			" -v %s:/ctx42/project:ro" +
 			" -v ssh-sock:/ctx42/ssh-auth-sock" +
@@ -1520,7 +1500,7 @@ func Test_DockerCmd_Sh(t *testing.T) {
 
 	t.Run("error - unknown target name", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -1552,7 +1532,7 @@ func Test_DockerCmd_Sh(t *testing.T) {
 
 	t.Run("error - cannot pick more than one target", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -1582,7 +1562,6 @@ func Test_DockerCmd_Sh(t *testing.T) {
 func Test_DockerCmd_Reference(t *testing.T) {
 	t.Run("no need to pick target when one defined", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -1600,7 +1579,7 @@ func Test_DockerCmd_Reference(t *testing.T) {
 		fls.ImgTag = imgTag
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(t.Context(), rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		have, err := dc.Reference()
@@ -1612,7 +1591,6 @@ func Test_DockerCmd_Reference(t *testing.T) {
 
 	t.Run("pick target when multiple defined", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -1631,7 +1609,7 @@ func Test_DockerCmd_Reference(t *testing.T) {
 		fls.ImgTag = imgTag
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(t.Context(), rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		have, err := dc.Reference()
@@ -1643,7 +1621,6 @@ func Test_DockerCmd_Reference(t *testing.T) {
 
 	t.Run("error - must pick target when multiple defined", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -1661,7 +1638,7 @@ func Test_DockerCmd_Reference(t *testing.T) {
 		fls.ImgTag = imgTag
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(t.Context(), rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		have, err := dc.Reference()
@@ -1673,7 +1650,6 @@ func Test_DockerCmd_Reference(t *testing.T) {
 
 	t.Run("error - cannot pick multiple targets", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -1692,7 +1668,7 @@ func Test_DockerCmd_Reference(t *testing.T) {
 		fls.ImgTag = imgTag
 		fls.ImgLatest = true
 		dc := NewDockerCmd(fls)
-		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.Init(t.Context(), rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		have, err := dc.Reference()
@@ -1706,7 +1682,7 @@ func Test_DockerCmd_Reference(t *testing.T) {
 func Test_DockerCmd_build(t *testing.T) {
 	t.Run("build once", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -1723,18 +1699,18 @@ func Test_DockerCmd_build(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		dc := NewDockerCmd(fls)
 		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.build(ctx, rng, prj.TgtRef("third"), false))
 
 		// --- When ---
-		assert.NoError(t, dc.build(ctx, rng, prj.TgtRef("third"), false))
-		assert.NoError(t, dc.build(ctx, rng, prj.TgtRef("third"), false))
+		err := dc.build(ctx, rng, prj.TgtRef("third"), false)
 
 		// --- Then ---
+		assert.NoError(t, err)
 		ref, refLatest := prj.TgtRef("third"), prj.TgtRefLatest("third")
 		eoutS := tst.Stderr()
-
 		// Test build log.
-		assert.Count(t, 1, "#gomake INFO# DOCKER_BUILDKIT=1 docker build", eoutS)
-
+		bldLog := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
+		assert.Count(t, 1, bldLog, eoutS)
 		// Test image exist.
 		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(ref))
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(refLatest))
@@ -1745,7 +1721,7 @@ func Test_DockerCmd_build(t *testing.T) {
 
 	t.Run("build once unless rebuild true", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -1762,18 +1738,18 @@ func Test_DockerCmd_build(t *testing.T) {
 		fls.ImgTag = prj.ImgTag()
 		dc := NewDockerCmd(fls)
 		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
+		must.Nil(dc.build(ctx, rng, prj.TgtRef("third"), false))
 
 		// --- When ---
-		assert.NoError(t, dc.build(ctx, rng, prj.TgtRef("third"), false))
-		assert.NoError(t, dc.build(ctx, rng, prj.TgtRef("third"), true))
+		err := dc.build(ctx, rng, prj.TgtRef("third"), true)
 
 		// --- Then ---
+		assert.NoError(t, err)
 		ref, refLatest := prj.TgtRef("third"), prj.TgtRefLatest("third")
 		eoutS := tst.Stderr()
-
 		// Test build log.
-		assert.Count(t, 2, "#gomake INFO# DOCKER_BUILDKIT=1 docker build", eoutS)
-
+		bldLog := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
+		assert.Count(t, 2, bldLog, eoutS)
 		// Test image exist.
 		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(ref))
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(refLatest))
@@ -1787,7 +1763,7 @@ func Test_DockerCmd_build(t *testing.T) {
 		port := must.Value(netkit.GetFreePort())
 		host := fmt.Sprintf("tcp://127.0.0.1:%d", port)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet("DOCKER_HOST", host)
@@ -1819,7 +1795,7 @@ func Test_DockerCmd_build(t *testing.T) {
 }
 
 func Test_DockerCmd_not_initialized(t *testing.T) {
-	t.Run("build", func(t *testing.T) {
+	t.Run("error - build", func(t *testing.T) {
 		// --- Given ---
 		dc := NewDockerCmd(&Flags{})
 
@@ -1830,7 +1806,7 @@ func Test_DockerCmd_not_initialized(t *testing.T) {
 		assert.ErrorIs(t, ErrNoBuilds, err)
 	})
 
-	t.Run("push", func(t *testing.T) {
+	t.Run("error - push", func(t *testing.T) {
 		// --- Given ---
 		dc := NewDockerCmd(&Flags{})
 
@@ -1841,7 +1817,7 @@ func Test_DockerCmd_not_initialized(t *testing.T) {
 		assert.ErrorIs(t, ErrNoBuilds, err)
 	})
 
-	t.Run("reference", func(t *testing.T) {
+	t.Run("error - reference", func(t *testing.T) {
 		// --- Given ---
 		dc := NewDockerCmd(&Flags{})
 

@@ -4,7 +4,6 @@
 package gmdkr
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -17,17 +16,15 @@ import (
 	"github.com/ctx42/testkit/pkg/exekit"
 	"github.com/ctx42/testkit/pkg/netkit"
 	"github.com/ctx42/testkit/pkg/randkit"
-
-	"github.com/ctx42/gmtask/internal/gmtest"
 )
 
 func Test_ImageInfo_UnmarshalJSON(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// --- Given ---
 		data := `{
-            "ID": "id", 
-            "Repository": "repo.com:5000/proj/image", 
-            "Tag": "v1.2.3", 
+            "ID": "id",
+            "Repository": "repo.com:5000/proj/image",
+            "Tag": "v1.2.3",
             "CreatedAt": "2000-01-02 03:04:05 +0200 CEST"
         }`
 		img := &ImageInfo{}
@@ -61,9 +58,9 @@ func Test_ImageInfo_UnmarshalJSON(t *testing.T) {
 	t.Run("error - invalid CreatedAt format", func(t *testing.T) {
 		// --- Given ---
 		data := `{
-            "ID": "id", 
-            "Repository": "repo.com:5000/proj/image", 
-            "Tag": "v1.2.3", 
+            "ID": "id",
+            "Repository": "repo.com:5000/proj/image",
+            "Tag": "v1.2.3",
             "CreatedAt": "2000-01-02T03:04:05+02:00"
         }`
 		img := &ImageInfo{}
@@ -205,17 +202,13 @@ func Test_ImgLs(t *testing.T) {
 		port := must.Value(netkit.GetFreePort())
 		host := fmt.Sprintf("tcp://127.0.0.1:%d", port)
 
-		ctx := context.Background()
 		tst := ringtest.New(t)
-
-		prj := gmtest.NewProject(t)
-		prj.Close()
-
 		rng := tst.Ring()
+
 		rng.EnvSet("DOCKER_HOST", host)
 
 		// --- When ---
-		ims, err := ImgLs(ctx, rng)
+		ims, err := ImgLs(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "Cannot connect to the Docker daemon at", err)
@@ -224,20 +217,14 @@ func Test_ImgLs(t *testing.T) {
 
 	t.Run("image found", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
-
-		prj := gmtest.NewProject(t)
-		prj.Close()
-
 		rng := tst.Ring()
 
 		// --- When ---
-		ims, err := ImgLs(ctx, rng)
+		ims, err := ImgLs(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		img := ims.Find(tstImgRef)
 		assert.NotEmpty(t, img.ID)
 		assert.Equal(t, tstImgName, img.Repository)
@@ -246,18 +233,14 @@ func Test_ImgLs(t *testing.T) {
 
 	t.Run("with filter", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
-
-		prj := gmtest.NewProject(t)
-		prj.Close()
+		rng := tst.Ring()
 
 		args := []string{"--filter=label=" + tstImgLabel}
-		rng := tst.Ring()
 		rng.SetArgs(args)
 
 		// --- When ---
-		ims, err := ImgLs(ctx, rng)
+		ims, err := ImgLs(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)

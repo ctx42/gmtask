@@ -4,9 +4,9 @@
 package gmdkr
 
 import (
-	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -24,16 +24,14 @@ import (
 func Test_Docker_Login(t *testing.T) {
 	t.Run("show help", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("--help")
 
 		// --- When ---
-		err := Docker{}.Login(ctx, rng)
+		err := Docker{}.Login(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		want := "" +
 			"Usage of :docker:login:\n" +
 			"  -h, --help    show help\n"
@@ -42,17 +40,15 @@ func Test_Docker_Login(t *testing.T) {
 
 	t.Run("error - no project config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Docker{}.Login(ctx, rng)
+		err := Docker{}.Login(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gmprj.ErrNoConfig, err)
@@ -60,38 +56,35 @@ func Test_Docker_Login(t *testing.T) {
 
 	t.Run("error - project without private repo in config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Docker{}.Login(ctx, rng)
+		err := Docker{}.Login(t.Context(), rng)
 
 		// --- Then ---
-		assert.ErrorContain(t, "docker private repo not configured", err)
-		assert.ErrorContain(t, gmprj.CfgPath, err)
+		want := "docker private repo not configured in " +
+			regexp.QuoteMeta(gmprj.CfgPath)
+		assert.ErrorRegexp(t, want, err)
 	})
 
 	t.Run("error - no interactive login possible", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.CfgRegRepoDef()
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Docker{}.Login(ctx, rng)
+		err := Docker{}.Login(t.Context(), rng)
 
 		// --- Then ---
 		assert.Equal(t, "login to my.nexus.dev/repo\n", tst.Stdout())
@@ -105,7 +98,6 @@ func Test_Docker_Login(t *testing.T) {
 func Test_Image_Build(t *testing.T) {
 	t.Run("build", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 
 		prj := gmtest.NewProject(t)
@@ -122,19 +114,17 @@ func Test_Image_Build(t *testing.T) {
 		)
 
 		// --- When ---
-		err := Image{}.Build(ctx, rng)
+		err := Image{}.Build(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		ref, refLatest := prj.ImgRef(), prj.ImgRefLatest()
 		eoutS := tst.Stderr()
-
 		// Test build log.
 		assert.Contain(t, ref, eoutS)
 		assert.Contain(t, refLatest, eoutS)
-		assert.Count(t, 1, "#gomake INFO# DOCKER_BUILDKIT=1 docker build", eoutS)
-
+		bldLog := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
+		assert.Count(t, 1, bldLog, eoutS)
 		// Test image exist.
 		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(ref))
 		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(refLatest))
@@ -146,7 +136,6 @@ func Test_Image_Build(t *testing.T) {
 
 	t.Run("latest flag on a non-release is ignored", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 
 		prj := gmtest.NewProject(t)
@@ -163,30 +152,27 @@ func Test_Image_Build(t *testing.T) {
 		)
 
 		// --- When ---
-		err := Image{}.Build(ctx, rng)
+		err := Image{}.Build(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		ref, refLatest := prj.ImgRef(), prj.ImgRefLatest()
 		assert.Contain(t, ref, tst.Stderr())
 		assert.NotContain(t, refLatest, tst.Stderr())
-
 		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(ref))
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(refLatest))
 	})
 
 	t.Run("show help", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("--help")
 
 		// --- When ---
-		err := Image{}.Build(ctx, rng)
+		err := Image{}.Build(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		want := "" +
 			"Usage of :docker:image:build:\n" +
 			"      --cache-from    docker build " +
@@ -207,12 +193,11 @@ func Test_Image_Build(t *testing.T) {
 
 	t.Run("error - unknown argument", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("--unknown")
 
 		// --- When ---
-		err := Image{}.Build(ctx, rng)
+		err := Image{}.Build(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "flag provided but not defined: -unknown", err)
@@ -237,17 +222,15 @@ func Test_Image_Build(t *testing.T) {
 
 	t.Run("error - no project config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Image{}.Build(ctx, rng)
+		err := Image{}.Build(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gmprj.ErrNoConfig, err)
@@ -257,7 +240,6 @@ func Test_Image_Build(t *testing.T) {
 func Test_Image_Push(t *testing.T) {
 	t.Run("push", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 
 		prj := gmtest.NewProject(t)
@@ -273,19 +255,16 @@ func Test_Image_Push(t *testing.T) {
 		)
 
 		// --- When ---
-		err := Image{}.Push(ctx, rng)
+		err := Image{}.Push(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		ref, refLatest := prj.ImgRef(), prj.ImgRefLatest()
 		eoutS := tst.Stderr()
-
 		// Test build log.
 		assert.Contain(t, ref, eoutS)
 		assert.NotContain(t, refLatest, eoutS)
 		assert.Count(t, 1, "#gomake INFO# docker push", eoutS)
-
 		// Test image exist.
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(ref))
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(refLatest))
@@ -293,16 +272,14 @@ func Test_Image_Push(t *testing.T) {
 
 	t.Run("show help", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("-h")
 
 		// --- When ---
-		err := Image{}.Push(ctx, rng)
+		err := Image{}.Push(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		want := "" +
 			"Usage of :docker:image:push:\n" +
 			"  -d, --dry-run    dry run\n" +
@@ -316,12 +293,11 @@ func Test_Image_Push(t *testing.T) {
 
 	t.Run("error - unknown argument", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("--unknown")
 
 		// --- When ---
-		err := Image{}.Push(ctx, rng)
+		err := Image{}.Push(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "flag provided but not defined: -unknown", err)
@@ -339,7 +315,6 @@ func Test_Image_Push(t *testing.T) {
 
 	t.Run("error - no project config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 
 		prj := gmtest.NewProject(t)
@@ -352,7 +327,7 @@ func Test_Image_Push(t *testing.T) {
 		)
 
 		// --- When ---
-		err := Image{}.Push(ctx, rng)
+		err := Image{}.Push(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gmprj.ErrNoConfig, err)
@@ -362,7 +337,6 @@ func Test_Image_Push(t *testing.T) {
 func Test_Image_Run(t *testing.T) {
 	t.Run("run", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout().WetStderr()
 
 		prj := gmtest.NewProject(t)
@@ -377,11 +351,10 @@ func Test_Image_Run(t *testing.T) {
 		)
 
 		// --- When ---
-		err := Image{}.Run(ctx, rng)
+		err := Image{}.Run(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		want := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
 		assert.Count(t, 1, want, tst.Stderr())
 		want = "#gomake INFO# docker run --rm -v %s:/ctx42/project:ro %s"
@@ -466,16 +439,14 @@ func Test_Image_Run(t *testing.T) {
 
 	t.Run("error - unknown argument", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("--unknown")
 
 		// --- When ---
-		err := Image{}.Run(ctx, rng)
+		err := Image{}.Run(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "flag provided but not defined: -unknown", err)
-
 		want := "" +
 			"flag provided but not defined: -unknown\n" +
 			"Usage of :docker:image:run:\n" +
@@ -490,7 +461,6 @@ func Test_Image_Run(t *testing.T) {
 
 	t.Run("error - no project config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 
 		prj := gmtest.NewProject(t)
@@ -503,7 +473,7 @@ func Test_Image_Run(t *testing.T) {
 		)
 
 		// --- When ---
-		err := Image{}.Run(ctx, rng)
+		err := Image{}.Run(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gmprj.ErrNoConfig, err)
@@ -511,12 +481,11 @@ func Test_Image_Run(t *testing.T) {
 
 	t.Run("help", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("--help")
 
 		// --- When ---
-		err := Image{}.Run(ctx, rng)
+		err := Image{}.Run(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -535,16 +504,14 @@ func Test_Image_Run(t *testing.T) {
 func Test_Image_RunProj(t *testing.T) {
 	t.Run("error - unknown argument", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("--unknown")
 
 		// --- When ---
-		err := Image{}.RunProj(ctx, rng)
+		err := Image{}.RunProj(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "flag provided but not defined: -unknown", err)
-
 		want := "" +
 			"flag provided but not defined: -unknown\n" +
 			"Usage of :docker:image:run-proj:\n" +
@@ -556,17 +523,15 @@ func Test_Image_RunProj(t *testing.T) {
 
 	t.Run("error - no project config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Image{}.RunProj(ctx, rng)
+		err := Image{}.RunProj(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gmprj.ErrNoConfig, err)
@@ -574,12 +539,11 @@ func Test_Image_RunProj(t *testing.T) {
 
 	t.Run("help", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("--help")
 
 		// --- When ---
-		err := Image{}.RunProj(ctx, rng)
+		err := Image{}.RunProj(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -595,16 +559,14 @@ func Test_Image_RunProj(t *testing.T) {
 func Test_Image_Sh(t *testing.T) {
 	t.Run("error - unknown argument", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("--unknown")
 
 		// --- When ---
-		err := Image{}.Sh(ctx, rng)
+		err := Image{}.Sh(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "flag provided but not defined: -unknown", err)
-
 		want := "" +
 			"flag provided but not defined: -unknown\n" +
 			"Usage of :docker:image:sh:\n" +
@@ -619,7 +581,6 @@ func Test_Image_Sh(t *testing.T) {
 
 	t.Run("error - no project config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 
 		prj := gmtest.NewProject(t)
@@ -632,7 +593,7 @@ func Test_Image_Sh(t *testing.T) {
 		)
 
 		// --- When ---
-		err := Image{}.Sh(ctx, rng)
+		err := Image{}.Sh(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gmprj.ErrNoConfig, err)
@@ -640,12 +601,11 @@ func Test_Image_Sh(t *testing.T) {
 
 	t.Run("help", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("--help")
 
 		// --- When ---
-		err := Image{}.Sh(ctx, rng)
+		err := Image{}.Sh(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -664,8 +624,8 @@ func Test_Image_Sh(t *testing.T) {
 func Test_Image_Reference(t *testing.T) {
 	t.Run("with private repo and git tag", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.CfgRegRepoDef()
@@ -674,10 +634,8 @@ func Test_Image_Reference(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Image{}.Reference(ctx, rng)
+		err := Image{}.Reference(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -686,8 +644,8 @@ func Test_Image_Reference(t *testing.T) {
 
 	t.Run("without private repo", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -696,20 +654,18 @@ func Test_Image_Reference(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Image{}.Reference(ctx, rng)
+		err := Image{}.Reference(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, "dki-project:v0.1.0", tst.Stdout())
 	})
 
-	t.Run("with multiple targets", func(t *testing.T) {
+	t.Run("error - multiple targets", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.CfgBldTargets("first,second")
@@ -718,20 +674,16 @@ func Test_Image_Reference(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Image{}.Reference(ctx, rng)
+		err := Image{}.Reference(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrReqTarget, err)
 	})
 
-	t.Run("with private repo and multiple targets", func(t *testing.T) {
+	t.Run("error - private repo and multiple targets", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
-
 		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
@@ -743,7 +695,7 @@ func Test_Image_Reference(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		err := Image{}.Reference(ctx, rng)
+		err := Image{}.Reference(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrReqTarget, err)
@@ -751,8 +703,8 @@ func Test_Image_Reference(t *testing.T) {
 
 	t.Run("multiple targets one picked via argument", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("--targets", "first")
 
 		prj := gmtest.NewProject(t)
 		prj.CfgBldTargets("first,second")
@@ -761,10 +713,8 @@ func Test_Image_Reference(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--targets", "first")
-
 		// --- When ---
-		err := Image{}.Reference(ctx, rng)
+		err := Image{}.Reference(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -773,8 +723,8 @@ func Test_Image_Reference(t *testing.T) {
 
 	t.Run("error - not existing target picked", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("--targets", "unknown")
 
 		prj := gmtest.NewProject(t)
 		prj.CfgBldTargets("first,second")
@@ -783,10 +733,8 @@ func Test_Image_Reference(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--targets", "unknown")
-
 		// --- When ---
-		err := Image{}.Reference(ctx, rng)
+		err := Image{}.Reference(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoTarget, err)
@@ -794,8 +742,8 @@ func Test_Image_Reference(t *testing.T) {
 
 	t.Run("error - multiple targets picked", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("--targets", "first,second")
 
 		prj := gmtest.NewProject(t)
 		prj.CfgBldTargets("first,second")
@@ -804,10 +752,8 @@ func Test_Image_Reference(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--targets", "first,second")
-
 		// --- When ---
-		err := Image{}.Reference(ctx, rng)
+		err := Image{}.Reference(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrMultiTarget, err)
@@ -815,8 +761,8 @@ func Test_Image_Reference(t *testing.T) {
 
 	t.Run("without git tag", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.WithDockerfile()
@@ -825,10 +771,8 @@ func Test_Image_Reference(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Image{}.Reference(ctx, rng)
+		err := Image{}.Reference(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -838,17 +782,15 @@ func Test_Image_Reference(t *testing.T) {
 
 	t.Run("error - no project config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Image{}.Reference(ctx, rng)
+		err := Image{}.Reference(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gmprj.ErrNoConfig, err)
@@ -856,16 +798,14 @@ func Test_Image_Reference(t *testing.T) {
 
 	t.Run("error - unknown argument", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("--unknown")
 
 		// --- When ---
-		err := Image{}.Reference(ctx, rng)
+		err := Image{}.Reference(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "flag provided but not defined: -unknown", err)
-
 		want := "" +
 			"flag provided but not defined: -unknown\n" +
 			"Usage of :docker:image:reference:\n" +
@@ -876,12 +816,11 @@ func Test_Image_Reference(t *testing.T) {
 
 	t.Run("show help", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("--help")
 
 		// --- When ---
-		err := Image{}.Reference(ctx, rng)
+		err := Image{}.Reference(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -917,8 +856,8 @@ func Test_Image_Env(t *testing.T) {
 
 	t.Run("single target", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -927,10 +866,8 @@ func Test_Image_Env(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Image{}.Env(ctx, rng)
+		err := Image{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -938,7 +875,6 @@ func Test_Image_Env(t *testing.T) {
 		assert.HasKeyValue(t, EnvDkrImgName, "dki-project", envMap)
 		assert.HasKeyValue(t, EnvDkrImgTag, "v1.1.1", envMap)
 		assert.HasKeyValue(t, EnvDkrImgRef, "dki-project:v1.1.1", envMap)
-
 		assert.HasNoKey(t, EnvDkrImgNameStem, envMap)
 		assert.HasNoKey(t, EnvDkrImgNames, envMap)
 		assert.HasNoKey(t, EnvDkrImgRefs, envMap)
@@ -946,8 +882,8 @@ func Test_Image_Env(t *testing.T) {
 
 	t.Run("multiple targets", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.CfgRegRepoDef()
@@ -957,10 +893,8 @@ func Test_Image_Env(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Image{}.Env(ctx, rng)
+		err := Image{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -972,22 +906,22 @@ func Test_Image_Env(t *testing.T) {
 			envMap,
 		)
 		assert.HasKeyValue(t, EnvDkrImgTag, "v1.1.1", envMap)
-		wantNames := "" +
+		want := "" +
 			"my.nexus.dev/repo/dki-project-first," +
 			"my.nexus.dev/repo/dki-project-second," +
 			"my.nexus.dev/repo/dki-project-third"
-		assert.HasKeyValue(t, EnvDkrImgNames, wantNames, envMap)
-		wantRefs := "" +
+		assert.HasKeyValue(t, EnvDkrImgNames, want, envMap)
+		want = "" +
 			"my.nexus.dev/repo/dki-project-first:v1.1.1," +
 			"my.nexus.dev/repo/dki-project-second:v1.1.1," +
 			"my.nexus.dev/repo/dki-project-third:v1.1.1"
-		assert.HasKeyValue(t, EnvDkrImgRefs, wantRefs, envMap)
+		assert.HasKeyValue(t, EnvDkrImgRefs, want, envMap)
 	})
 
 	t.Run("multiple targets with export", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("--export")
 
 		prj := gmtest.NewProject(t)
 		prj.CfgRegRepoDef()
@@ -997,10 +931,8 @@ func Test_Image_Env(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--export")
-
 		// --- When ---
-		err := Image{}.Env(ctx, rng)
+		err := Image{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1014,8 +946,8 @@ func Test_Image_Env(t *testing.T) {
 
 	t.Run("print single value", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring(EnvDkrImgRefs)
 
 		prj := gmtest.NewProject(t)
 		prj.CfgRegRepoDef()
@@ -1025,18 +957,16 @@ func Test_Image_Env(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring(EnvDkrImgRefs)
-
 		// --- When ---
-		err := Image{}.Env(ctx, rng)
+		err := Image{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		wantRefs := "" +
+		want := "" +
 			"my.nexus.dev/repo/dki-project-first:v1.1.1," +
 			"my.nexus.dev/repo/dki-project-second:v1.1.1," +
 			"my.nexus.dev/repo/dki-project-third:v1.1.1"
-		assert.Equal(t, wantRefs, tst.Stdout())
+		assert.Equal(t, want, tst.Stdout())
 	})
 
 	t.Run("single positional value after export flag", func(t *testing.T) {
@@ -1044,8 +974,8 @@ func Test_Image_Env(t *testing.T) {
 		// positional argument (regression: it wrongly tripped ErrTooManyArgs).
 
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("--export", "unknown")
 
 		prj := gmtest.NewProject(t)
 		prj.WithDockerfile()
@@ -1055,10 +985,8 @@ func Test_Image_Env(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--export", "unknown")
-
 		// --- When ---
-		err := Image{}.Env(ctx, rng)
+		err := Image{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1067,17 +995,15 @@ func Test_Image_Env(t *testing.T) {
 
 	t.Run("error - no project config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Image{}.Env(ctx, rng)
+		err := Image{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gmprj.ErrNoConfig, err)
@@ -1085,8 +1011,8 @@ func Test_Image_Env(t *testing.T) {
 
 	t.Run("print unknown environment variable", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("unknown")
 
 		prj := gmtest.NewProject(t)
 		prj.WithDockerfile()
@@ -1096,10 +1022,8 @@ func Test_Image_Env(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("unknown")
-
 		// --- When ---
-		err := Image{}.Env(ctx, rng)
+		err := Image{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1108,12 +1032,11 @@ func Test_Image_Env(t *testing.T) {
 
 	t.Run("error - too many args", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring(EnvDkrImgRefs, EnvDkrImgTag)
 
 		// --- When ---
-		err := Image{}.Env(ctx, rng)
+		err := Image{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gmprj.ErrTooManyArgs, err)
@@ -1121,12 +1044,11 @@ func Test_Image_Env(t *testing.T) {
 
 	t.Run("error - unknown argument", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("--unknown")
 
 		// --- When ---
-		err := Image{}.Env(ctx, rng)
+		err := Image{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "flag provided but not defined: -unknown", err)
@@ -1140,16 +1062,16 @@ func Test_Image_Env(t *testing.T) {
 
 	t.Run("help", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("--help")
 
 		// --- When ---
-		err := Image{}.Env(ctx, rng)
+		err := Image{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		want := "Usage of :docker:image:env:\n" +
+		want := "" +
+			"Usage of :docker:image:env:\n" +
 			"  -e, --export    export variables\n" +
 			"  -h, --help      show help\n"
 		assert.Equal(t, want, tst.Stderr())
@@ -1159,8 +1081,8 @@ func Test_Image_Env(t *testing.T) {
 func Test_Image_Info(t *testing.T) {
 	t.Run("single target", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -1169,10 +1091,8 @@ func Test_Image_Info(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Image{}.Info(ctx, rng)
+		err := Image{}.Info(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1180,7 +1100,6 @@ func Test_Image_Info(t *testing.T) {
 		assert.HasKeyValue(t, EnvDkrImgName, "dki-project", envMap)
 		assert.HasKeyValue(t, EnvDkrImgTag, "v1.1.1", envMap)
 		assert.HasKeyValue(t, EnvDkrImgRef, "dki-project:v1.1.1", envMap)
-
 		assert.HasNoKey(t, EnvDkrImgNameStem, envMap)
 		assert.HasNoKey(t, EnvDkrImgNames, envMap)
 		assert.HasNoKey(t, EnvDkrImgRefs, envMap)
@@ -1188,8 +1107,8 @@ func Test_Image_Info(t *testing.T) {
 
 	t.Run("multiple targets", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.CfgRegRepoDef()
@@ -1199,33 +1118,31 @@ func Test_Image_Info(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Image{}.Info(ctx, rng)
+		err := Image{}.Info(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		envMap := infoToEnv(t, tst.Stdout())
-		wantStem := "my.nexus.dev/repo/dki-project"
-		assert.HasKeyValue(t, EnvDkrImgNameStem, wantStem, envMap)
+		want := "my.nexus.dev/repo/dki-project"
+		assert.HasKeyValue(t, EnvDkrImgNameStem, want, envMap)
 		assert.HasKeyValue(t, EnvDkrImgTag, "v1.1.1", envMap)
-		wantNames := "" +
+		want = "" +
 			"my.nexus.dev/repo/dki-project-first," +
 			"my.nexus.dev/repo/dki-project-second," +
 			"my.nexus.dev/repo/dki-project-third"
-		assert.HasKeyValue(t, EnvDkrImgNames, wantNames, envMap)
-		wantRefs := "" +
+		assert.HasKeyValue(t, EnvDkrImgNames, want, envMap)
+		want = "" +
 			"my.nexus.dev/repo/dki-project-first:v1.1.1," +
 			"my.nexus.dev/repo/dki-project-second:v1.1.1," +
 			"my.nexus.dev/repo/dki-project-third:v1.1.1"
-		assert.HasKeyValue(t, EnvDkrImgRefs, wantRefs, envMap)
+		assert.HasKeyValue(t, EnvDkrImgRefs, want, envMap)
 	})
 
 	t.Run("print single value", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring(EnvDkrImgRefs)
 
 		prj := gmtest.NewProject(t)
 		prj.CfgRegRepoDef()
@@ -1235,33 +1152,29 @@ func Test_Image_Info(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring(EnvDkrImgRefs)
-
 		// --- When ---
-		err := Image{}.Info(ctx, rng)
+		err := Image{}.Info(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		wantRefs := "" +
+		want := "" +
 			"my.nexus.dev/repo/dki-project-first:v1.1.1," +
 			"my.nexus.dev/repo/dki-project-second:v1.1.1," +
 			"my.nexus.dev/repo/dki-project-third:v1.1.1"
-		assert.Equal(t, wantRefs, tst.Stdout())
+		assert.Equal(t, want, tst.Stdout())
 	})
 
 	t.Run("error - no project config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Image{}.Info(ctx, rng)
+		err := Image{}.Info(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gmprj.ErrNoConfig, err)
@@ -1269,8 +1182,8 @@ func Test_Image_Info(t *testing.T) {
 
 	t.Run("print unknown environment variable", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("unknown")
 
 		prj := gmtest.NewProject(t)
 		prj.WithDockerfile()
@@ -1280,10 +1193,8 @@ func Test_Image_Info(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("unknown")
-
 		// --- When ---
-		err := Image{}.Info(ctx, rng)
+		err := Image{}.Info(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1292,12 +1203,11 @@ func Test_Image_Info(t *testing.T) {
 
 	t.Run("error - too many args", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring(EnvDkrImgRefs, EnvDkrImgTag)
 
 		// --- When ---
-		err := Image{}.Info(ctx, rng)
+		err := Image{}.Info(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gmprj.ErrTooManyArgs, err)
@@ -1305,12 +1215,11 @@ func Test_Image_Info(t *testing.T) {
 
 	t.Run("error - unknown argument", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("--unknown")
 
 		// --- When ---
-		err := Image{}.Info(ctx, rng)
+		err := Image{}.Info(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "flag provided but not defined: -unknown", err)
@@ -1326,16 +1235,16 @@ func Test_Image_Info(t *testing.T) {
 
 	t.Run("help", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("--help")
 
 		// --- When ---
-		err := Image{}.Info(ctx, rng)
+		err := Image{}.Info(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		want := "Usage of :docker:image:info:\n" +
+		want := "" +
+			"Usage of :docker:image:info:\n" +
 			"  -h, --help    show help\n\n" +
 			"EXAMPLES:\n" +
 			"\t:docker:image:info\n" +
@@ -1386,10 +1295,10 @@ func Test_Image_Clean(t *testing.T) {
 			"set GMDKR_TEST_CLEAN to run")
 	}
 
-	t.Run("prunes dangling, keeps fresh", func(t *testing.T) {
+	t.Run("prunes dangling keeps fresh", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		dt := dkrkit.NewT(t)
 
@@ -1418,10 +1327,8 @@ func Test_Image_Clean(t *testing.T) {
 		danglers := dt.ImgLs(dkrkit.WithImgLsFilter("dangling=true"))
 		assert.NotNil(t, danglers.FindByID(orphanID))
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Image{}.Clean(ctx, rng)
+		err := Image{}.Clean(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)

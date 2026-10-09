@@ -4,7 +4,6 @@
 package gmdkr
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -77,18 +76,16 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheFrom)
 		assert.Empty(t, cfg.cacheTo)
 		assert.Fields(t, 14, Config{})
-
-		have := must.Value(time.Parse(
+		bldDate := must.Value(time.Parse(
 			time.RFC3339Nano,
 			cfg.args[xdef.EnvBldDate],
 		))
-		assert.Within(t, time.Now(), "1s", have)
+		assert.Within(t, time.Now(), "1s", bldDate)
 		assert.Len(t, 1, cfg.args)
 	})
 
 	t.Run("minimal project structure", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHSock)
@@ -99,7 +96,7 @@ func Test_ConfigFrom(t *testing.T) {
 		prj.GoModInit()
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		cfg := ConfigFrom(inf, nil)
@@ -119,15 +116,14 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheFrom)
 		assert.Empty(t, cfg.cacheTo)
 		assert.Fields(t, 14, Config{})
-
-		assert.HasKeyValue(t, xdef.EnvBldDate, "2000-01-02T03:04:05.600Z", cfg.args)
+		wDate := "2000-01-02T03:04:05.600Z"
+		assert.HasKeyValue(t, xdef.EnvBldDate, wDate, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
 		assert.Len(t, 2, cfg.args)
 	})
 
 	t.Run("project with local git no tags", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHSock)
@@ -139,7 +135,7 @@ func Test_ConfigFrom(t *testing.T) {
 		cm := prj.GitInitAddAll()
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		cfg := ConfigFrom(inf, nil)
@@ -159,18 +155,17 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheFrom)
 		assert.Empty(t, cfg.cacheTo)
 		assert.Fields(t, 14, Config{})
-
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev,
 			"v0.0.1-dev.1+g"+cm.Hash, cfg.args)
-		assert.HasKeyValue(t, xdef.EnvBldDate, "2000-01-02T03:04:05.600Z", cfg.args)
+		wDate := "2000-01-02T03:04:05.600Z"
+		assert.HasKeyValue(t, xdef.EnvBldDate, wDate, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
 		assert.Len(t, 4, cfg.args)
 	})
 
 	t.Run("project with remote git no tags", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHSock)
@@ -183,7 +178,7 @@ func Test_ConfigFrom(t *testing.T) {
 		prj.GitSetRemote(prjkit.GitOrigin)
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		cfg := ConfigFrom(inf, nil)
@@ -203,19 +198,18 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheFrom)
 		assert.Empty(t, cfg.cacheTo)
 		assert.Fields(t, 14, Config{})
-
 		assert.HasKeyValue(t, xdef.EnvScmRepo, prjkit.GitOrigin, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev,
 			"v0.0.1-dev.1+g"+cm.Hash, cfg.args)
-		assert.HasKeyValue(t, xdef.EnvBldDate, "2000-01-02T03:04:05.600Z", cfg.args)
+		wDate := "2000-01-02T03:04:05.600Z"
+		assert.HasKeyValue(t, xdef.EnvBldDate, wDate, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
 		assert.Len(t, 5, cfg.args)
 	})
 
 	t.Run("project with git and tagged HEAD", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHSock)
@@ -227,7 +221,7 @@ func Test_ConfigFrom(t *testing.T) {
 		cm := prj.GitInitAddAll("v1.2.3")
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		cfg := ConfigFrom(inf, nil)
@@ -247,17 +241,16 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheFrom)
 		assert.Empty(t, cfg.cacheTo)
 		assert.Fields(t, 14, Config{})
-
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, cm.Rev, cfg.args)
-		assert.HasKeyValue(t, xdef.EnvBldDate, "2000-01-02T03:04:05.600Z", cfg.args)
+		wDate := "2000-01-02T03:04:05.600Z"
+		assert.HasKeyValue(t, xdef.EnvBldDate, wDate, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
 		assert.Len(t, 4, cfg.args)
 	})
 
 	t.Run("project with git and tag and commit", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHSock)
@@ -271,7 +264,7 @@ func Test_ConfigFrom(t *testing.T) {
 		cm := prj.GitCommit("")
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		cfg := ConfigFrom(inf, nil)
@@ -281,7 +274,6 @@ func Test_ConfigFrom(t *testing.T) {
 		// image tag is that revision with "+" swapped for "_".
 		rev := fmt.Sprintf("v1.2.4-dev.1+g%s", cm.Hash)
 		imgTag := fmt.Sprintf("v1.2.4-dev.1_g%s", cm.Hash)
-
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, imgTag, cfg.tag)
 		assert.False(t, cfg.latest)
@@ -296,17 +288,16 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheFrom)
 		assert.Empty(t, cfg.cacheTo)
 		assert.Fields(t, 14, Config{})
-
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, rev, cfg.args)
-		assert.HasKeyValue(t, xdef.EnvBldDate, "2000-01-02T03:04:05.600Z", cfg.args)
+		wDate := "2000-01-02T03:04:05.600Z"
+		assert.HasKeyValue(t, xdef.EnvBldDate, wDate, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
 		assert.Len(t, 4, cfg.args)
 	})
 
-	t.Run("project with docker repo in project's config file", func(t *testing.T) {
+	t.Run("docker repo in project config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHSock)
@@ -318,7 +309,7 @@ func Test_ConfigFrom(t *testing.T) {
 		cm := prj.GitInitAddAll("v1.2.3")
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		cfg := ConfigFrom(inf, nil)
@@ -338,10 +329,10 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheFrom)
 		assert.Empty(t, cfg.cacheTo)
 		assert.Fields(t, 14, Config{})
-
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, "v1.2.3", cfg.args)
-		assert.HasKeyValue(t, xdef.EnvBldDate, "2000-01-02T03:04:05.600Z", cfg.args)
+		wDate := "2000-01-02T03:04:05.600Z"
+		assert.HasKeyValue(t, xdef.EnvBldDate, wDate, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvRegHost, "my.nexus.dev", cfg.args)
 		assert.HasKeyValue(t, xdef.EnvRegRepo, "my.nexus.dev/repo", cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
@@ -350,7 +341,6 @@ func Test_ConfigFrom(t *testing.T) {
 
 	t.Run("with SSH socket set", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHSock, "ssh-sock")
@@ -362,7 +352,7 @@ func Test_ConfigFrom(t *testing.T) {
 		cm := prj.GitInitAddAll("v1.2.3")
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 
 		// --- When ---
 		cfg := ConfigFrom(inf, nil)
@@ -382,11 +372,11 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheFrom)
 		assert.Empty(t, cfg.cacheTo)
 		assert.Fields(t, 14, Config{})
-
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, "v1.2.3", cfg.args)
 		assert.HasKeyValue(t, EnvSSHSock, "ssh-sock", cfg.args)
-		assert.HasKeyValue(t, xdef.EnvBldDate, "2000-01-02T03:04:05.600Z", cfg.args)
+		wDate := "2000-01-02T03:04:05.600Z"
+		assert.HasKeyValue(t, xdef.EnvBldDate, wDate, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvRegHost, "my.nexus.dev", cfg.args)
 		assert.HasKeyValue(t, xdef.EnvRegRepo, "my.nexus.dev/repo", cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
@@ -406,7 +396,6 @@ func Test_ConfigFrom(t *testing.T) {
 
 	t.Run("flag rebuild set", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -414,7 +403,7 @@ func Test_ConfigFrom(t *testing.T) {
 		prj.WithConfig()
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 
 		fls := NewFlags("name")
 		fls.Rebuild = true
@@ -428,7 +417,6 @@ func Test_ConfigFrom(t *testing.T) {
 
 	t.Run("target args override image name", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -437,7 +425,7 @@ func Test_ConfigFrom(t *testing.T) {
 		cm := prj.GitInitAddAll()
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 
 		fls := NewFlags("name")
 		fls.ImgName = "my-name"
@@ -452,7 +440,6 @@ func Test_ConfigFrom(t *testing.T) {
 
 	t.Run("target args override image tag", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -461,7 +448,7 @@ func Test_ConfigFrom(t *testing.T) {
 		prj.GitInitAddAll()
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 
 		fls := NewFlags("name")
 		fls.ImgTag = "my-tag"
@@ -473,9 +460,9 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, "my-tag", cfg.tag)
 	})
+
 	t.Run("flag latest on a release", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -484,7 +471,7 @@ func Test_ConfigFrom(t *testing.T) {
 		prj.GitInitAddAll("v1.2.3")
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 
 		fls := NewFlags("name")
 		fls.ImgLatest = true
@@ -498,7 +485,6 @@ func Test_ConfigFrom(t *testing.T) {
 
 	t.Run("flag latest on a pre-release tag is ignored", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -507,7 +493,7 @@ func Test_ConfigFrom(t *testing.T) {
 		prj.GitInitAddAll("v1.0.0-rc.1")
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 
 		fls := NewFlags("name")
 		fls.ImgLatest = true
@@ -522,7 +508,6 @@ func Test_ConfigFrom(t *testing.T) {
 
 	t.Run("flags push and cache set", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -530,7 +515,7 @@ func Test_ConfigFrom(t *testing.T) {
 		prj.WithConfig()
 		prj.Close()
 
-		inf := must.Value(gmprj.GetInfo(ctx, rng.EnvAll(), prj.Root()))
+		inf := must.Value(gmprj.GetInfo(t.Context(), rng.EnvAll(), prj.Root()))
 
 		fls := NewFlags("name")
 		fls.Push = true
@@ -588,9 +573,8 @@ func Test_Config_ForTarget(t *testing.T) {
 	assert.Fields(t, 14, Config{})
 
 	// Test it's independent.
-	cfg.target = "other"
+	cfg.target = "changed"
 	cfg.args[xdef.EnvScmRev] = "change"
-
 	assert.Equal(t, "target", have.target)
 	assert.Equal(t, "scm-rev", have.args[xdef.EnvScmRev])
 }

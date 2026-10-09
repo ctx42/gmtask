@@ -78,7 +78,6 @@ func Test_FlagParser_Parse(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		fls := fp.fls
 		assert.Equal(t, ":name", fls.Name)
 		assert.Equal(
@@ -112,7 +111,6 @@ func Test_FlagParser_Parse(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		fls := fp.fls
 		assert.True(t, fls.ImgLatest)
 	})
@@ -136,7 +134,6 @@ func Test_FlagParser_Parse(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		fls := fp.fls
 		assert.Equal(t, ":name", fls.Name)
 		assert.Empty(t, fls.Targets)
@@ -173,7 +170,6 @@ func Test_FlagParser_Parse(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		fls := fp.fls
 		assert.Equal(t, ":name", fls.Name)
 		assert.Empty(t, fls.Targets)
@@ -198,8 +194,8 @@ func Test_FlagParser_Parse(t *testing.T) {
 		err := fp.Parse(args)
 
 		// --- Then ---
-		wMsg := "invalid boolean value \"invalid\" for -latest: parse error"
-		assert.ErrorEqual(t, wMsg, err)
+		want := "invalid boolean value \"invalid\" for -latest: parse error"
+		assert.ErrorEqual(t, want, err)
 	})
 }
 

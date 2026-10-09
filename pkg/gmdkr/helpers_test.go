@@ -29,10 +29,10 @@ func Test_ImgName_tabular(t *testing.T) {
 		projectName string
 		want        string
 	}{
-		{"1", "", ""},
-		{"2", "acme-proj", "dki-acme-proj"},
-		{"3", "dki-acme-proj", "dki-acme-proj"},
-		{"4", "acme-dki-proj", "acme-dki-proj"},
+		{"empty", "", ""},
+		{"prefix added", "acme-proj", "dki-acme-proj"},
+		{"prefix present", "dki-acme-proj", "dki-acme-proj"},
+		{"infix present", "acme-dki-proj", "acme-dki-proj"},
 	}
 
 	for _, tc := range tt {
@@ -341,92 +341,73 @@ func Test_sshAuthSock(t *testing.T) {
 func Test_runDockerCmd(t *testing.T) {
 	t.Run("docker version", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
-
-		prj := gmtest.NewProject(t)
-		prj.Close()
-
 		rng := tst.Ring("version")
 
 		// --- When ---
-		haveSO, haveEO, err := runDockerCmd(ctx, rng)
+		hSO, hEO, err := runDockerCmd(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		// "docker version" always prints a "Client:" section header; assert on
 		// its presence rather than the exact output, which varies by release.
-		assert.Contain(t, "Client:", haveSO)
+		assert.Contain(t, "Client:", hSO)
 		// The returned copy is the ring's stdout with surrounding whitespace
 		// trimmed; comparing the trimmed streams is release independent.
-		assert.Equal(t, strings.TrimSpace(tst.Stdout()), haveSO)
-		assert.Empty(t, haveEO)
+		assert.Equal(t, strings.TrimSpace(tst.Stdout()), hSO)
+		assert.Empty(t, hEO)
 	})
 
 	t.Run("error - unknown command", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
-
-		prj := gmtest.NewProject(t)
-		prj.Close()
-
 		rng := tst.Ring("unknown")
 
 		// --- When ---
-		haveSO, haveEO, err := runDockerCmd(ctx, rng)
+		hSO, hEO, err := runDockerCmd(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "docker: unknown command", err)
-		assert.Contain(t, "docker: unknown command", haveEO)
+		assert.Contain(t, "docker: unknown command", hEO)
 		assert.Contain(t, "docker: unknown command", tst.Stderr())
-		assert.Empty(t, haveSO)
+		assert.Empty(t, hSO)
 	})
 
-	t.Run("environment passed via context", func(t *testing.T) {
+	t.Run("error - docker host from ring", func(t *testing.T) {
 		// --- Given ---
 		port := must.Value(netkit.GetFreePort())
 		host := fmt.Sprintf("tcp://127.0.0.1:%d", port)
 
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
-
-		prj := gmtest.NewProject(t)
-		prj.Close()
-
 		rng := tst.Ring("images", "ls")
+
 		rng.EnvSet("DOCKER_HOST", host)
 
 		// --- When ---
-		haveSO, haveEO, err := runDockerCmd(ctx, rng)
+		hSO, hEO, err := runDockerCmd(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "Cannot connect to the Docker daemon", err)
-		assert.Contain(t, "Cannot connect to the Docker daemon", haveEO)
+		assert.Contain(t, "Cannot connect to the Docker daemon", hEO)
 		assert.Contain(t, "Cannot connect to the Docker daemon", tst.Stderr())
-		assert.Empty(t, haveSO)
+		assert.Empty(t, hSO)
 	})
 
 	t.Run("arguments are interpolated", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
-
-		prj := gmtest.NewProject(t)
-		prj.Close()
-
 		rng := tst.Ring("$DKR_CMD")
+
 		rng.EnvSet("DKR_CMD", "version")
 
 		// --- When ---
-		haveSO, haveEO, err := runDockerCmd(ctx, rng)
+		hSO, hEO, err := runDockerCmd(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Contain(t, "Client:", haveSO)
+		assert.Contain(t, "Client:", hSO)
 		assert.Contain(t, "Client:", tst.Stdout())
-		assert.Empty(t, haveEO)
-
+		assert.Empty(t, hEO)
 		assert.Equal(t, []string{"$DKR_CMD"}, rng.Args())
 	})
 }
@@ -451,9 +432,17 @@ func Test_filterError_tabular(t *testing.T) {
 		msg  string
 		want string
 	}{
-		{"1", "abc\nERROR: def\nERROR: ghi\njkl", "ERROR: def\nERROR: ghi"},
-		{"2", "ERROR: def\nERROR: ghi\n", "ERROR: def\nERROR: ghi"},
-		{"3", "ERROR: def", "ERROR: def"},
+		{
+			"error lines among others",
+			"abc\nERROR: def\nERROR: ghi\njkl",
+			"ERROR: def\nERROR: ghi",
+		},
+		{
+			"trailing newline",
+			"ERROR: def\nERROR: ghi\n",
+			"ERROR: def\nERROR: ghi",
+		},
+		{"single error line", "ERROR: def", "ERROR: def"},
 		{"no error lines", "a\nb", "a\nb"},
 		{
 			"long output keeps last lines",
@@ -473,27 +462,6 @@ func Test_filterError_tabular(t *testing.T) {
 	}
 }
 
-func Test_dockerErrorOr_sentinel_tabular(t *testing.T) {
-	tt := []struct {
-		testN string
-
-		msg  string
-		want error
-	}{
-		{"1", "ERROR: failed to solve: target stage", ErrUnkTarget},
-	}
-
-	for _, tc := range tt {
-		t.Run(tc.testN, func(t *testing.T) {
-			// --- When ---
-			err := dockerErrorOr(tc.msg, nil)
-
-			// --- Then ---
-			assert.ErrorIs(t, tc.want, err)
-		})
-	}
-}
-
 func Test_dockerErrorOr(t *testing.T) {
 	t.Run("not recognized message", func(t *testing.T) {
 		// --- When ---
@@ -508,7 +476,8 @@ func Test_dockerErrorOr(t *testing.T) {
 		err := dockerErrorOr("", nil)
 
 		// --- Then ---
-		assert.ErrorEqual(t, "empty docker error message and nil error parameter", err)
+		want := "empty docker error message and nil error parameter"
+		assert.ErrorEqual(t, want, err)
 	})
 
 	t.Run("message and error", func(t *testing.T) {
@@ -536,6 +505,31 @@ func Test_dockerErrorOr(t *testing.T) {
 		// --- Then ---
 		assert.ErrorIs(t, errTest, err)
 	})
+}
+
+func Test_dockerErrorOr_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		msg  string
+		want error
+	}{
+		{
+			"unknown target stage",
+			"ERROR: failed to solve: target stage",
+			ErrUnkTarget,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			err := dockerErrorOr(tc.msg, nil)
+
+			// --- Then ---
+			assert.ErrorIs(t, tc.want, err)
+		})
+	}
 }
 
 func Test_isFinal_tabular(t *testing.T) {
@@ -626,7 +620,7 @@ func Test_GetGIDbyName(t *testing.T) {
 		have, err := GetGIDbyName("ctx42-no-such-group")
 
 		// --- Then ---
-		assert.Error(t, err)
+		assert.ErrorContain(t, `getent group "ctx42-no-such-group"`, err)
 		assert.Equal(t, 0, have)
 	})
 }
@@ -679,7 +673,6 @@ func Test_DockerSocket(t *testing.T) {
 func Test_deleteImage(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 
 		prj := gmtest.NewProject(t)
@@ -691,7 +684,7 @@ func Test_deleteImage(t *testing.T) {
 		_, iid := dkrkit.NewT(t).Build()
 
 		// --- When ---
-		err := deleteImage(ctx, tst.Ring(), iid)
+		err := deleteImage(t.Context(), tst.Ring(), iid)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -700,7 +693,6 @@ func Test_deleteImage(t *testing.T) {
 
 	t.Run("not existing ID", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 
 		prj := gmtest.NewProject(t)
@@ -710,7 +702,7 @@ func Test_deleteImage(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		err := deleteImage(ctx, tst.Ring(), "not-existing")
+		err := deleteImage(t.Context(), tst.Ring(), "not-existing")
 
 		// --- Then ---
 		assert.NoError(t, err)
