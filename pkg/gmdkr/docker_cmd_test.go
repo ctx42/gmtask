@@ -1135,9 +1135,11 @@ func Test_DockerCmd_Run(t *testing.T) {
 		err := dc.Run(ctx, rng)
 
 		// --- Then ---
+		assert.ExitCode(t, 127, err)
+		assert.ErrorContain(t, "docker run: ", err)
 		// Docker's exact wording varies by CLI version; match the
 		// version-stable fragment.
-		assert.ErrorContain(t, "executable file not found in $PATH", err)
+		assert.Contain(t, "executable file not found in $PATH", tst.Stderr())
 
 		want := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
 		assert.Count(t, 1, want, tst.Stderr())

@@ -179,10 +179,41 @@ func runDockerCmd(ctx context.Context, rng *ring.Ring) (string, string, error) {
 	return soutS, eoutS, nil
 }
 
+// runDockerStream runs the docker command with arguments and environment from
+// rng, connected straight to the ring's streams, for interactive and
+// long-running commands whose output is for the user, not for the caller. The
+// output is not captured, so a failure is reported as "docker <command>:
+// <exit error>".
+func runDockerStream(ctx context.Context, rng *ring.Ring) error {
+	args := slices.Clone(rng.Args())
+	for i := range args {
+		args[i] = os.Expand(args[i], gomake.Expander(rng.EnvAll()))
+	}
+	cmd := exec.CommandContext(ctx, "docker", args...)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = rng.Stdin(), rng.Stdout(), rng.Stderr()
+	cmd.Env = rng.EnvAll()
+	if err := cmd.Run(); err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			err = fmt.Errorf("%w: %w", ctxErr, err)
+		}
+		if len(args) > 0 {
+			return fmt.Errorf("docker %s: %w", args[0], err)
+		}
+		return fmt.Errorf("docker: %w", err)
+	}
+	return nil
+}
+
 // rxERROR is regular expression finding lines starting with "ERROR:" string.
 var rxERROR = regexp.MustCompile("(?m)^ERROR: (.*)")
 
-// filterError keeps only lines starting with "ERROR:" in given message.
+// maxErrLines is the number of trailing output lines filterError keeps when
+// the output has no "ERROR:" line.
+const maxErrLines = 20
+
+// filterError keeps only lines starting with "ERROR:" in given message. A
+// message without such lines is kept whole when short, and cut to its last
+// maxErrLines lines otherwise, so a long build log does not become the error.
 func filterError(msg string) string {
 	sm := rxERROR.FindAllStringSubmatch(msg, -1)
 	var ret []string
@@ -190,7 +221,11 @@ func filterError(msg string) string {
 		ret = append(ret, m[0])
 	}
 	if len(ret) == 0 {
-		return msg
+		lines := strings.Split(strings.TrimSpace(msg), "\n")
+		if len(lines) <= maxErrLines {
+			return msg
+		}
+		return strings.Join(lines[len(lines)-maxErrLines:], "\n")
 	}
 	return strings.Join(ret, "\n")
 }

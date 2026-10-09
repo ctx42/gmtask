@@ -454,6 +454,12 @@ func Test_filterError_tabular(t *testing.T) {
 		{"1", "abc\nERROR: def\nERROR: ghi\njkl", "ERROR: def\nERROR: ghi"},
 		{"2", "ERROR: def\nERROR: ghi\n", "ERROR: def\nERROR: ghi"},
 		{"3", "ERROR: def", "ERROR: def"},
+		{"no error lines", "a\nb", "a\nb"},
+		{
+			"long output keeps last lines",
+			strings.Repeat("x\n", 30) + strings.Repeat("y\n", 20),
+			strings.TrimSuffix(strings.Repeat("y\n", 20), "\n"),
+		},
 	}
 
 	for _, tc := range tt {

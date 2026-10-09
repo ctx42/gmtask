@@ -176,9 +176,8 @@ func (dc *DockerCmd) Run(ctx context.Context, rng *ring.Ring) error {
 		strings.Join(args, " "),
 	)
 	if !dc.Flags.DryRun {
-		rngDC := rng.Clone()
-		rngDC.SetArgs(args)
-		if _, _, err := runDockerCmd(ctx, rngDC); err != nil {
+		// Interactive or long-running: stream, do not capture.
+		if err := runDockerStream(ctx, rng.Clone().SetArgs(args)); err != nil {
 			return err
 		}
 	}
@@ -234,9 +233,8 @@ func (dc *DockerCmd) Sh(ctx context.Context, rng *ring.Ring) error {
 		strings.Join(args, " "),
 	)
 	if !dc.Flags.DryRun {
-		rngDC := rng.Clone()
-		rngDC.SetArgs(args)
-		if _, _, err := runDockerCmd(ctx, rngDC); err != nil {
+		// Interactive or long-running: stream, do not capture.
+		if err := runDockerStream(ctx, rng.Clone().SetArgs(args)); err != nil {
 			return err
 		}
 	}

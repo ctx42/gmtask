@@ -390,6 +390,32 @@ func Test_Image_Run(t *testing.T) {
 		assert.Equal(t, "third image\n", tst.Stdout())
 	})
 
+	t.Run("error - container fails", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout().WetStderr()
+
+		prj := gmtest.NewProject(t)
+		prj.CfgRegRepoDef()
+		prj.WithDockerfileNEP()
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring(
+			"--name", prj.ImgName(),
+			"--tag", prj.ImgTag(),
+			"--", "sh", "-c", "echo boom; exit 3",
+		)
+
+		// --- When ---
+		err := Image{}.Run(t.Context(), rng)
+
+		// --- Then ---
+		assert.ExitCode(t, 3, err)
+		assert.ErrorEqual(t, "docker run: exit status 3", err)
+		assert.Equal(t, "boom\n", tst.Stdout())
+		assert.Contain(t, "docker build", tst.Stderr())
+	})
+
 	t.Run("dry run needs no daemon", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t).WetStderr()
