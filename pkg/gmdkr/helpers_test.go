@@ -126,8 +126,11 @@ func Test_splitTargets_tabular(t *testing.T) {
 
 func Test_pickTargets(t *testing.T) {
 	t.Run("error - targets not defined but one requested", func(t *testing.T) {
+		// --- Given ---
+		wantTgs := []string{"first"}
+
 		// --- When ---
-		have, err := pickTargets(nil, []string{"first"})
+		have, err := pickTargets(nil, wantTgs)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoTargets, err)
@@ -136,8 +139,11 @@ func Test_pickTargets(t *testing.T) {
 	})
 
 	t.Run("error - targets not defined but two requested", func(t *testing.T) {
+		// --- Given ---
+		wantTgs := []string{"first", "second"}
+
 		// --- When ---
-		have, err := pickTargets(nil, []string{"first", "second"})
+		have, err := pickTargets(nil, wantTgs)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoTargets, err)
@@ -148,9 +154,10 @@ func Test_pickTargets(t *testing.T) {
 	t.Run("error - contains only unknown target names", func(t *testing.T) {
 		// --- Given ---
 		tgs := []string{"first", "second", "third"}
+		wantTgs := []string{"forth", "sixth"}
 
 		// --- When ---
-		have, err := pickTargets(tgs, []string{"forth", "sixth"})
+		have, err := pickTargets(tgs, wantTgs)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoTarget, err)
@@ -161,9 +168,10 @@ func Test_pickTargets(t *testing.T) {
 	t.Run("error - contains some unknown target names", func(t *testing.T) {
 		// --- Given ---
 		tgs := []string{"first", "second", "third"}
+		wantTgs := []string{"first", "forth", "second"}
 
 		// --- When ---
-		have, err := pickTargets(tgs, []string{"first", "forth", "second"})
+		have, err := pickTargets(tgs, wantTgs)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoTarget, err)
