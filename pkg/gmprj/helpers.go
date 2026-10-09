@@ -50,6 +50,22 @@ func GoModuleName(name string) string {
 	return name
 }
 
+// ExportEnv returns env, a list of "KEY=value" entries, as shell "export"
+// statements with every value single-quoted, so that evaluating them sets
+// each value verbatim. A single quote in a value ends the quoting, is escaped
+// and reopens it:
+//
+//	export KEY='it'\''s'
+func ExportEnv(env []string) []string {
+	out := make([]string, 0, len(env))
+	for _, ent := range env {
+		key, val, _ := strings.Cut(ent, "=")
+		val = strings.ReplaceAll(val, "'", `'\''`)
+		out = append(out, "export "+key+"='"+val+"'")
+	}
+	return out
+}
+
 // majorRx matches the "/vN" major version suffix of a Go module path, N >= 2.
 var majorRx = regexp.MustCompile(`/v([2-9]|[1-9][0-9]+)$`)
 

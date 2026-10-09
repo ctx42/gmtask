@@ -134,9 +134,7 @@ func (Project) Env(ctx context.Context, rng *ring.Ring) error {
 	case 0:
 		env := inf.Env()
 		if fs.GetBool("export") {
-			for i := range env {
-				env[i] = "export " + env[i]
-			}
+			env = ExportEnv(env)
 		}
 		_, _ = fmt.Fprint(rng.Stdout(), strings.Join(env, "\n")+"\n")
 

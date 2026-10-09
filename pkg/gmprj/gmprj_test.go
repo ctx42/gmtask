@@ -83,10 +83,32 @@ func Test_Project_Env(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		want := "" +
-			"export C42_BLD_DATE=2000-01-02T03:04:05.600Z\n" +
-			"export C42_PRJ_NAME=project\n" +
-			"export C42_SCM_STATE=no-scm\n"
+			"export C42_BLD_DATE='2000-01-02T03:04:05.600Z'\n" +
+			"export C42_PRJ_NAME='project'\n" +
+			"export C42_SCM_STATE='no-scm'\n"
 		assert.Equal(t, want, tst.Stdout())
+	})
+
+	t.Run("export quotes values", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("--export")
+		rng.EnvUnset(EnvSSHAuthSock)
+		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
+
+		prj := gmtest.NewProject(t)
+		prj.WithConfig()
+		prj.CfgAdd("DESC", "it's a b")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Project{}.Env(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "export DESC='it'\\''s a b'\n"
+		assert.Contain(t, want, tst.Stdout())
 	})
 
 	t.Run("all environment variables set", func(t *testing.T) {

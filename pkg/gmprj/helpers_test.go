@@ -75,6 +75,24 @@ func Test_GoModuleName_tabular(t *testing.T) {
 	}
 }
 
+func Test_ExportEnv(t *testing.T) {
+	// --- Given ---
+	env := []string{"A=1", "B=a b", "C=it's", "D=", "E=x=y"}
+
+	// --- When ---
+	have := ExportEnv(env)
+
+	// --- Then ---
+	want := []string{
+		"export A='1'",
+		"export B='a b'",
+		`export C='it'\''s'`,
+		"export D=''",
+		"export E='x=y'",
+	}
+	assert.Equal(t, want, have)
+}
+
 func Test_trimMajor_tabular(t *testing.T) {
 	tt := []struct {
 		testN string

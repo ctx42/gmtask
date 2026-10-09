@@ -188,7 +188,7 @@ consume them.
 ```shell
 gomake :docker:image:reference        # e.g. my.nexus.dev/repo/dki-app:v1.2.3
 gomake :docker:image:env              # C42_DKI_* variables, one KEY=value per line
-gomake :docker:image:env -e           # same, prefixed with "export "
+gomake :docker:image:env -e           # same, as export KEY='value' lines
 gomake :docker:image:env C42_DKI_REF  # print just one variable's value
 gomake :docker:image:info             # the same variables, human-readable
 ```
@@ -349,7 +349,7 @@ Targets take only the flags relevant to them; all support `-h`/`--help`.
 | `--cache-from` |       | build                           | `docker build --cache-from` spec.      |
 | `--cache-to`   |       | build                           | `docker build --cache-to` spec.        |
 | `--cmd`        | `-c`  | sh                              | Command to run inside the container.   |
-| `--export`     | `-e`  | env                             | Prefix each line with `export`.        |
+| `--export`     | `-e`  | env                             | Print `export KEY='value'` lines.      |
 | `--dry-run`    | `-d`  | build, push, run, sh            | Print the `docker` command only.       |
 | `--help`       | `-h`  | all                             | Show the target's help.                |
 

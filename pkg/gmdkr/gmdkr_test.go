@@ -912,7 +912,9 @@ func Test_Image_Env(t *testing.T) {
 		lines := strings.Split(strings.TrimSpace(tst.Stdout()), "\n")
 		for _, line := range lines {
 			assert.True(t, strings.HasPrefix(line, "export "))
+			assert.True(t, strings.HasSuffix(line, "'"))
 		}
+		assert.Contain(t, "export C42_SCM_STATE='clean'\n", tst.Stdout())
 	})
 
 	t.Run("print single value", func(t *testing.T) {

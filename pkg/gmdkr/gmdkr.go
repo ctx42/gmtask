@@ -426,9 +426,7 @@ func (Image) Env(ctx context.Context, rng *ring.Ring) error {
 	case 0:
 		env := dc.Info.Env()
 		if dc.Flags.Export {
-			for i := range env {
-				env[i] = "export " + env[i]
-			}
+			env = gmprj.ExportEnv(env)
 		}
 		_, _ = fmt.Fprint(rng.Stdout(), strings.Join(env, "\n")+"\n")
 
