@@ -1297,6 +1297,36 @@ func Test_Image_Info(t *testing.T) {
 	})
 }
 
+func Test_Image_Clean_arguments(t *testing.T) {
+	t.Run("help", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("-h")
+
+		// --- When ---
+		err := Image{}.Clean(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"Usage of :docker:image:clean:\n" +
+			"  -h, --help    show help\n"
+		assert.Equal(t, want, tst.Stderr())
+	})
+
+	t.Run("error - positional argument", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring("foo")
+
+		// --- When ---
+		err := Image{}.Clean(t.Context(), rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, gmprj.ErrTooManyArgs, err)
+		assert.ErrorContain(t, "[foo]", err)
+	})
+}
+
 func Test_Image_Clean(t *testing.T) {
 	// NOTE: Clean prunes ALL dangling docker images on the host, not only the
 	// one this test creates. It is destructive, so it never runs by default and

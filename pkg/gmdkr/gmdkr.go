@@ -486,8 +486,21 @@ func (Image) Info(ctx context.Context, rng *ring.Ring) error {
 }
 
 // Clean removes dangling images and images whose repository reference contains
-// "ctx42-tst-img-" that were created more than an hour ago.
+// "ctx42-tst-img-" that were created more than an hour ago. It takes no
+// arguments.
 func (Image) Clean(ctx context.Context, rng *ring.Ring) error {
-	dc := NewDockerCmd(NewFlags(":docker:image:clean"))
-	return dc.Clean(ctx, rng)
+	fp := NewFlagParser(":docker:image:clean", rng.Stderr())
+	fp.Add(FlagHelp)
+	if err := fp.Parse(rng.Args()); err != nil {
+		return err
+	}
+	if fp.fls.Help {
+		fp.fs.Usage()
+		return nil
+	}
+	if fp.fs.NArg() > 0 {
+		return fmt.Errorf("%w: %v", gmprj.ErrTooManyArgs, fp.fs.Args())
+	}
+	dc := NewDockerCmd(fp.fls)
+	return dc.Clean(ctx, rng.Clone().SetArgs(nil))
 }
