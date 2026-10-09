@@ -72,9 +72,9 @@ func ImpPath(ctx context.Context, rng *ring.Ring, dir string) (string, error) {
 	return rsp, nil
 }
 
-// InitModule initializes Go module with given name in directory dir. The empty
-// string used for dir means current working directory. The "go" directive in
-// the resulting go.mod is pinned to the toolchain's "major.minor" version
+// InitModule initializes a Go module with the given name in directory dir. The
+// empty string used for dir means current working directory. The "go" directive
+// in the resulting go.mod is pinned to the toolchain's "major.minor" version
 // (e.g. "go 1.26"), not its patch version (e.g. "go 1.26.3").
 func InitModule(ctx context.Context, rng *ring.Ring, dir, name string) error {
 	sout, eout := io.Discard, &bytes.Buffer{}
@@ -159,9 +159,9 @@ func LDFlags(pkgPath string, vars []LDVar) string {
 	return strings.Join(parts, " ")
 }
 
-// CovLogFilename returns filename used to store a coverage report. When running
-// in CI/CD context the value of the [BuildIDEnvKey] environment variable is
-// added to the filename. Examples:
+// CovLogFilename returns the file name used to store a coverage report. When
+// running in a CI/CD context, the value of the [BuildIDEnvKey] environment
+// variable is added to the file name. Examples:
 //
 //	go_test_coverage.log
 //	go_test_coverage_123.log
@@ -173,9 +173,9 @@ func CovLogFilename(rng *ring.Ring) string {
 	return stem + ".log"
 }
 
-// TestLogFilename returns filename used to store a test report. When running in
-// CI/CD context the value of the [BuildIDEnvKey] environment variable is added
-// to the filename. Examples:
+// TestLogFilename returns the file name used to store a test report. When
+// running in a CI/CD context, the value of the [BuildIDEnvKey] environment
+// variable is added to the file name. Examples:
 //
 //	go_test_run.log
 //	go_test_run_123.log
@@ -269,9 +269,9 @@ func BldDateFmt(tim time.Time) string {
 	return tim.UTC().Format(bldDateLayout)
 }
 
-// extractGolangCiVersion extracts and parses semantic version from output given
-// by "golangci-lint version" command. It returns [semver.ErrInvalidSemVer]
-// on error.
+// extractGolangCiVersion extracts and parses the semantic version from the
+// output of the "golangci-lint version" command. It returns
+// [semver.ErrInvalidSemVer] on error.
 func extractGolangCiVersion(line string) (*semver.Version, error) {
 	var ver string
 	if _, sub, ok := strings.Cut(line, "version "); ok {

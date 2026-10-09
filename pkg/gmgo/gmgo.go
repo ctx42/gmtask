@@ -63,7 +63,7 @@ const (
 
 	// GoLintConfigRepoEnvKey is the environment variable overriding the git
 	// repository the shared golangci-lint config is fetched from. Unset
-	// defaults to [goDevRepo].
+	// defaults to the goDevRepo repository.
 	GoLintConfigRepoEnvKey = "GOMAKE_GOLINT_CONFIG_REPO"
 
 	// BuildIDEnvKey is the environment variable carrying the CI/CD build
@@ -73,10 +73,10 @@ const (
 	BuildIDEnvKey = "BUILD_ID"
 )
 
-// Go collects Go related targets.
+// Go collects Go-related targets.
 type Go struct{} //gomake:ns_root
 
-// Vet vets Go code in current directory and its subdirectories.
+// Vet vets Go code in the current directory and its subdirectories.
 //
 // Example usage:
 //
@@ -107,8 +107,9 @@ func (tgt Go) Check(ctx context.Context, rng *ring.Ring) error {
 	return tgt.Test(ctx, rng)
 }
 
-// TestV runs all Go tests in current working directory and its subdirectories
-// in verbose mode. See documentation of [Go.test] method for more details.
+// TestV runs all Go tests in the current working directory and its
+// subdirectories in verbose mode. See the documentation of the test method for
+// more details.
 //
 // Example usage:
 //
@@ -117,8 +118,8 @@ func (tgt Go) TestV(ctx context.Context, rng *ring.Ring) error {
 	return tgt.test(ctx, rng, true)
 }
 
-// Test runs all Go tests in current working directory and its subdirectories.
-// See documentation of [Go.test] method for more details.
+// Test runs all Go tests in the current working directory and its
+// subdirectories. See the documentation of the test method for more details.
 //
 // Example usage:
 //
@@ -127,22 +128,23 @@ func (tgt Go) Test(ctx context.Context, rng *ring.Ring) error {
 	return tgt.test(ctx, rng, false)
 }
 
-// test runs all Go tests with coverage report and race detector in current
-// working directory and its subdirectories.
+// test runs all Go tests with a coverage report and the race detector in the
+// current working directory and its subdirectories.
 //
-// By default, race detector is turned on and two report files are created:
-//   - go_test_coverage.log with coverage log
-//   - go_test_run.log with copy of what "go test" printed out
+// By default, the race detector is turned on and two report files are created:
+//   - go_test_coverage.log with the coverage log
+//   - go_test_run.log with a copy of what "go test" printed out
 //
-// If the program is run in CI/CD context the files will have BUILD_ID as
-// part of their name - see [CovLogFilename] and [TestLogFilename] for details.
+// If the program is run in a CI/CD context, the files have BUILD_ID as part
+// of their name - see [CovLogFilename] and [TestLogFilename] for details.
 //
-// The files are put in current working directory, or "tmp" subdirectory if it
-// exists. The destination directory is customizable with target arguments.
+// The files are put in the current working directory, or in its "tmp"
+// subdirectory if it exists. The destination directory is customizable with
+// target arguments.
 //
-// When verbose is set to true an additional flag "-v" is passed to "go test".
+// When verbose is set to true, an additional flag "-v" is passed to "go test".
 //
-// The additional arguments may be passed to the "go test" with "-- arg0 arg1"
+// Additional arguments may be passed to "go test" with the "-- arg0 arg1"
 // construct. A -timeout among them takes precedence over the configured and
 // environment timeouts.
 //
@@ -270,9 +272,9 @@ func parseDirTarget(
 	return out, rng, false, nil
 }
 
-// Doc starts the godoc documentation engine service and opens it in default
-// browser for the package in the current working directory. The server binds
-// an OS-assigned free port, so concurrent Doc runs do not collide.
+// Doc starts the godoc documentation engine service and opens it in the default
+// browser at the module in the current working directory. The server binds an
+// OS-assigned free port, so concurrent Doc runs do not collide.
 //
 // Example usage:
 //
@@ -282,8 +284,8 @@ func (Go) Doc(ctx context.Context, rng *ring.Ring) error {
 	return serveDocServer(ctx, rng, serveDoc, "/pkg/")
 }
 
-// Pkgsite starts the pkgsite documentation server and opens it in default
-// browser for the package in the current working directory. The server binds
+// Pkgsite starts the pkgsite documentation server and opens it in the default
+// browser at the module in the current working directory. The server binds
 // an OS-assigned free port, so concurrent Pkgsite runs do not collide.
 //
 // Example usage:
@@ -296,7 +298,7 @@ func (Go) Pkgsite(ctx context.Context, rng *ring.Ring) error {
 
 // serveDocServer reserves a free loopback port, starts a documentation server
 // on it with serve, waits for the server to accept connections, and opens the
-// default browser at the current package's import path joined to the server
+// default browser at the current module's path joined to the server
 // address under pkgPrefix. It returns serve's error, or a module-resolution
 // error when the working directory is not a Go module.
 func serveDocServer(

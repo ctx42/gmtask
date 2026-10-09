@@ -114,8 +114,8 @@ func lintBin(rng *ring.Ring) string {
 	return name
 }
 
-// checkVersion returns the version of the golangci-lint binary [lintBin]
-// finds or error if:
+// checkVersion returns the version of the golangci-lint binary lintBin finds
+// or an error if:
 //
 //   - "golangci-lint" is not found or cannot be run for some reason
 //   - response from "golangci-lint version" cannot be parsed
@@ -138,7 +138,7 @@ func (Lint) checkVersion(
 	return extractGolangCiVersion(sout.String())
 }
 
-// lint lints Go code in given directory and subdirectories using the
+// lint lints Go code in the given directory and its subdirectories using the
 // configuration file at cfgPth or, when cfgPth is empty, the one located in
 // "${dir}/tmp/.golangci.yml" or "${dir}/.golangci.yml" (if it exists). The
 // empty string used for dir means current working directory.
@@ -196,20 +196,20 @@ func (Lint) Install(ctx context.Context, rng *ring.Ring) error {
 	return cmd.Run()
 }
 
-// Config downloads the shared ".golangci.yml" configuration file to current
+// Config downloads the shared ".golangci.yml" configuration file to the current
 // working directory or to "tmp" if it exists. The destination directory is
 // customizable with target arguments. If the execution context has no deadline
 // set, it will be set to 60 seconds. You may force the config file download by
 // setting the [GoLintConfigForceEnvKey] environment variable to a true value
 // such as "1" or "true"; a value that is not a boolean is an error. The source
-// repository defaults to [goDevRepo] but may be overridden by the target's
+// repository defaults to goDevRepo but may be overridden by the target's
 // "repo" configuration, or, taking precedence over both, the
 // [GoLintConfigRepoEnvKey] environment variable. The config file name defaults
 // to ".golangci.yml" but may be overridden by the target's "file"
 // configuration, applied to both the fetched and the written file.
 //
 // The configuration is fetched with a shallow clone of the source repository
-// (see [gitGetFile]) rather than "git archive --remote", which hosts such as
+// (see gitGetFile) rather than "git archive --remote", which hosts such as
 // GitHub reject.
 //
 // Example usage:
