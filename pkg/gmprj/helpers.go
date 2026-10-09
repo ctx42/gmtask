@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -47,6 +48,14 @@ func GoModuleName(name string) string {
 	}
 	name = strings.ReplaceAll(name, ":", "/")
 	return name
+}
+
+// majorRx matches the "/vN" major version suffix of a Go module path, N >= 2.
+var majorRx = regexp.MustCompile(`/v([2-9]|[1-9][0-9]+)$`)
+
+// trimMajor returns the module path without its "/vN" major version suffix.
+func trimMajor(module string) string {
+	return majorRx.ReplaceAllString(module, "")
 }
 
 // GoPkgName returns the Go package name derived from name — a directory path,

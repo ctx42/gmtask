@@ -120,14 +120,19 @@ func NewSetup(root string, opts ...func(*Setup)) (*Setup, error) {
 	switch {
 	case sup.origin != "":
 		module := GoModuleName(sup.origin)
-		if sup.module != "" && module != GoModuleName(sup.module) {
-			return nil, ErrModuleOriginMismatch
+		if sup.module != "" {
+			// A "/vN" major version suffix is part of the module path but
+			// not of the repository it lives in.
+			if module != trimMajor(GoModuleName(sup.module)) {
+				return nil, ErrModuleOriginMismatch
+			}
+			module = GoModuleName(sup.module)
 		}
 		sup.module = module
 		sup.name = ProjectName(sup.origin)
 
 	case sup.module != "":
-		sup.name = ProjectName(sup.module)
+		sup.name = ProjectName(trimMajor(sup.module))
 
 	default:
 		sup.module = GoModuleName(sup.root)

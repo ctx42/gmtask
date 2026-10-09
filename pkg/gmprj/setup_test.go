@@ -101,6 +101,24 @@ func Test_NewSetup(t *testing.T) {
 		assert.Equal(t, "acme", sup.module)
 	})
 
+	t.Run("module with major version suffix", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewNamedProject(t, "acme")
+		prj.Close()
+
+		// --- When ---
+		sup, err := NewSetup(
+			prj.Root(),
+			WithSetupGoModule("github.com/prj/repo/v2"),
+			WithSetupGitOrigin("git@github.com:prj/repo.git"),
+		)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "github.com/prj/repo/v2", sup.module)
+		assert.Equal(t, "repo", sup.name)
+	})
+
 	t.Run("only module set", func(t *testing.T) {
 		// --- Given ---
 		prj := gmtest.NewNamedProject(t, "acme")

@@ -75,6 +75,32 @@ func Test_GoModuleName_tabular(t *testing.T) {
 	}
 }
 
+func Test_trimMajor_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		module string
+		want   string
+	}{
+		{"none", "example.com/repo", "example.com/repo"},
+		{"v2", "example.com/repo/v2", "example.com/repo"},
+		{"v10", "example.com/repo/v10", "example.com/repo"},
+		{"v1 is not a suffix", "example.com/repo/v1", "example.com/repo/v1"},
+		{"v0 is not a suffix", "example.com/repo/v0", "example.com/repo/v0"},
+		{"not last", "example.com/v2/repo", "example.com/v2/repo"},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			have := trimMajor(tc.module)
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
+		})
+	}
+}
+
 func Test_GoPkgName_tabular(t *testing.T) {
 	tt := []struct {
 		testN string
