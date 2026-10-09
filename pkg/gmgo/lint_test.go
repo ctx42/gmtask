@@ -209,6 +209,26 @@ func Test_Lint_checkVersion(t *testing.T) {
 		assert.Equal(t, want, ver.Original())
 	})
 
+	t.Run("binary in GOBIN off PATH", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		bin := t.TempDir()
+		script := "" +
+			"#!/bin/sh\n" +
+			"echo 'golangci-lint has version 9.9.9 built with go1 from x'\n"
+		oskit.Write(t, script, bin, "golangci-lint")
+		must.Nil(os.Chmod(filepath.Join(bin, "golangci-lint"), 0o755))
+		rng.EnvSet("PATH", pathWithoutBinary("golangci-lint"))
+		rng.EnvSet("GOBIN", bin)
+
+		// --- When ---
+		have, err := Lint{}.checkVersion(t.Context(), rng, "")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "9.9.9", have.Original())
+	})
+
 	t.Run("error - command fails", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()
@@ -221,6 +241,43 @@ func Test_Lint_checkVersion(t *testing.T) {
 		// --- Then ---
 		assert.Error(t, err)
 		assert.Nil(t, ver)
+	})
+}
+
+func Test_requiredLintVer_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		cfgVer string
+		want   string
+	}{
+		{"not configured", "", expLintVer.Original()},
+		{"latest", "latest", expLintVer.Original()},
+		{"not a version", "master", expLintVer.Original()},
+		{"newer pinned", "v9.0.0", "v9.0.0"},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			have, err := requiredLintVer(tc.cfgVer)
+
+			// --- Then ---
+			assert.NoError(t, err)
+			assert.Equal(t, tc.want, have.Original())
+		})
+	}
+}
+
+func Test_requiredLintVer(t *testing.T) {
+	t.Run("error - older than required", func(t *testing.T) {
+		// --- When ---
+		have, err := requiredLintVer("v2.0.0")
+
+		// --- Then ---
+		want := "configured golangci-lint v2.0.0 is older than the required"
+		assert.ErrorContain(t, want, err)
+		assert.Nil(t, have)
 	})
 }
 
@@ -756,6 +813,10 @@ func Test_Lint_Config(t *testing.T) {
 		// --- Given ---
 		rng := ringtest.New(t).Ring()
 		rng.EnvSet(GoLintConfigForceEnvKey, "maybe")
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
 
 		// --- When ---
 		err := Lint{}.Config(t.Context(), rng)

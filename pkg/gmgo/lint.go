@@ -35,21 +35,87 @@ func (tgt Lint) Default(ctx context.Context, rng *ring.Ring) error {
 	if err != nil || help {
 		return err
 	}
+	cfg, err := gomake.TargetConfig(rng)
+	if err != nil {
+		return err
+	}
+	cfgVer, err := gomake.GetCfgDefault(cfg, "version", "")
+	if err != nil {
+		return err
+	}
+	req, err := requiredLintVer(cfgVer)
+	if err != nil {
+		return err
+	}
+
 	ver, err := tgt.checkVersion(ctx, rng, "")
 	// Install when the binary is missing/unusable or older than required,
 	// then re-check so a failed install surfaces before linting.
-	if err != nil || ver.Compare(expLintVer) < 0 {
+	if err != nil || ver.LessThan(req) {
 		if err = tgt.Install(ctx, rng); err != nil {
 			return err
 		}
-		if _, err = tgt.checkVersion(ctx, rng, ""); err != nil {
+		if ver, err = tgt.checkVersion(ctx, rng, ""); err != nil {
 			return err
+		}
+		if ver.LessThan(req) {
+			format := "golangci-lint %s at %s is older than %s after " +
+				"installing; another binary may shadow the installed one"
+			return fmt.Errorf(format, ver, lintBin(rng), req)
 		}
 	}
 	return tgt.lint(ctx, rng, "", cfgPth)
 }
 
-// checkVersion returns the current golangci-lint version or error if:
+// requiredLintVer returns the lowest golangci-lint version [Lint.Default]
+// accepts: the configured version cfgVer when it is a semantic version, else
+// expLintVer. A configured version older than expLintVer is an error.
+func requiredLintVer(cfgVer string) (*semver.Version, error) {
+	ver, err := semver.NewVersion(cfgVer)
+	if err != nil {
+		// Not configured, "latest", or another module query such as a branch
+		// name: there is no version to compare against.
+		return expLintVer, nil
+	}
+	if ver.LessThan(expLintVer) {
+		format := "configured golangci-lint %s is older than the required %s"
+		return nil, fmt.Errorf(format, cfgVer, expLintVer.Original())
+	}
+	return ver, nil
+}
+
+// lintBin returns the path of the golangci-lint binary: the first one found on
+// the ring's PATH, else in the directory "go install" puts it - $GOBIN when
+// set, otherwise $GOPATH/bin ($HOME/go/bin by default). It returns the bare
+// name when none is found, so running it fails with a "not found" error.
+func lintBin(rng *ring.Ring) string {
+	const name = "golangci-lint"
+	dirs := filepath.SplitList(rng.EnvGet("PATH"))
+	if bin := rng.EnvGet("GOBIN"); bin != "" {
+		dirs = append(dirs, bin)
+	} else {
+		gopath := rng.EnvGet("GOPATH")
+		if home := rng.EnvGet("HOME"); gopath == "" && home != "" {
+			gopath = filepath.Join(home, "go")
+		}
+		for _, dir := range filepath.SplitList(gopath) {
+			dirs = append(dirs, filepath.Join(dir, "bin"))
+		}
+	}
+	for _, dir := range dirs {
+		if dir == "" {
+			continue
+		}
+		pth := filepath.Join(dir, name)
+		if inf, err := os.Stat(pth); err == nil && inf.Mode()&0o111 != 0 {
+			return pth
+		}
+	}
+	return name
+}
+
+// checkVersion returns the version of the golangci-lint binary [lintBin]
+// finds or error if:
 //
 //   - "golangci-lint" is not found or cannot be run for some reason
 //   - response from "golangci-lint version" cannot be parsed
@@ -62,7 +128,7 @@ func (Lint) checkVersion(
 ) (*semver.Version, error) {
 
 	sout, eout := &bytes.Buffer{}, rng.Stderr()
-	cmd := exec.CommandContext(ctx, "golangci-lint", "version")
+	cmd := exec.CommandContext(ctx, lintBin(rng), "version")
 	cmd.Env = rng.EnvAll()
 	cmd.Stdout, cmd.Stderr = sout, eout
 	cmd.Dir = repo
@@ -97,7 +163,7 @@ func (Lint) lint(
 	}
 	args = append(args, "./...")
 
-	cmd := exec.CommandContext(ctx, "golangci-lint", args...)
+	cmd := exec.CommandContext(ctx, lintBin(rng), args...)
 	cmd.Env = append(rng.EnvAll(), "LOG_LEVEL=error")
 	cmd.Stdout, cmd.Stderr = rng.Stdout(), rng.Stderr()
 	cmd.Dir = dir
