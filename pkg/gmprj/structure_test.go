@@ -442,6 +442,41 @@ func Test_structure_materialize(t *testing.T) {
 		assert.Equal(t, os.FileMode(0o770), info.Mode().Perm())
 	})
 
+	t.Run("read-only directory with children", func(t *testing.T) {
+		// --- Given ---
+		root := t.TempDir()
+		str := structure{"ro": {Type: typeDir, Mode: "0555",
+			Children: map[string]*structNode{
+				"f.txt": {Type: typeFile, Content: "x"},
+			},
+		}}
+		t.Cleanup(func() { _ = os.Chmod(filepath.Join(root, "ro"), 0o755) })
+
+		// --- When ---
+		err := str.materialize(io.Discard, root, tmplVars{})
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "x", oskit.ReadFileStr(t, root, "ro", "f.txt"))
+		info := oskit.Stat(t, root, "ro")
+		assert.Equal(t, os.FileMode(0o555), info.Mode().Perm())
+	})
+
+	t.Run("missing root stays writable", func(t *testing.T) {
+		// --- Given ---
+		root := filepath.Join(t.TempDir(), "new")
+		str := structure{"ro": {Type: typeDir, Mode: "0500"}}
+		t.Cleanup(func() { _ = os.Chmod(filepath.Join(root, "ro"), 0o755) })
+
+		// --- When ---
+		err := str.materialize(io.Discard, root, tmplVars{})
+
+		// --- Then ---
+		assert.NoError(t, err)
+		info := oskit.Stat(t, root)
+		assert.True(t, info.Mode().Perm()&0o200 != 0)
+	})
+
 	t.Run("existing file is not overwritten and logs nothing", func(t *testing.T) {
 		// --- Given ---
 		root := t.TempDir()

@@ -308,16 +308,13 @@ func (nod *structNode) create(
 	}
 	_, err = os.Stat(pth)
 	exists := err == nil
-	if err = os.MkdirAll(pth, perm); err != nil {
+	// Create the directory, and any missing parent, root included, with the
+	// default mode: an explicit mode such as "0555" could leave it unwritable
+	// before its children are created. The explicit mode is applied last.
+	if err = os.MkdirAll(pth, dirMode); err != nil {
 		return fmt.Errorf("%s: %w", rel, err)
 	}
 	if !exists {
-		if nod.Mode != "" {
-			// Force the exact mode past the umask, as createFile does.
-			if err = os.Chmod(pth, perm); err != nil {
-				return fmt.Errorf("%s: %w", rel, err)
-			}
-		}
 		_, _ = fmt.Fprintf(w, "dir created: %s\n", rel)
 	}
 
@@ -325,6 +322,13 @@ func (nod *structNode) create(
 		sub := filepath.Join(rel, name)
 		if err = nod.Children[name].create(w, root, sub, vrs, enabled); err != nil {
 			return err
+		}
+	}
+
+	if !exists && nod.Mode != "" {
+		// Force the exact mode past the umask, as createFile does.
+		if err = os.Chmod(pth, perm); err != nil {
+			return fmt.Errorf("%s: %w", rel, err)
 		}
 	}
 	return nil
