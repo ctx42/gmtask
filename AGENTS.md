@@ -38,10 +38,11 @@ are plain importable packages.
   becomes a root target `:name` (e.g. `Bump` → `:bump`).
 - A namespace is `type Ns struct{} //gomake:ns_root` with target methods on it;
   the target name is the type + method path (e.g. `Go.Vet` → `:go:vet`,
-  `Lint.Config` → `:go:lint:config`). The `//gomake:` comment tag must have no
+  `Lint.Config` → `:go:lint:config`). The `//gomake:ns_root` tag must have no
   space after `//`.
-- `//gomake:hidden` on a target method keeps it out of public docs and indexes
-  (e.g. incomplete `:docker:image:run-proj`).
+- `// gomake:hidden` in a target method's godoc keeps it out of public docs and
+  indexes (e.g. incomplete `:docker:image:run-proj`). Unlike the other tags,
+  gomake's parser requires the space after `//`.
 - `*ring.Ring` carries I/O (`rng.Stdout()`, `rng.Stderr()`, `rng.Args()`) and
   environment access; pass it through, do not reach for `os.Stdout`/`os.Args`.
 - Read settings with `gomake.TargetConfig(rng)` + `gomake.GetCfgDefault(...)`
@@ -123,7 +124,7 @@ version is built and what its parts mean; nothing here assembles one.
 - **Target names** always include the leading colon (`` `:go:vet` ``, not
   `` `go:vet` ``) in Features, Usage, and the root Targets table.
 - **Root Targets table** lists every public target. Omit methods marked
-  `//gomake:hidden`. Keep the table in sync when adding a target.
+  `// gomake:hidden`. Keep the table in sync when adding a target.
 - **Features:** one feature per line, ≤80 columns. Multi-target packages lead
   each bullet with a command token (`` `:go:vet` ``); single-command packages
   lead with a capability phrase — one style shared across the repo's members.
