@@ -172,7 +172,7 @@ func (str structure) validate() error {
 // validate checks the node and its descendants, returning the first violation
 // found named by its path. A valid node has type file or dir; a file carries no
 // children; a directory carries no content; a non-empty mode is an octal
-// permission string.
+// permission string no greater than 07777.
 func (nod *structNode) validate(path string) error {
 	switch nod.Type {
 	case typeFile:
@@ -189,10 +189,8 @@ func (nod *structNode) validate(path string) error {
 		return fmt.Errorf("%s: invalid type %q", path, nod.Type)
 	}
 
-	if nod.Mode != "" {
-		if _, err := strconv.ParseUint(nod.Mode, 8, 32); err != nil {
-			return fmt.Errorf("%s: invalid mode %q", path, nod.Mode)
-		}
+	if _, err := nod.perm(0); err != nil {
+		return fmt.Errorf("%s: invalid mode %q", path, nod.Mode)
 	}
 
 	switch nod.feature() {
@@ -382,7 +380,8 @@ func (nod *structNode) feature() string {
 }
 
 // perm resolves the node's permission, falling back to def when it sets no
-// explicit mode.
+// explicit mode. The octal setuid, setgid and sticky bits (04000, 02000 and
+// 01000) map to their [os.FileMode] flags; a mode above 07777 is an error.
 func (nod *structNode) perm(def os.FileMode) (os.FileMode, error) {
 	if nod.Mode == "" {
 		return def, nil
@@ -391,7 +390,20 @@ func (nod *structNode) perm(def os.FileMode) (os.FileMode, error) {
 	if err != nil {
 		return 0, fmt.Errorf("invalid mode %q: %w", nod.Mode, err)
 	}
-	return os.FileMode(mode), nil
+	if mode > 0o7777 {
+		return 0, fmt.Errorf("invalid mode %q: out of range", nod.Mode)
+	}
+	perm := os.FileMode(mode) & os.ModePerm
+	for bit, flag := range map[uint64]os.FileMode{
+		0o4000: os.ModeSetuid,
+		0o2000: os.ModeSetgid,
+		0o1000: os.ModeSticky,
+	} {
+		if mode&bit != 0 {
+			perm |= flag
+		}
+	}
+	return perm, nil
 }
 
 // sortedNames returns the node names in the map sorted for deterministic

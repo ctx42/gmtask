@@ -275,6 +275,17 @@ func Test_structure_validate(t *testing.T) {
 		assert.ErrorContain(t, `f: invalid mode "0999"`, err)
 	})
 
+	t.Run("error - mode out of range", func(t *testing.T) {
+		// --- Given ---
+		str := structure{"f": {Type: typeFile, Mode: "17777"}}
+
+		// --- When ---
+		err := str.validate()
+
+		// --- Then ---
+		assert.ErrorContain(t, `f: invalid mode "17777"`, err)
+	})
+
 	t.Run("error - nested node named by path", func(t *testing.T) {
 		// --- Given ---
 		str := structure{"dev": {Type: typeDir, Children: map[string]*structNode{
@@ -767,6 +778,30 @@ func Test_structNode_perm(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, os.FileMode(0o644), have)
+	})
+
+	t.Run("special bits", func(t *testing.T) {
+		// --- Given ---
+		nod := &structNode{Type: typeFile, Mode: "7755"}
+
+		// --- When ---
+		have, err := nod.perm(fileMode)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := 0o755 | os.ModeSetuid | os.ModeSetgid | os.ModeSticky
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("error - mode out of range", func(t *testing.T) {
+		// --- Given ---
+		nod := &structNode{Type: typeFile, Mode: "17777"}
+
+		// --- When ---
+		_, err := nod.perm(fileMode)
+
+		// --- Then ---
+		assert.ErrorContain(t, `invalid mode "17777"`, err)
 	})
 
 	t.Run("error - unparsable mode", func(t *testing.T) {
