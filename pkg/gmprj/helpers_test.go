@@ -23,7 +23,11 @@ func Test_ProjectName_tabular(t *testing.T) {
 		{"path", "/dir/dir-proj", "dir-proj"},
 		{"dir", "dir-proj", "dir-proj"},
 		{"repo", "ssh://git@example.com:comp/acme-proj.git", "acme-proj"},
-		{"repo no .git", "ssh://git@example.com:comp/acme-proj", "acme-proj"},
+		{
+			"repo no git suffix",
+			"ssh://git@example.com:comp/acme-proj",
+			"acme-proj",
+		},
 		{"repo no ssh", "git@bitbucket.org:comp/acme-proj.git", "acme-proj"},
 		{"go import spec", "example.com/comp/acme-proj", "acme-proj"},
 		{"empty", "", ""},
@@ -31,7 +35,11 @@ func Test_ProjectName_tabular(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.testN, func(t *testing.T) {
-			assert.Equal(t, tc.want, ProjectName(tc.origin))
+			// --- When ---
+			have := ProjectName(tc.origin)
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
 		})
 	}
 }
@@ -45,10 +53,26 @@ func Test_GoModuleName_tabular(t *testing.T) {
 	}{
 		{"path", "/dir/dir-proj", "dir-proj"},
 		{"dir", "dir-proj", "dir-proj"},
-		{"repo", "ssh://git@example.com:comp/acme-proj.git", "example.com/comp/acme-proj"},
-		{"repo no .git", "ssh://git@example.com:comp/acme-proj", "example.com/comp/acme-proj"},
-		{"repo no ssh", "git@bitbucket.org:comp/acme-proj.git", "bitbucket.org/comp/acme-proj"},
-		{"go import spec", "example.com/comp/acme-proj", "example.com/comp/acme-proj"},
+		{
+			"repo",
+			"ssh://git@example.com:comp/acme-proj.git",
+			"example.com/comp/acme-proj",
+		},
+		{
+			"repo no git suffix",
+			"ssh://git@example.com:comp/acme-proj",
+			"example.com/comp/acme-proj",
+		},
+		{
+			"repo no ssh",
+			"git@bitbucket.org:comp/acme-proj.git",
+			"bitbucket.org/comp/acme-proj",
+		},
+		{
+			"go import spec",
+			"example.com/comp/acme-proj",
+			"example.com/comp/acme-proj",
+		},
 		{"empty", "", ""},
 		{"multiple", "acme-dki-proj", "acme-dki-proj"},
 		{
@@ -70,7 +94,11 @@ func Test_GoModuleName_tabular(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.testN, func(t *testing.T) {
-			assert.Equal(t, tc.want, GoModuleName(tc.origin))
+			// --- When ---
+			have := GoModuleName(tc.origin)
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
 		})
 	}
 }
@@ -129,7 +157,7 @@ func Test_GoPkgName_tabular(t *testing.T) {
 		{"path", "/dir/dir-proj", "proj"},
 		{"dir", "dir-proj", "proj"},
 		{"repo", "ssh://git@example.com:comp/acme-proj.git", "proj"},
-		{"repo no .git", "ssh://git@example.com:comp/acme-proj", "proj"},
+		{"repo no git suffix", "ssh://git@example.com:comp/acme-proj", "proj"},
 		{"repo no ssh", "git@bitbucket.org:comp/acme-proj.git", "proj"},
 		{"go import spec", "example.com/comp/acme-proj", "proj"},
 		{"empty", "", ""},
@@ -142,7 +170,11 @@ func Test_GoPkgName_tabular(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.testN, func(t *testing.T) {
-			assert.Equal(t, tc.want, GoPkgName(tc.origin))
+			// --- When ---
+			have := GoPkgName(tc.origin)
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
 		})
 	}
 }
@@ -164,7 +196,7 @@ func Test_Root(t *testing.T) {
 		assert.Equal(t, root, have)
 	})
 
-	t.Run("could not find project root", func(t *testing.T) {
+	t.Run("error - project root not found", func(t *testing.T) {
 		// --- Given ---
 		dir := t.TempDir()
 
@@ -195,7 +227,7 @@ func Test_Root(t *testing.T) {
 }
 
 func Test_dirEmpty(t *testing.T) {
-	t.Run("empty directory", func(t *testing.T) {
+	t.Run("error - empty directory", func(t *testing.T) {
 		// --- Given ---
 		dir := t.TempDir()
 
@@ -265,7 +297,11 @@ func Test_toAlphabeticalEnv_tabular(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.testN, func(t *testing.T) {
-			assert.Equal(t, tc.want, toAlphabeticalEnv(tc.env))
+			// --- When ---
+			have := toAlphabeticalEnv(tc.env)
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
 		})
 	}
 }

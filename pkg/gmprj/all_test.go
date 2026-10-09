@@ -41,9 +41,6 @@ func setStructure(t tester.T, rng *ring.Ring) {
 	rng.MetaSet(gomake.ConfigMetaKey, jsonkit.To(t, block))
 }
 
-// ev is a helper function constructing environment style key values.
-func ev(key, val string) string { return key + "=" + val }
-
 // toEnv parses key values in "info" format and returns them as slice of strings
 // in the same format as [os.Environ] does.
 func toEnv(info string) []string {

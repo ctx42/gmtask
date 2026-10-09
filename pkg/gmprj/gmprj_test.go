@@ -4,7 +4,6 @@
 package gmprj
 
 import (
-	"context"
 	"os"
 	"testing"
 
@@ -49,20 +48,19 @@ func TestMain(m *testing.M) {
 func Test_Project_Env(t *testing.T) {
 	t.Run("minimal", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
 		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		// --- When ---
-		err := Project{}.Env(ctx, rng)
+		err := Project{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -75,20 +73,19 @@ func Test_Project_Env(t *testing.T) {
 
 	t.Run("minimal with export", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("--export")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--export")
 		rng.EnvUnset(EnvSSHAuthSock)
 		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		// --- When ---
-		err := Project{}.Env(ctx, rng)
+		err := Project{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -123,8 +120,8 @@ func Test_Project_Env(t *testing.T) {
 
 	t.Run("all environment variables set", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -134,30 +131,29 @@ func Test_Project_Env(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		rng.EnvSet(EnvSSHAuthSock, "socket")
 		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		// --- When ---
-		err := Project{}.Env(ctx, rng)
+		err := Project{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		want := "" +
-			ev(xdef.EnvBldDate, "2000-01-02T03:04:05.600Z") + "\n" +
-			ev(xdef.EnvPrjName, "project") + "\n" +
-			ev(xdef.EnvScmHash, cm.Hash) + "\n" +
-			ev(xdef.EnvScmRepo, prjkit.GitOrigin) + "\n" +
-			ev(xdef.EnvScmRev, "v0.1.0") + "\n" +
-			ev(xdef.EnvScmState, gitaid.StateClean) + "\n" +
-			ev(EnvSSHAuthSock, "socket") + "\n"
+			xdef.EnvBldDate + "=2000-01-02T03:04:05.600Z" + "\n" +
+			xdef.EnvPrjName + "=project" + "\n" +
+			xdef.EnvScmHash + "=" + cm.Hash + "\n" +
+			xdef.EnvScmRepo + "=" + prjkit.GitOrigin + "\n" +
+			xdef.EnvScmRev + "=v0.1.0" + "\n" +
+			xdef.EnvScmState + "=" + gitaid.StateClean + "\n" +
+			EnvSSHAuthSock + "=socket" + "\n"
 		assert.Equal(t, want, tst.Stdout())
 	})
 
 	t.Run("print specific variable", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring(xdef.EnvScmState)
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -165,10 +161,8 @@ func Test_Project_Env(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring(xdef.EnvScmState)
-
 		// --- When ---
-		err := Project{}.Env(ctx, rng)
+		err := Project{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -177,8 +171,8 @@ func Test_Project_Env(t *testing.T) {
 
 	t.Run("single variable with export flag", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("-e", xdef.EnvScmState)
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -186,20 +180,18 @@ func Test_Project_Env(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("-e", xdef.EnvScmState)
-
 		// --- When ---
-		err := Project{}.Env(ctx, rng)
+		err := Project{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, ScmNo, tst.Stdout())
 	})
 
-	t.Run("print not existing environment variable", func(t *testing.T) {
+	t.Run("unknown variable", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("unknown")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -207,64 +199,56 @@ func Test_Project_Env(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("unknown")
-
 		// --- When ---
-		err := Project{}.Env(ctx, rng)
+		err := Project{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, "", tst.Stdout())
 	})
 
-	t.Run("too many args error", func(t *testing.T) {
+	t.Run("error - too many args", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring(xdef.EnvScmState, xdef.EnvPrjName)
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 
-		rng := tst.Ring(xdef.EnvScmState, xdef.EnvPrjName)
-
 		// --- When ---
-		err := Project{}.Env(ctx, rng)
+		err := Project{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrTooManyArgs, err)
 	})
 
-	t.Run("unknown flag", func(t *testing.T) {
+	t.Run("error - unknown flag", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("--nope")
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 
-		rng := tst.Ring("--nope")
-
 		// --- When ---
-		err := Project{}.Env(ctx, rng)
+		err := Project{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "flag provided but not defined: -nope", err)
 		assert.Contain(t, "Usage of :project:env:", tst.Stderr())
 	})
 
-	t.Run("needs project config", func(t *testing.T) {
+	t.Run("error - no project config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Project{}.Env(ctx, rng)
+		err := Project{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoConfig, err)
@@ -272,17 +256,15 @@ func Test_Project_Env(t *testing.T) {
 
 	t.Run("help", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("--help")
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--help")
-
 		// --- When ---
-		err := Project{}.Env(ctx, rng)
+		err := Project{}.Env(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -297,35 +279,34 @@ func Test_Project_Env(t *testing.T) {
 func Test_Project_Info(t *testing.T) {
 	t.Run("minimal", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
 		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		// --- When ---
-		err := Project{}.Info(ctx, rng)
+		err := Project{}.Info(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		want := []string{
-			ev(xdef.EnvBldDate, "2000-01-02T03:04:05.600Z"),
-			ev(xdef.EnvPrjName, "project"),
-			ev(xdef.EnvScmState, ScmNo),
+			xdef.EnvBldDate + "=2000-01-02T03:04:05.600Z",
+			xdef.EnvPrjName + "=project",
+			xdef.EnvScmState + "=" + ScmNo,
 		}
 		assert.Equal(t, want, toEnv(tst.Stdout()))
 	})
 
 	t.Run("all fields set", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
@@ -335,41 +316,38 @@ func Test_Project_Info(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		rng.EnvSet(EnvSSHAuthSock, "socket")
 		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		// --- When ---
-		err := Project{}.Info(ctx, rng)
+		err := Project{}.Info(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		want := []string{
-			ev(xdef.EnvBldDate, "2000-01-02T03:04:05.600Z"),
-			ev(xdef.EnvPrjName, "project"),
-			ev(xdef.EnvScmHash, cm.Hash),
-			ev(xdef.EnvScmRepo, prjkit.GitOrigin),
-			ev(xdef.EnvScmRev, "v0.1.0"),
-			ev(xdef.EnvScmState, gitaid.StateClean),
-			ev(EnvSSHAuthSock, "socket"),
+			xdef.EnvBldDate + "=2000-01-02T03:04:05.600Z",
+			xdef.EnvPrjName + "=project",
+			xdef.EnvScmHash + "=" + cm.Hash,
+			xdef.EnvScmRepo + "=" + prjkit.GitOrigin,
+			xdef.EnvScmRev + "=v0.1.0",
+			xdef.EnvScmState + "=" + gitaid.StateClean,
+			EnvSSHAuthSock + "=socket",
 		}
 		assert.Equal(t, want, toEnv(tst.Stdout()))
 	})
 
 	t.Run("print specific field value", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring(xdef.EnvScmState)
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring(xdef.EnvScmState)
-
 		// --- When ---
-		err := Project{}.Info(ctx, rng)
+		err := Project{}.Info(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -378,36 +356,32 @@ func Test_Project_Info(t *testing.T) {
 
 	t.Run("print unknown field value", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("unknown")
 
 		prj := gmtest.NewProject(t)
 		prj.WithConfig()
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("unknown")
-
 		// --- When ---
-		err := Project{}.Info(ctx, rng)
+		err := Project{}.Info(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, "", tst.Stdout())
 	})
 
-	t.Run("too many args error", func(t *testing.T) {
+	t.Run("error - too many args", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring(xdef.EnvScmState, xdef.EnvPrjName)
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 
-		rng := tst.Ring(xdef.EnvScmState, xdef.EnvPrjName)
-
 		// --- When ---
-		err := Project{}.Info(ctx, rng)
+		err := Project{}.Info(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrTooManyArgs, err)
@@ -429,19 +403,17 @@ func Test_Project_Info(t *testing.T) {
 		assert.Equal(t, want, tst.Stderr())
 	})
 
-	t.Run("needs project config", func(t *testing.T) {
+	t.Run("error - no project config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Project{}.Info(ctx, rng)
+		err := Project{}.Info(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoConfig, err)
@@ -449,9 +421,8 @@ func Test_Project_Info(t *testing.T) {
 }
 
 func Test_Project_Setup(t *testing.T) {
-	t.Run("in current working directory with git origin", func(t *testing.T) {
+	t.Run("cwd with origin", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
 
 		prj := gmtest.NewProject(t)
@@ -463,21 +434,20 @@ func Test_Project_Setup(t *testing.T) {
 		setStructure(t, rng)
 
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Contain(t, "done\n", tst.Stdout())
-		have := prj.ReadFileStr("go.mod")
-		assert.Contain(t, "module example.com/comp/acme\n", have)
+		mod := prj.ReadFileStr("go.mod")
+		assert.Contain(t, "module example.com/comp/acme\n", mod)
 		assert.Contain(t, origin, prj.ReadFileStr(".git", "config"))
-		have = prj.ReadFileStr("dev", "idea", "go-test-all.run.xml")
-		assert.Contain(t, `name="acme"`, have)
+		runCfg := prj.ReadFileStr("dev", "idea", "go-test-all.run.xml")
+		assert.Contain(t, `name="acme"`, runCfg)
 	})
 
-	t.Run("in current working directory with module name", func(t *testing.T) {
+	t.Run("cwd with module", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
 
 		prj := gmtest.NewProject(t)
@@ -489,65 +459,61 @@ func Test_Project_Setup(t *testing.T) {
 		setStructure(t, rng)
 
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Contain(t, "done\n", tst.Stdout())
-		have := prj.ReadFileStr("go.mod")
-		assert.Contain(t, "module "+module+"\n", have)
+		mod := prj.ReadFileStr("go.mod")
+		assert.Contain(t, "module "+module+"\n", mod)
 		assert.NotContain(t, "[remote ", prj.ReadFileStr(".git", "config"))
-		have = prj.ReadFileStr("dev", "idea", "go-test-all.run.xml")
-		assert.Contain(t, `name="my-repo"`, have)
+		runCfg := prj.ReadFileStr("dev", "idea", "go-test-all.run.xml")
+		assert.Contain(t, `name="my-repo"`, runCfg)
 	})
 
 	t.Run("error - directory is not empty", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("--origin", "git@example.com:comp/acme.git")
 
 		prj := gmtest.NewProject(t)
 		prj.CreateFileWith("file0 1", "file0.txt")
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--origin", "git@example.com:comp/acme.git")
 		setStructure(t, rng)
 
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrDirNotEmpty, err)
 		assert.ErrorContain(t, "use --force to set up anyway", err)
-
 		assert.NoFileExist(t, prj.Path("go.mod"))
 		assert.NoDirExist(t, prj.Path(".git"))
 	})
 
-	t.Run("error - directory holds only a dot entry", func(t *testing.T) {
+	t.Run("error - only dot entry", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("--origin", "git@example.com:comp/acme.git")
 
 		prj := gmtest.NewProject(t)
 		prj.CreateFileWith("ignored", ".hidden")
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--origin", "git@example.com:comp/acme.git")
 		setStructure(t, rng)
 
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrDirNotEmpty, err)
 	})
 
-	t.Run("force sets up in a non-empty directory", func(t *testing.T) {
+	t.Run("force non-empty directory", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
 
 		prj := gmtest.NewProject(t)
@@ -560,20 +526,18 @@ func Test_Project_Setup(t *testing.T) {
 		setStructure(t, rng)
 
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Contain(t, "done\n", tst.Stdout())
-
-		have := prj.ReadFileStr("go.mod")
-		assert.Contain(t, "module example.com/comp/acme\n", have)
+		mod := prj.ReadFileStr("go.mod")
+		assert.Contain(t, "module example.com/comp/acme\n", mod)
 		assert.Equal(t, "file0 1", prj.ReadFileStr("file0.txt"))
 	})
 
 	t.Run("create directory with git origin", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
 
 		prj := gmtest.NewProject(t)
@@ -585,21 +549,20 @@ func Test_Project_Setup(t *testing.T) {
 		setStructure(t, rng)
 
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Contain(t, "done\n", tst.Stdout())
-		have := prj.ReadFileStr("acme", "go.mod")
-		assert.Contain(t, "module example.com/comp/acme\n", have)
+		mod := prj.ReadFileStr("acme", "go.mod")
+		assert.Contain(t, "module example.com/comp/acme\n", mod)
 		assert.Contain(t, origin, prj.ReadFileStr("acme", ".git", "config"))
-		have = prj.ReadFileStr("acme", "dev", "idea", "go-test-all.run.xml")
-		assert.Contain(t, `name="acme"`, have)
+		mod = prj.ReadFileStr("acme", "dev", "idea", "go-test-all.run.xml")
+		assert.Contain(t, `name="acme"`, mod)
 	})
 
 	t.Run("create directory with module name", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
 
 		prj := gmtest.NewProject(t)
@@ -611,33 +574,34 @@ func Test_Project_Setup(t *testing.T) {
 		setStructure(t, rng)
 
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Contain(t, "done\n", tst.Stdout())
-		have := prj.ReadFileStr("my-repo", "go.mod")
-		assert.Contain(t, "module "+module+"\n", have)
-		assert.NotContain(t, "[remote ", prj.ReadFileStr("my-repo", ".git", "config"))
-		have = prj.ReadFileStr("my-repo", "dev", "idea", "go-test-all.run.xml")
-		assert.Contain(t, `name="my-repo"`, have)
+		mod := prj.ReadFileStr("my-repo", "go.mod")
+		assert.Contain(t, "module "+module+"\n", mod)
+		gitCfg := prj.ReadFileStr("my-repo", ".git", "config")
+		assert.NotContain(t, "[remote ", gitCfg)
+		idea := prj.Path("my-repo", "dev", "idea")
+		runCfg := oskit.ReadFileStr(t, idea, "go-test-all.run.xml")
+		assert.Contain(t, `name="my-repo"`, runCfg)
 	})
 
-	t.Run("mkdir target already exists", func(t *testing.T) {
+	t.Run("error - mkdir target exists", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("--module", "example.com/comp/my-repo", "--mkdir")
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 		oskit.MkdirAll(t, prj.Root(), "my-repo")
 
-		rng := tst.Ring("--module", "example.com/comp/my-repo", "--mkdir")
 		setStructure(t, rng)
 
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "file exists", err)
@@ -645,17 +609,15 @@ func Test_Project_Setup(t *testing.T) {
 
 	t.Run("error - mkdir without origin or module", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("--mkdir")
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--mkdir")
-
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrMkdirNeedsName, err)
@@ -680,41 +642,38 @@ func Test_Project_Setup(t *testing.T) {
 
 	t.Run("default module name", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		setStructure(t, rng)
 
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Contain(t, "done\n", tst.Stdout())
 		assert.Contain(t, "module project\n", prj.ReadFileStr("go.mod"))
 		assert.NotContain(t, "[remote ", prj.ReadFileStr(".git", "config"))
-		have := prj.ReadFileStr("dev", "idea", "go-test-all.run.xml")
-		assert.Contain(t, `name="project"`, have)
+		runCfg := prj.ReadFileStr("dev", "idea", "go-test-all.run.xml")
+		assert.Contain(t, `name="project"`, runCfg)
 	})
 
 	t.Run("show help", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("--help")
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--help")
-
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -734,19 +693,17 @@ func Test_Project_Setup(t *testing.T) {
 		assert.Equal(t, want, tst.Stderr())
 	})
 
-	t.Run("unknown flag", func(t *testing.T) {
+	t.Run("error - unknown flag", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("--unknown")
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--unknown")
-
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "flag provided but not defined: -unknown", err)
@@ -767,30 +724,28 @@ func Test_Project_Setup(t *testing.T) {
 		assert.Equal(t, want, tst.Stderr())
 	})
 
-	t.Run("mkdir on an existing directory needs force", func(t *testing.T) {
+	t.Run("error - mkdir existing directory", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("--origin", "git@example.com:comp/acme.git", "--mkdir")
 
 		prj := gmtest.NewProject(t)
 		prj.CreateDir("acme")
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--origin", "git@example.com:comp/acme.git", "--mkdir")
 		setStructure(t, rng)
 
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, os.ErrExist, err)
 		assert.NoFileExist(t, prj.Path("acme", "go.mod"))
 	})
 
-	t.Run("force mkdir adopts an existing directory", func(t *testing.T) {
+	t.Run("force mkdir existing directory", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
 
 		prj := gmtest.NewProject(t)
@@ -803,20 +758,18 @@ func Test_Project_Setup(t *testing.T) {
 		setStructure(t, rng)
 
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Contain(t, "done\n", tst.Stdout())
-
-		have := prj.ReadFileStr("acme", "go.mod")
-		assert.Contain(t, "module example.com/comp/acme\n", have)
+		mod := prj.ReadFileStr("acme", "go.mod")
+		assert.Contain(t, "module example.com/comp/acme\n", mod)
 		assert.Equal(t, "file0 1", prj.ReadFileStr("acme", "file0.txt"))
 	})
 
 	t.Run("error - force mkdir onto a file", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 
 		prj := gmtest.NewProject(t)
@@ -832,16 +785,15 @@ func Test_Project_Setup(t *testing.T) {
 		setStructure(t, rng)
 
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNotDir, err)
 		assert.Equal(t, "not a dir", prj.ReadFileStr("acme"))
 	})
 
-	t.Run("mkdir leaves nothing behind when a check fails", func(t *testing.T) {
+	t.Run("error - mkdir check leaves nothing", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 
 		prj := gmtest.NewProject(t)
@@ -853,16 +805,15 @@ func Test_Project_Setup(t *testing.T) {
 		rng := tst.Ring("-o", origin, "-m", module, "--mkdir")
 
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrModuleOriginMismatch, err)
 		assert.NoDirExist(t, prj.Path("acme"))
 	})
 
-	t.Run("both origin and module set and incompatible", func(t *testing.T) {
+	t.Run("error - origin and module mismatch", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 
 		prj := gmtest.NewProject(t)
@@ -874,25 +825,23 @@ func Test_Project_Setup(t *testing.T) {
 		rng := tst.Ring("-o", origin, "-m", module)
 
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrModuleOriginMismatch, err)
 	})
 
-	t.Run("setup error - no structure configured", func(t *testing.T) {
+	t.Run("error - no structure configured", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Project{}.Setup(ctx, rng)
+		err := Project{}.Setup(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoStructure, err)

@@ -4,7 +4,6 @@
 package gmprj
 
 import (
-	"context"
 	"os"
 	"testing"
 	"time"
@@ -22,7 +21,7 @@ import (
 )
 
 func Test_NewInfo(t *testing.T) {
-	t.Run("SSH_AUTH_SOCK and C42_BLD_DATE not set", func(t *testing.T) {
+	t.Run("nothing set", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t)
 		rng := tst.Ring()
@@ -30,14 +29,14 @@ func Test_NewInfo(t *testing.T) {
 		rng.EnvUnset(xdef.EnvBldDate)
 
 		// --- When ---
-		inf := NewInfo(rng.EnvAll())
+		have := NewInfo(rng.EnvAll())
 
 		// --- Then ---
-		assert.Empty(t, inf.Config)
-		assert.Empty(t, inf.Other)
-		assert.Within(t, time.Now(), "1s", inf.BuildDate)
-		assert.False(t, inf.HasDockerfile)
-		assert.Empty(t, inf.LDFlags)
+		assert.Empty(t, have.Config)
+		assert.Empty(t, have.Other)
+		assert.Within(t, time.Now(), "1s", have.BuildDate)
+		assert.False(t, have.HasDockerfile)
+		assert.Empty(t, have.LDFlags)
 	})
 
 	t.Run("SSH_AUTH_SOCK set", func(t *testing.T) {
@@ -48,15 +47,15 @@ func Test_NewInfo(t *testing.T) {
 		rng.EnvUnset(xdef.EnvBldDate)
 
 		// --- When ---
-		inf := NewInfo(rng.EnvAll())
+		have := NewInfo(rng.EnvAll())
 
 		// --- Then ---
-		assert.Empty(t, inf.Config)
+		assert.Empty(t, have.Config)
 		want := map[string]string{EnvSSHAuthSock: "socket"}
-		assert.Equal(t, want, inf.Other)
-		assert.Within(t, time.Now(), "1s", inf.BuildDate)
-		assert.False(t, inf.HasDockerfile)
-		assert.Empty(t, inf.LDFlags)
+		assert.Equal(t, want, have.Other)
+		assert.Within(t, time.Now(), "1s", have.BuildDate)
+		assert.False(t, have.HasDockerfile)
+		assert.Empty(t, have.LDFlags)
 	})
 
 	t.Run("C42_BLD_DATE set", func(t *testing.T) {
@@ -67,14 +66,14 @@ func Test_NewInfo(t *testing.T) {
 		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
 
 		// --- When ---
-		inf := NewInfo(rng.EnvAll())
+		have := NewInfo(rng.EnvAll())
 
 		// --- Then ---
-		assert.Empty(t, inf.Config)
-		assert.Empty(t, inf.Other)
-		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
-		assert.False(t, inf.HasDockerfile)
-		assert.Empty(t, inf.LDFlags)
+		assert.Empty(t, have.Config)
+		assert.Empty(t, have.Other)
+		assert.Time(t, "2000-01-02T03:04:05.6Z", have.BuildDate)
+		assert.False(t, have.HasDockerfile)
+		assert.Empty(t, have.LDFlags)
 	})
 
 	t.Run("C42_BLD_DATE invalid", func(t *testing.T) {
@@ -85,19 +84,19 @@ func Test_NewInfo(t *testing.T) {
 		rng.EnvSet(xdef.EnvBldDate, "invalid")
 
 		// --- When ---
-		inf := NewInfo(rng.EnvAll())
+		have := NewInfo(rng.EnvAll())
 
 		// --- Then ---
-		assert.Empty(t, inf.Config)
-		assert.Empty(t, inf.Other)
-		assert.Within(t, time.Now(), "1s", inf.BuildDate)
-		assert.False(t, inf.HasDockerfile)
-		assert.Empty(t, inf.LDFlags)
+		assert.Empty(t, have.Config)
+		assert.Empty(t, have.Other)
+		assert.Within(t, time.Now(), "1s", have.BuildDate)
+		assert.False(t, have.HasDockerfile)
+		assert.Empty(t, have.LDFlags)
 	})
 }
 
 func Test_GetInfo(t *testing.T) {
-	t.Run("no go.mod under an ancestor module", func(t *testing.T) {
+	t.Run("no go mod under ancestor module", func(t *testing.T) {
 		// --- Given ---
 		rng := ringtest.New(t).Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
@@ -125,16 +124,15 @@ func Test_GetInfo(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		inf, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.ErrorContain(t, "invalid C42_BLD_DATE: \"2020-01-01\"", err)
-		assert.Nil(t, inf)
+		assert.Nil(t, have)
 	})
 
 	t.Run("minimal project structure", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
@@ -145,27 +143,26 @@ func Test_GetInfo(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		inf, err := GetInfo(ctx, rng.EnvAll(), prj.Root())
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, prj.Root(), inf.Root)
-		assert.Equal(t, gitaid.Version{}, inf.Version)
-		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
-		assert.False(t, inf.HasDockerfile)
-		assert.Empty(t, inf.LDFlags)
+		assert.Equal(t, prj.Root(), have.Root)
+		assert.Equal(t, gitaid.Version{}, have.Version)
+		assert.Time(t, "2000-01-02T03:04:05.6Z", have.BuildDate)
+		assert.False(t, have.HasDockerfile)
+		assert.Empty(t, have.LDFlags)
 		want := []string{
-			ev(xdef.EnvBldDate, "2000-01-02T03:04:05.600Z"),
-			ev(xdef.EnvPrjName, "project"),
-			ev(xdef.EnvScmState, ScmNo),
+			xdef.EnvBldDate + "=2000-01-02T03:04:05.600Z",
+			xdef.EnvPrjName + "=project",
+			xdef.EnvScmState + "=" + ScmNo,
 		}
-		assert.Equal(t, want, inf.Env())
+		assert.Equal(t, want, have.Env())
 		assert.Fields(t, 7, Info{})
 	})
 
 	t.Run("SSH socket set from environment", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(EnvSSHAuthSock, "socket")
@@ -176,27 +173,26 @@ func Test_GetInfo(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		inf, err := GetInfo(ctx, rng.EnvAll(), prj.Root())
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, prj.Root(), inf.Root)
-		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
-		assert.False(t, inf.HasDockerfile)
-		assert.Empty(t, inf.LDFlags)
+		assert.Equal(t, prj.Root(), have.Root)
+		assert.Time(t, "2000-01-02T03:04:05.6Z", have.BuildDate)
+		assert.False(t, have.HasDockerfile)
+		assert.Empty(t, have.LDFlags)
 		want := []string{
-			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
-			ev(xdef.EnvPrjName, "project"),
-			ev(xdef.EnvScmState, ScmNo),
-			ev(EnvSSHAuthSock, "socket"),
+			xdef.EnvBldDate + "=" + have.BuildDateFmt(),
+			xdef.EnvPrjName + "=project",
+			xdef.EnvScmState + "=" + ScmNo,
+			EnvSSHAuthSock + "=socket",
 		}
-		assert.Equal(t, want, inf.Env())
+		assert.Equal(t, want, have.Env())
 		assert.Fields(t, 7, Info{})
 	})
 
 	t.Run("config file loaded", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvSet(xdef.EnvBldDate, "2000-01-02T03:04:05.6Z")
@@ -206,21 +202,20 @@ func Test_GetInfo(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		inf, err := GetInfo(ctx, rng.EnvAll(), prj.Root())
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, prj.Root(), inf.Root)
-		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
-		assert.False(t, inf.HasDockerfile)
-		assert.Empty(t, inf.LDFlags)
-		assert.HasKeyValue(t, "KEY", "VAL", inf.Config)
-		assert.Len(t, 1, inf.Config)
+		assert.Equal(t, prj.Root(), have.Root)
+		assert.Time(t, "2000-01-02T03:04:05.6Z", have.BuildDate)
+		assert.False(t, have.HasDockerfile)
+		assert.Empty(t, have.LDFlags)
+		assert.HasKeyValue(t, "KEY", "VAL", have.Config)
+		assert.Len(t, 1, have.Config)
 	})
 
 	t.Run("initialized git repo", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
@@ -232,25 +227,24 @@ func Test_GetInfo(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		inf, err := GetInfo(ctx, rng.EnvAll(), prj.Root())
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, prj.Root(), inf.Root)
-		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
-		assert.False(t, inf.HasDockerfile)
-		assert.Empty(t, inf.LDFlags)
+		assert.Equal(t, prj.Root(), have.Root)
+		assert.Time(t, "2000-01-02T03:04:05.6Z", have.BuildDate)
+		assert.False(t, have.HasDockerfile)
+		assert.Empty(t, have.LDFlags)
 		want := []string{
-			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
-			ev(xdef.EnvPrjName, "project"),
-			ev(xdef.EnvScmState, ScmNo),
+			xdef.EnvBldDate + "=" + have.BuildDateFmt(),
+			xdef.EnvPrjName + "=project",
+			xdef.EnvScmState + "=" + ScmNo,
 		}
-		assert.Equal(t, want, inf.Env())
+		assert.Equal(t, want, have.Env())
 	})
 
 	t.Run("added not committed files", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
@@ -263,25 +257,24 @@ func Test_GetInfo(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		inf, err := GetInfo(ctx, rng.EnvAll(), prj.Root())
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, prj.Root(), inf.Root)
-		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
-		assert.False(t, inf.HasDockerfile)
-		assert.Empty(t, inf.LDFlags)
+		assert.Equal(t, prj.Root(), have.Root)
+		assert.Time(t, "2000-01-02T03:04:05.6Z", have.BuildDate)
+		assert.False(t, have.HasDockerfile)
+		assert.Empty(t, have.LDFlags)
 		want := []string{
-			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
-			ev(xdef.EnvPrjName, "project"),
-			ev(xdef.EnvScmState, ScmNo),
+			xdef.EnvBldDate + "=" + have.BuildDateFmt(),
+			xdef.EnvPrjName + "=project",
+			xdef.EnvScmState + "=" + ScmNo,
 		}
-		assert.Equal(t, want, inf.Env())
+		assert.Equal(t, want, have.Env())
 	})
 
 	t.Run("with commits and clean working dir", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
@@ -293,27 +286,26 @@ func Test_GetInfo(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		inf, err := GetInfo(ctx, rng.EnvAll(), prj.Root())
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, prj.Root(), inf.Root)
-		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
-		assert.False(t, inf.HasDockerfile)
-		assert.Empty(t, inf.LDFlags)
+		assert.Equal(t, prj.Root(), have.Root)
+		assert.Time(t, "2000-01-02T03:04:05.6Z", have.BuildDate)
+		assert.False(t, have.HasDockerfile)
+		assert.Empty(t, have.LDFlags)
 		want := []string{
-			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
-			ev(xdef.EnvPrjName, "project"),
-			ev(xdef.EnvScmHash, cm.Hash),
-			ev(xdef.EnvScmRev, "v0.0.1-dev.1+g"+cm.Hash),
-			ev(xdef.EnvScmState, gitaid.StateClean),
+			xdef.EnvBldDate + "=" + have.BuildDateFmt(),
+			xdef.EnvPrjName + "=project",
+			xdef.EnvScmHash + "=" + cm.Hash,
+			xdef.EnvScmRev + "=v0.0.1-dev.1+g" + cm.Hash,
+			xdef.EnvScmState + "=" + gitaid.StateClean,
 		}
-		assert.Equal(t, want, inf.Env())
+		assert.Equal(t, want, have.Env())
 	})
 
 	t.Run("with tag and clean working dir", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
@@ -325,27 +317,26 @@ func Test_GetInfo(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		inf, err := GetInfo(ctx, rng.EnvAll(), prj.Root())
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, prj.Root(), inf.Root)
-		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
-		assert.False(t, inf.HasDockerfile)
-		assert.Empty(t, inf.LDFlags)
+		assert.Equal(t, prj.Root(), have.Root)
+		assert.Time(t, "2000-01-02T03:04:05.6Z", have.BuildDate)
+		assert.False(t, have.HasDockerfile)
+		assert.Empty(t, have.LDFlags)
 		want := []string{
-			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
-			ev(xdef.EnvPrjName, "project"),
-			ev(xdef.EnvScmHash, cm.Hash),
-			ev(xdef.EnvScmRev, "v1.2.3"),
-			ev(xdef.EnvScmState, gitaid.StateClean),
+			xdef.EnvBldDate + "=" + have.BuildDateFmt(),
+			xdef.EnvPrjName + "=project",
+			xdef.EnvScmHash + "=" + cm.Hash,
+			xdef.EnvScmRev + "=v1.2.3",
+			xdef.EnvScmState + "=" + gitaid.StateClean,
 		}
-		assert.Equal(t, want, inf.Env())
+		assert.Equal(t, want, have.Env())
 	})
 
-	t.Run("remote repo and clean working directory", func(t *testing.T) {
+	t.Run("remote and clean", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
@@ -358,28 +349,27 @@ func Test_GetInfo(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		inf, err := GetInfo(ctx, rng.EnvAll(), prj.Root())
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, prj.Root(), inf.Root)
-		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
-		assert.False(t, inf.HasDockerfile)
-		assert.Empty(t, inf.LDFlags)
+		assert.Equal(t, prj.Root(), have.Root)
+		assert.Time(t, "2000-01-02T03:04:05.6Z", have.BuildDate)
+		assert.False(t, have.HasDockerfile)
+		assert.Empty(t, have.LDFlags)
 		want := []string{
-			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
-			ev(xdef.EnvPrjName, "project"),
-			ev(xdef.EnvScmHash, cm.Hash),
-			ev(xdef.EnvScmRepo, prjkit.GitOrigin),
-			ev(xdef.EnvScmRev, "v0.0.1-dev.1+g"+cm.Hash),
-			ev(xdef.EnvScmState, gitaid.StateClean),
+			xdef.EnvBldDate + "=" + have.BuildDateFmt(),
+			xdef.EnvPrjName + "=project",
+			xdef.EnvScmHash + "=" + cm.Hash,
+			xdef.EnvScmRepo + "=" + prjkit.GitOrigin,
+			xdef.EnvScmRev + "=v0.0.1-dev.1+g" + cm.Hash,
+			xdef.EnvScmState + "=" + gitaid.StateClean,
 		}
-		assert.Equal(t, want, inf.Env())
+		assert.Equal(t, want, have.Env())
 	})
 
 	t.Run("with go module", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
@@ -392,32 +382,32 @@ func Test_GetInfo(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		inf, err := GetInfo(ctx, rng.EnvAll(), prj.Root())
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
-
-		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
-		assert.False(t, inf.HasDockerfile)
-		wantLDFlags := "" +
+		assert.Time(t, "2000-01-02T03:04:05.6Z", have.BuildDate)
+		assert.False(t, have.HasDockerfile)
+		wLDFlags := "" +
 			"-X 'example.com/comp/project.bldDate=2000-01-02T03:04:05.600Z'" +
-			" -X 'example.com/comp/project.scmRev=v0.0.1-dev.1+g" + cm.Hash + "'" +
+			" -X 'example.com/comp/project.scmRev=" +
+			"v0.0.1-dev.1+g" + cm.Hash + "'" +
 			" -X 'example.com/comp/project.scmHash=" + cm.Hash + "'" +
-			" -X 'example.com/comp/project.scmState=" + gitaid.StateClean + "'"
-		assert.Equal(t, wantLDFlags, inf.LDFlags)
+			" -X 'example.com/comp/project.scmState=" +
+			gitaid.StateClean + "'"
+		assert.Equal(t, wLDFlags, have.LDFlags)
 		want := []string{
-			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
-			ev(xdef.EnvPrjName, "project"),
-			ev(xdef.EnvScmHash, cm.Hash),
-			ev(xdef.EnvScmRev, "v0.0.1-dev.1+g"+cm.Hash),
-			ev(xdef.EnvScmState, gitaid.StateClean),
+			xdef.EnvBldDate + "=" + have.BuildDateFmt(),
+			xdef.EnvPrjName + "=project",
+			xdef.EnvScmHash + "=" + cm.Hash,
+			xdef.EnvScmRev + "=v0.0.1-dev.1+g" + cm.Hash,
+			xdef.EnvScmState + "=" + gitaid.StateClean,
 		}
-		assert.Equal(t, want, inf.Env())
+		assert.Equal(t, want, have.Env())
 	})
 
 	t.Run("with go module and tags", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 		rng.EnvUnset(EnvSSHAuthSock)
@@ -430,33 +420,31 @@ func Test_GetInfo(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		inf, err := GetInfo(ctx, rng.EnvAll(), prj.Root())
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
-
-		assert.Time(t, "2000-01-02T03:04:05.6Z", inf.BuildDate)
-		assert.False(t, inf.HasDockerfile)
-		wantLDFlags := "" +
+		assert.Time(t, "2000-01-02T03:04:05.6Z", have.BuildDate)
+		assert.False(t, have.HasDockerfile)
+		wLDFlags := "" +
 			"-X 'example.com/comp/project.bldDate=2000-01-02T03:04:05.600Z'" +
 			" -X 'example.com/comp/project.scmRev=v1.2.3'" +
 			" -X 'example.com/comp/project.scmHash=" + cm.Hash + "'" +
-			" -X 'example.com/comp/project.scmState=" + gitaid.StateClean + "'" +
-			""
-		assert.Equal(t, wantLDFlags, inf.LDFlags)
+			" -X 'example.com/comp/project.scmState=" +
+			gitaid.StateClean + "'"
+		assert.Equal(t, wLDFlags, have.LDFlags)
 		want := []string{
-			ev(xdef.EnvBldDate, inf.BuildDateFmt()),
-			ev(xdef.EnvPrjName, "project"),
-			ev(xdef.EnvScmHash, cm.Hash),
-			ev(xdef.EnvScmRev, "v1.2.3"),
-			ev(xdef.EnvScmState, gitaid.StateClean),
+			xdef.EnvBldDate + "=" + have.BuildDateFmt(),
+			xdef.EnvPrjName + "=project",
+			xdef.EnvScmHash + "=" + cm.Hash,
+			xdef.EnvScmRev + "=v1.2.3",
+			xdef.EnvScmState + "=" + gitaid.StateClean,
 		}
-		assert.Equal(t, want, inf.Env())
+		assert.Equal(t, want, have.Env())
 	})
 
 	t.Run("with Dockerfile", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -466,16 +454,15 @@ func Test_GetInfo(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		inf, err := GetInfo(ctx, rng.EnvAll(), prj.Root())
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.True(t, inf.HasDockerfile)
+		assert.True(t, have.HasDockerfile)
 	})
 
-	t.Run("empty directory", func(t *testing.T) {
+	t.Run("error - empty directory", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -483,16 +470,15 @@ func Test_GetInfo(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		inf, err := GetInfo(ctx, rng.EnvAll(), prj.Root())
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoConfig, err)
-		assert.Nil(t, inf)
+		assert.Nil(t, have)
 	})
 
-	t.Run("invalid go.mod", func(t *testing.T) {
+	t.Run("error - invalid go mod", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -501,16 +487,15 @@ func Test_GetInfo(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		inf, err := GetInfo(ctx, rng.EnvAll(), prj.Root())
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.ErrorIs(t, gmgo.ErrImpPath, err)
-		assert.Nil(t, inf)
+		assert.Nil(t, have)
 	})
 
-	t.Run("invalid config file", func(t *testing.T) {
+	t.Run("error - invalid config file", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -521,16 +506,15 @@ func Test_GetInfo(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		inf, err := GetInfo(ctx, rng.EnvAll(), prj.Root())
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.ErrorIs(t, dotenv.ErrInvLine, err)
-		assert.Nil(t, inf)
+		assert.Nil(t, have)
 	})
 
-	t.Run("without config file", func(t *testing.T) {
+	t.Run("error - no config file", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
 		rng := tst.Ring()
 
@@ -539,12 +523,12 @@ func Test_GetInfo(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		inf, err := GetInfo(ctx, rng.EnvAll(), prj.Root())
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
 
 		// --- Then ---
 		assert.ErrorIs(t, os.ErrNotExist, err)
 		assert.ErrorIs(t, ErrNoConfig, err)
-		assert.Nil(t, inf)
+		assert.Nil(t, have)
 	})
 }
 
@@ -621,11 +605,11 @@ func Test_Info_CfgLookup(t *testing.T) {
 		}
 
 		// --- When ---
-		haveVal, haveExist := inf.CfgLookup("CFG1")
+		hVal, hExist := inf.CfgLookup("CFG1")
 
 		// --- Then ---
-		assert.Equal(t, "CV1", haveVal)
-		assert.True(t, haveExist)
+		assert.Equal(t, "CV1", hVal)
+		assert.True(t, hExist)
 	})
 
 	t.Run("get not existing", func(t *testing.T) {
@@ -638,11 +622,11 @@ func Test_Info_CfgLookup(t *testing.T) {
 		}
 
 		// --- When ---
-		haveVal, haveExist := inf.CfgLookup("CFG2")
+		hVal, hExist := inf.CfgLookup("CFG2")
 
 		// --- Then ---
-		assert.Equal(t, "", haveVal)
-		assert.False(t, haveExist)
+		assert.Equal(t, "", hVal)
+		assert.False(t, hExist)
 	})
 
 	t.Run("get non config", func(t *testing.T) {
@@ -655,15 +639,15 @@ func Test_Info_CfgLookup(t *testing.T) {
 		}
 
 		// --- When ---
-		haveVal, haveExist := inf.CfgLookup(xdef.EnvPrjName)
+		hVal, hExist := inf.CfgLookup(xdef.EnvPrjName)
 
 		// --- Then ---
-		assert.Equal(t, "", haveVal)
-		assert.False(t, haveExist)
+		assert.Equal(t, "", hVal)
+		assert.False(t, hExist)
 	})
 }
 
-func Test_Info_Set_Get(t *testing.T) {
+func Test_Info_Set(t *testing.T) {
 	t.Run("zero value", func(t *testing.T) {
 		// --- Given ---
 		var inf Info
@@ -730,11 +714,11 @@ func Test_Info_Lookup(t *testing.T) {
 		inf.Set("EXTRA", "field")
 
 		// --- When ---
-		haveVal, haveExist := inf.Lookup("EXTRA")
+		hVal, hExist := inf.Lookup("EXTRA")
 
 		// --- Then ---
-		assert.Equal(t, "field", haveVal)
-		assert.True(t, haveExist)
+		assert.Equal(t, "field", hVal)
+		assert.True(t, hExist)
 	})
 
 	t.Run("added empty", func(t *testing.T) {
@@ -745,11 +729,11 @@ func Test_Info_Lookup(t *testing.T) {
 		inf.Set("EXTRA", "")
 
 		// --- When ---
-		haveVal, haveExist := inf.Lookup("EXTRA")
+		hVal, hExist := inf.Lookup("EXTRA")
 
 		// --- Then ---
-		assert.Equal(t, "", haveVal)
-		assert.True(t, haveExist)
+		assert.Equal(t, "", hVal)
+		assert.True(t, hExist)
 	})
 
 	t.Run("empty field", func(t *testing.T) {
@@ -760,11 +744,11 @@ func Test_Info_Lookup(t *testing.T) {
 		inf.Set("EXTRA", "")
 
 		// --- When ---
-		haveVal, haveExist := inf.Lookup(xdef.EnvPrjName)
+		hVal, hExist := inf.Lookup(xdef.EnvPrjName)
 
 		// --- Then ---
-		assert.Equal(t, "", haveVal)
-		assert.False(t, haveExist)
+		assert.Equal(t, "", hVal)
+		assert.False(t, hExist)
 	})
 
 	t.Run("unknown field", func(t *testing.T) {
@@ -774,11 +758,11 @@ func Test_Info_Lookup(t *testing.T) {
 		}
 
 		// --- When ---
-		haveVal, haveExist := inf.Lookup("EXTRA")
+		hVal, hExist := inf.Lookup("EXTRA")
 
 		// --- Then ---
-		assert.Equal(t, "", haveVal)
-		assert.False(t, haveExist)
+		assert.Equal(t, "", hVal)
+		assert.False(t, hExist)
 	})
 }
 

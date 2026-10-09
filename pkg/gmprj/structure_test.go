@@ -23,12 +23,12 @@ import (
 func Test_structNode_UnmarshalJSON(t *testing.T) {
 	t.Run("file node attributes", func(t *testing.T) {
 		// --- Given ---
-		data := []byte(`{` +
-			`"type":"file",` +
-			`"content":"body",` +
-			`"mode":"0755",` +
-			`"feature":"git"` +
-			`}`)
+		data := []byte(`{
+			"type": "file",
+			"content": "body",
+			"mode": "0755",
+			"feature": "git"
+		}`)
 
 		// --- When ---
 		var have structNode
@@ -43,7 +43,7 @@ func Test_structNode_UnmarshalJSON(t *testing.T) {
 		assert.Len(t, 0, have.Children)
 	})
 
-	t.Run("reserved keys never become children", func(t *testing.T) {
+	t.Run("reserved keys", func(t *testing.T) {
 		// --- Given ---
 		data := []byte(`{"type":"dir","cmd":{"type":"dir"}}`)
 
@@ -60,11 +60,16 @@ func Test_structNode_UnmarshalJSON(t *testing.T) {
 
 	t.Run("nested tree decodes fully", func(t *testing.T) {
 		// --- Given ---
-		data := []byte(`{` +
-			`"type":"dir",` +
-			`"dev":{"type":"dir","idea":{` +
-			`"type":"dir","run.xml":{"type":"file","content":"x"}}}` +
-			`}`)
+		data := []byte(`{
+			"type": "dir",
+			"dev": {
+				"type": "dir",
+				"idea": {
+					"type": "dir",
+					"run.xml": {"type": "file", "content": "x"}
+				}
+			}
+		}`)
 
 		// --- When ---
 		var have structNode
@@ -78,7 +83,7 @@ func Test_structNode_UnmarshalJSON(t *testing.T) {
 		assert.Equal(t, "x", run.Content)
 	})
 
-	t.Run("error - attribute of wrong JSON kind", func(t *testing.T) {
+	t.Run("error - wrong attribute kind", func(t *testing.T) {
 		// --- Given ---
 		data := []byte(`{"content":123}`)
 
@@ -201,6 +206,41 @@ func Test_loadStructure(t *testing.T) {
 	})
 }
 
+func Test_loadStructure_fixture(t *testing.T) {
+	// --- Given ---
+	// gomake parses the user's gomake.yaml and delivers the target's block to
+	// the target as JSON; this fixture is that JSON, mirroring doc/gomake.yaml.
+	block := oskit.ReadFile(t, "testdata", "gomake.json")
+
+	rng := ringtest.New(t).Ring()
+	rng.MetaSet(gomake.ConfigMetaKey, block)
+
+	root := t.TempDir()
+	vrs := tmplVars{ProjectName: "acme"}
+
+	// --- When ---
+	have, err := loadStructure(rng)
+
+	// --- Then ---
+	assert.NoError(t, err)
+	assert.NoError(t, have.materialize(
+		io.Discard,
+		root,
+		vrs,
+		featureGit,
+		featureGolang,
+	))
+	assert.DirExist(t, filepath.Join(root, "dev", "idea"))
+	assert.DirExist(t, filepath.Join(root, "build"))
+	assert.False(t, oskit.PathExists(t, filepath.Join(root, "build", "idea")))
+	xml := oskit.ReadFileStr(t, root, "dev", "idea", "go-test-all.run.xml")
+	assert.Contain(t, `name="acme"`, xml)
+	editorCfg := oskit.ReadFileStr(t, root, ".editorconfig")
+	assert.Contain(t, "root = true", editorCfg)
+	assert.Contain(t, ".idea/", oskit.ReadFileStr(t, root, ".gitignore"))
+	assert.FileExist(t, filepath.Join(root, "configs", "project.conf"))
+}
+
 func Test_structure_validate(t *testing.T) {
 	t.Run("clean tree passes", func(t *testing.T) {
 		// --- Given ---
@@ -289,9 +329,8 @@ func Test_structure_validate(t *testing.T) {
 
 	t.Run("error - nested node named by path", func(t *testing.T) {
 		// --- Given ---
-		str := structure{"dev": {Type: typeDir, Children: map[string]*structNode{
-			"idea": {Type: "bad"},
-		}}}
+		kids := map[string]*structNode{"idea": {Type: "bad"}}
+		str := structure{"dev": {Type: typeDir, Children: kids}}
 
 		// --- When ---
 		err := str.validate()
@@ -313,9 +352,8 @@ func Test_structure_validate(t *testing.T) {
 
 	t.Run("error - nested nil node", func(t *testing.T) {
 		// --- Given ---
-		str := structure{"dev": {Type: typeDir, Children: map[string]*structNode{
-			"idea": nil,
-		}}}
+		kids := map[string]*structNode{"idea": nil}
+		str := structure{"dev": {Type: typeDir, Children: kids}}
 
 		// --- When ---
 		err := str.validate()
@@ -416,7 +454,7 @@ func Test_tmplVars_render(t *testing.T) {
 		assert.Equal(t, "", have)
 	})
 
-	t.Run("error - unknown variable writes nothing", func(t *testing.T) {
+	t.Run("error - unknown variable", func(t *testing.T) {
 		// --- Given ---
 		vrs := tmplVars{ProjectName: "proj"}
 
@@ -432,14 +470,15 @@ func Test_tmplVars_render(t *testing.T) {
 func Test_structure_materialize(t *testing.T) {
 	t.Run("creates the declared tree", func(t *testing.T) {
 		// --- Given ---
-		root := t.TempDir()
 		var log bytes.Buffer
+		root := t.TempDir()
 
+		run := &structNode{Type: typeFile, Content: "name={{.ProjectName}}"}
 		str := structure{
 			"cmd": {Type: typeDir},
 			"dev": {Type: typeDir, Children: map[string]*structNode{
 				"idea": {Type: typeDir, Children: map[string]*structNode{
-					"run.xml": {Type: typeFile, Content: "name={{.ProjectName}}"},
+					"run.xml": run,
 				}},
 			}},
 			"README.md": {Type: typeFile, Content: ""},
@@ -454,9 +493,8 @@ func Test_structure_materialize(t *testing.T) {
 		assert.DirExist(t, filepath.Join(root, "cmd"))
 		assert.DirExist(t, filepath.Join(root, "dev", "idea"))
 		assert.FileExist(t, filepath.Join(root, "README.md"))
-		assert.Equal(t, "name=proj",
-			oskit.ReadFileStr(t, root, "dev", "idea", "run.xml"))
-
+		runCfg := oskit.ReadFileStr(t, root, "dev", "idea", "run.xml")
+		assert.Equal(t, "name=proj", runCfg)
 		want := "" +
 			"file created: README.md\n" +
 			"dir created: cmd\n" +
@@ -482,7 +520,7 @@ func Test_structure_materialize(t *testing.T) {
 		assert.Equal(t, os.FileMode(0o755), info.Mode().Perm())
 	})
 
-	t.Run("applies explicit directory mode past the umask", func(t *testing.T) {
+	t.Run("explicit directory mode", func(t *testing.T) {
 		// --- Given ---
 		root := t.TempDir()
 		str := structure{"secret": {Type: typeDir, Mode: "0770"}}
@@ -531,11 +569,12 @@ func Test_structure_materialize(t *testing.T) {
 		assert.True(t, info.Mode().Perm()&0o200 != 0)
 	})
 
-	t.Run("existing file is not overwritten and logs nothing", func(t *testing.T) {
+	t.Run("existing file kept", func(t *testing.T) {
 		// --- Given ---
+		var log bytes.Buffer
+
 		root := t.TempDir()
 		oskit.Write(t, "original", root, "README.md")
-		var log bytes.Buffer
 
 		str := structure{"README.md": {Type: typeFile, Content: "new"}}
 
@@ -550,9 +589,10 @@ func Test_structure_materialize(t *testing.T) {
 
 	t.Run("existing directory logs nothing", func(t *testing.T) {
 		// --- Given ---
+		var log bytes.Buffer
+
 		root := t.TempDir()
 		oskit.MkdirAll(t, root, "cmd")
-		var log bytes.Buffer
 
 		str := structure{"cmd": {Type: typeDir}}
 
@@ -588,7 +628,7 @@ func Test_structure_materialize(t *testing.T) {
 		assert.Equal(t, "", log.String())
 	})
 
-	t.Run("error - render failure leaves no file", func(t *testing.T) {
+	t.Run("error - render failure", func(t *testing.T) {
 		// --- Given ---
 		root := t.TempDir()
 		str := structure{"bad": {Type: typeFile, Content: "{{.Nope}}"}}
@@ -597,18 +637,17 @@ func Test_structure_materialize(t *testing.T) {
 		err := str.materialize(io.Discard, root, tmplVars{})
 
 		// --- Then ---
-		assert.ErrorContain(t, "bad", err)
-		assert.ErrorContain(t, "Nope", err)
+		assert.ErrorRegexp(t, "bad.*Nope", err)
 		assert.False(t, oskit.PathExists(t, root, "bad"))
 	})
 
-	t.Run("skips nodes whose feature is not enabled", func(t *testing.T) {
+	t.Run("feature disabled", func(t *testing.T) {
 		// --- Given ---
 		root := t.TempDir()
 		str := structure{
-			"README.md":  {Type: typeFile, Content: "b", Feature: featureBase},
-			".gitignore": {Type: typeFile, Content: "g", Feature: featureGit},
-			"go.sum":     {Type: typeFile, Content: "o", Feature: featureGolang},
+			"README.md":  {Type: typeFile, Feature: featureBase},
+			".gitignore": {Type: typeFile, Feature: featureGit},
+			"go.sum":     {Type: typeFile, Feature: featureGolang},
 		}
 
 		// --- When ---
@@ -625,9 +664,9 @@ func Test_structure_materialize(t *testing.T) {
 		// --- Given ---
 		root := t.TempDir()
 		str := structure{
-			"README.md":  {Type: typeFile, Content: "b", Feature: featureBase},
-			".gitignore": {Type: typeFile, Content: "g", Feature: featureGit},
-			"go.sum":     {Type: typeFile, Content: "o", Feature: featureGolang},
+			"README.md":  {Type: typeFile, Feature: featureBase},
+			".gitignore": {Type: typeFile, Feature: featureGit},
+			"go.sum":     {Type: typeFile, Feature: featureGolang},
 		}
 
 		// --- When ---
@@ -648,7 +687,7 @@ func Test_structure_materialize(t *testing.T) {
 }
 
 func Test_structNode_create(t *testing.T) {
-	t.Run("file lands when its parent is not a declared node", func(t *testing.T) {
+	t.Run("undeclared parent", func(t *testing.T) {
 		// --- Given ---
 		root := t.TempDir()
 		nod := &structNode{Type: typeFile, Content: "x"}
@@ -662,7 +701,7 @@ func Test_structNode_create(t *testing.T) {
 		assert.Equal(t, "x", oskit.ReadFileStr(t, root, "sub", "deep", "f.txt"))
 	})
 
-	t.Run("directory with children is created recursively", func(t *testing.T) {
+	t.Run("directory with children", func(t *testing.T) {
 		// --- Given ---
 		root := t.TempDir()
 		nod := &structNode{Type: typeDir, Children: map[string]*structNode{
@@ -687,8 +726,7 @@ func Test_structNode_create(t *testing.T) {
 		err := nod.create(io.Discard, root, "bad", tmplVars{}, featureSet())
 
 		// --- Then ---
-		assert.ErrorContain(t, "bad", err)
-		assert.ErrorContain(t, `invalid mode "0999"`, err)
+		assert.ErrorRegexp(t, `bad.*invalid mode "0999"`, err)
 	})
 
 	t.Run("error - child fails to render", func(t *testing.T) {
@@ -702,8 +740,7 @@ func Test_structNode_create(t *testing.T) {
 		err := nod.create(io.Discard, root, "sub", tmplVars{}, featureSet())
 
 		// --- Then ---
-		assert.ErrorContain(t, "f.txt", err)
-		assert.ErrorContain(t, "Nope", err)
+		assert.ErrorRegexp(t, `f\.txt.*Nope`, err)
 	})
 
 	t.Run("error - file with invalid mode", func(t *testing.T) {
@@ -719,7 +756,7 @@ func Test_structNode_create(t *testing.T) {
 		assert.ErrorContain(t, `invalid mode "0999"`, err)
 	})
 
-	t.Run("skips node when feature not enabled", func(t *testing.T) {
+	t.Run("feature disabled", func(t *testing.T) {
 		// --- Given ---
 		root := t.TempDir()
 		nod := &structNode{
@@ -727,51 +764,15 @@ func Test_structNode_create(t *testing.T) {
 			Content: "x",
 			Feature: featureGit,
 		}
+		feats := featureSet()
 
 		// --- When ---
-		err := nod.create(io.Discard, root, "skip.txt", tmplVars{}, featureSet())
+		err := nod.create(io.Discard, root, "skip.txt", tmplVars{}, feats)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.False(t, oskit.PathExists(t, root, "skip.txt"))
 	})
-}
-
-func Test_fixture_gomake_json(t *testing.T) {
-	// --- Given ---
-	// gomake parses the user's gomake.yaml and delivers the target's block to
-	// the target as JSON; this fixture is that JSON, mirroring doc/gomake.yaml.
-	block := oskit.ReadFile(t, "testdata", "gomake.json")
-
-	rng := ringtest.New(t).Ring()
-	rng.MetaSet(gomake.ConfigMetaKey, block)
-
-	root := t.TempDir()
-	vrs := tmplVars{ProjectName: "acme"}
-
-	// --- When ---
-	str, err := loadStructure(rng)
-
-	// --- Then ---
-	assert.NoError(t, err)
-	assert.NoError(t, str.materialize(
-		io.Discard,
-		root,
-		vrs,
-		featureGit,
-		featureGolang,
-	))
-
-	assert.DirExist(t, filepath.Join(root, "dev", "idea"))
-	assert.DirExist(t, filepath.Join(root, "build"))
-	assert.False(t, oskit.PathExists(t, filepath.Join(root, "build", "idea")))
-
-	xml := oskit.ReadFileStr(t, root, "dev", "idea", "go-test-all.run.xml")
-	assert.Contain(t, `name="acme"`, xml)
-
-	assert.Contain(t, "root = true", oskit.ReadFileStr(t, root, ".editorconfig"))
-	assert.Contain(t, ".idea/", oskit.ReadFileStr(t, root, ".gitignore"))
-	assert.FileExist(t, filepath.Join(root, "configs", "project.conf"))
 }
 
 func Test_structNode_feature(t *testing.T) {
