@@ -499,7 +499,7 @@ func Test_Setup_Setup(t *testing.T) {
 		// --- Then ---
 		assert.ErrorIs(t, gmgo.ErrModInit, err)
 		assert.ErrorContain(t, "example.com:proj/my-repo", err)
-		assert.NotEmpty(t, tst.Stdout())
+		assert.Contain(t, "setting up project in: ", tst.Stdout())
 	})
 
 	t.Run("error - directory is not empty", func(t *testing.T) {

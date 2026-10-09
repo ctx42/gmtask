@@ -412,7 +412,7 @@ func Test_tmplVars_render(t *testing.T) {
 		have, err := vrs.render("{{.ProjectName")
 
 		// --- Then ---
-		assert.Error(t, err)
+		assert.ErrorContain(t, "unclosed action", err)
 		assert.Equal(t, "", have)
 	})
 
