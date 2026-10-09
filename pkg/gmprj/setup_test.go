@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 
 	"github.com/ctx42/ring/pkg/ring/ringtest"
@@ -679,65 +680,124 @@ func Test_Setup_Setup(t *testing.T) {
 	})
 }
 
-func Test_Setup_addScmRepo(t *testing.T) {
-	t.Run("appends scm repo when repo set", func(t *testing.T) {
+func Test_Setup_addRegRepo(t *testing.T) {
+	t.Run("appends registry repo", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
-		prj.CreateDir("configs")
 		prj.CreateFile("configs", CfgFile)
 		prj.Close()
 
 		opts := []func(*Setup){WithSetupDockerRepo("my.nexus.dev:5000/repo")}
 		sup := must.Value(NewSetup(prj.Root(), opts...))
-		rng := tst.Ring()
 
 		// --- When ---
-		err := sup.addScmRepo(rng)
+		err := sup.addRegRepo(rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		have := prj.ReadFileStr(CfgPath)
-		assert.Equal(t, "C42_SCM_REPO=my.nexus.dev:5000/repo\n", have)
-		assert.Contain(t, "added C42_SCM_REPO to:", tst.Stdout())
+		want := "C42_REG_REPO=my.nexus.dev:5000/repo\n"
+		assert.Equal(t, want, prj.ReadFileStr(CfgPath))
+		want = "added C42_REG_REPO to: " + prj.Path(CfgPath) + "\n"
+		assert.Equal(t, want, tst.Stdout())
+	})
+
+	t.Run("last line without newline", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("A=1", "configs", CfgFile)
+		prj.Close()
+
+		opts := []func(*Setup){WithSetupDockerRepo("repo")}
+		sup := must.Value(NewSetup(prj.Root(), opts...))
+
+		// --- When ---
+		err := sup.addRegRepo(rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "A=1\nC42_REG_REPO=repo\n", prj.ReadFileStr(CfgPath))
+		assert.Contain(t, "added C42_REG_REPO", tst.Stdout())
+	})
+
+	t.Run("already set", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("C42_REG_REPO=old\n", "configs", CfgFile)
+		prj.Close()
+
+		opts := []func(*Setup){WithSetupDockerRepo("repo")}
+		sup := must.Value(NewSetup(prj.Root(), opts...))
+
+		// --- When ---
+		err := sup.addRegRepo(rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "C42_REG_REPO=old\n", prj.ReadFileStr(CfgPath))
+	})
+
+	t.Run("config directory missing", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+
+		opts := []func(*Setup){WithSetupDockerRepo("repo")}
+		sup := must.Value(NewSetup(prj.Root(), opts...))
+
+		// --- When ---
+		err := sup.addRegRepo(rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "C42_REG_REPO=repo\n", prj.ReadFileStr(CfgPath))
+		assert.Contain(t, "added C42_REG_REPO", tst.Stdout())
 	})
 
 	t.Run("no-op when no repo", func(t *testing.T) {
 		// --- Given ---
-		tst := ringtest.New(t)
+		rng := ringtest.New(t).Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 
 		sup := must.Value(NewSetup(prj.Root()))
-		rng := tst.Ring()
 
 		// --- When ---
-		err := sup.addScmRepo(rng)
+		err := sup.addRegRepo(rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, "", tst.Stdout())
+		assert.NoFileExist(t, prj.Path(CfgPath))
 	})
 
-	t.Run("error - config file missing", func(t *testing.T) {
+	t.Run("error - config directory is a file", func(t *testing.T) {
 		// --- Given ---
-		tst := ringtest.New(t)
+		rng := ringtest.New(t).Ring()
 
 		prj := gmtest.NewProject(t)
+		prj.CreateFile("configs")
 		prj.Close()
 
-		opts := []func(*Setup){WithSetupDockerRepo("my.nexus.dev:5000/repo")}
+		opts := []func(*Setup){WithSetupDockerRepo("repo")}
 		sup := must.Value(NewSetup(prj.Root(), opts...))
-		rng := tst.Ring()
 
 		// --- When ---
-		err := sup.addScmRepo(rng)
+		err := sup.addRegRepo(rng)
 
 		// --- Then ---
-		var e *os.PathError
-		assert.ErrorAs(t, &e, err)
+		assert.ErrorIs(t, syscall.ENOTDIR, err)
+		assert.ErrorContain(t, "create config directory", err)
 	})
 }
 

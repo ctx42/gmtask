@@ -7,8 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ctx42/gitaid/pkg/gitaid"
 	"github.com/ctx42/gomake/pkg/gomake"
@@ -18,8 +20,9 @@ import (
 	"github.com/ctx42/gmtask/pkg/gmgo"
 )
 
-// WithSetupDockerRepo is option for [NewSetup] setting Docker private
-// repository link.
+// WithSetupDockerRepo is an option for [NewSetup] setting the Docker private
+// registry repository, which [Setup.Setup] writes to the project
+// configuration as [xdef.EnvRegRepo].
 func WithSetupDockerRepo(repo string) func(*Setup) {
 	return func(setup *Setup) { setup.repo = repo }
 }
@@ -221,7 +224,7 @@ func (sup *Setup) Setup(ctx context.Context, rng *ring.Ring) error {
 		return err
 	}
 
-	if err = sup.addScmRepo(rng); err != nil {
+	if err = sup.addRegRepo(rng); err != nil {
 		return err
 	}
 
@@ -244,25 +247,47 @@ func (sup *Setup) Setup(ctx context.Context, rng *ring.Ring) error {
 	return nil
 }
 
-// addScmRepo appends the source repository variable to the project
-// configuration file when a Docker repository is configured; it is a no-op
-// when none is set.
-func (sup *Setup) addScmRepo(rng *ring.Ring) error {
+// addRegRepo appends the private registry repository variable to the project
+// configuration file when a Docker repository is configured. It is a no-op
+// when none is set or the file already sets the variable. The file and its
+// directory are created when missing.
+func (sup *Setup) addRegRepo(rng *ring.Ring) (err error) {
 	if sup.repo == "" {
 		return nil
 	}
 	pth := filepath.Join(sup.root, CfgPath)
-	fil, err := os.OpenFile(pth, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o666) //nolint:gosec
-	if err != nil {
-		return err
+	if err = os.MkdirAll(filepath.Dir(pth), 0o750); err != nil {
+		return fmt.Errorf("create config directory: %w", err)
 	}
-	defer func() { _ = fil.Close() }()
+	data, err := os.ReadFile(pth) //nolint:gosec
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("read config: %w", err)
+	}
+	key := xdef.EnvRegRepo
+	for lin := range strings.SplitSeq(string(data), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(lin), key+"=") {
+			return nil
+		}
+	}
 
-	line := fmt.Sprintf("%s=%s\n", xdef.EnvScmRepo, sup.repo)
-	if _, err = fil.WriteString(line); err != nil {
-		return err
+	line := key + "=" + sup.repo + "\n"
+	if len(data) > 0 && data[len(data)-1] != '\n' {
+		line = "\n" + line
 	}
-	_, _ = fmt.Fprintf(rng.Stdout(), "added %s to: %s\n", xdef.EnvScmRepo, pth)
+	flags := os.O_APPEND | os.O_WRONLY | os.O_CREATE
+	fil, err := os.OpenFile(pth, flags, 0o666) //nolint:gosec
+	if err != nil {
+		return fmt.Errorf("open config: %w", err)
+	}
+	defer func() {
+		if cerr := fil.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("close config: %w", cerr)
+		}
+	}()
+	if _, err = fil.WriteString(line); err != nil {
+		return fmt.Errorf("write config: %w", err)
+	}
+	_, _ = fmt.Fprintf(rng.Stdout(), "added %s to: %s\n", key, pth)
 	return nil
 }
 
