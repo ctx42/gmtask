@@ -390,6 +390,28 @@ func Test_Image_Run(t *testing.T) {
 		assert.Equal(t, "third image\n", tst.Stdout())
 	})
 
+	t.Run("dry run needs no daemon", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+
+		prj := gmtest.NewProject(t)
+		prj.CfgRegRepoDef()
+		prj.WithDockerfile()
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring("--name", prj.ImgName(), "--tag", prj.ImgTag(), "-d")
+		rng.EnvSet("DOCKER_HOST", "tcp://127.0.0.1:1")
+
+		// --- When ---
+		err := Image{}.Run(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "docker build", tst.Stderr())
+		assert.Contain(t, "#gomake INFO# docker run --rm", tst.Stderr())
+	})
+
 	t.Run("container arguments", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t).WetStdout().WetStderr()

@@ -284,7 +284,8 @@ func (dc *DockerCmd) Clean(ctx context.Context, rng *ring.Ring) error {
 	return nil
 }
 
-// build builds image with given reference if it does not exist yet.
+// build builds image with given reference if it does not exist yet. A dry run
+// always prints the build command.
 func (dc *DockerCmd) build(
 	ctx context.Context,
 	rng *ring.Ring,
@@ -292,8 +293,10 @@ func (dc *DockerCmd) build(
 	rebuild bool,
 ) error {
 
-	build := rebuild
-	if !rebuild {
+	// A dry run only prints commands, so it builds without asking the
+	// daemon whether the image exists.
+	build := rebuild || dc.Flags.DryRun
+	if !build {
 		// The ring's arguments are the container's; they must not become
 		// "docker image ls" filters.
 		ims, err := ImgLs(ctx, rng.Clone().SetArgs(nil))
