@@ -6,7 +6,6 @@ package gmgo
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -20,14 +19,6 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/ctx42/gomake/pkg/gomake"
 	"github.com/ctx42/ring/pkg/ring"
-)
-
-var (
-	// ErrModInit is returned when Go module initialization fails.
-	ErrModInit = errors.New("go module initialization error")
-
-	// ErrImpPath is returned when [ImpPath] cannot resolve the module path.
-	ErrImpPath = errors.New("cannot determine Go module import path")
 )
 
 // ImpPath returns the path of the Go module containing dir. The empty string
@@ -214,7 +205,7 @@ func gitGetFile(
 		return err
 	}
 
-	tmp, err := os.MkdirTemp("", "gmgo-lint-config-")
+	tmp, err := os.MkdirTemp("", "gmgo-git-get-")
 	if err != nil {
 		return err
 	}

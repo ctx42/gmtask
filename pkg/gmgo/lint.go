@@ -252,9 +252,13 @@ func (Lint) config(
 	dirHelp := "" +
 		"directory to put lint config to " +
 		"(default: \".\" or \"tmp\" if exists)"
-	out, rng, help, err := parseDirTarget(rng, tgtName, dirHelp)
-	if err != nil || help {
-		return "", help, err
+	out, rng, usage, err := parseDirTarget(rng, tgtName, dirHelp)
+	if err != nil {
+		return "", false, err
+	}
+	if usage != "" {
+		_, _ = fmt.Fprint(rng.Stderr(), usage)
+		return "", true, nil
 	}
 
 	if out == "" && gomake.DirExists("tmp") {

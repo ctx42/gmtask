@@ -22,18 +22,6 @@ var breakFooterRx = regexp.MustCompile(`(?m)^BREAKING[ -]CHANGE:`)
 // featRx matches a Conventional Commits subject introducing a feature.
 var featRx = regexp.MustCompile(`(?m)^feat(\([^)]*\))?:`)
 
-// EnvBldBump is the environment variable naming the version bump a build
-// heads towards, overriding the one read off the commit messages. It takes
-// one of [gitaid.BumpPatch], [gitaid.BumpMinor] or [gitaid.BumpMajor], and is
-// applied after the rule keeping a 0.x version out of 1.0.0 - which is how a
-// 0.x project deliberately declares its first stable release.
-//
-// It is the escape hatch for a project whose commit messages understate or
-// overstate what is coming.
-//
-// Example: minor
-const EnvBldBump = "C42_BLD_BUMP"
-
 // ProjectVersion returns the version of the project at repo, as
 // [gitaid.Derive] builds it.
 //
@@ -47,7 +35,8 @@ const EnvBldBump = "C42_BLD_BUMP"
 func ProjectVersion(
 	ctx context.Context,
 	rng *ring.Ring,
-	repo, bump string,
+	repo string,
+	bump string,
 ) (gitaid.Version, error) {
 
 	if bump == "" {

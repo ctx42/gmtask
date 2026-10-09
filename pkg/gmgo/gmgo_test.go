@@ -859,29 +859,31 @@ func Test_parseDirTarget(t *testing.T) {
 		rng := ringtest.New(t).Ring("--dir", "reports", "./pkg/...")
 
 		// --- When ---
-		out, next, help, err := parseDirTarget(rng, ":go:test", "dir help")
+		out, next, usage, err := parseDirTarget(rng, ":go:test", "dir help")
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.False(t, help)
+		assert.Equal(t, "", usage)
 		assert.Equal(t, "reports", out)
 		assert.Equal(t, []string{"./pkg/..."}, next.Args())
 		assert.Equal(t, []string{"--dir", "reports", "./pkg/..."}, rng.Args())
 	})
 
-	t.Run("help requested writes usage", func(t *testing.T) {
+	t.Run("help requested returns usage", func(t *testing.T) {
 		// --- Given ---
-		tst := ringtest.New(t).WetStderr()
-		rng := tst.Ring("--help")
+		rng := ringtest.New(t).Ring("--help")
 
 		// --- When ---
-		out, _, help, err := parseDirTarget(rng, ":go:test", "dir help")
+		out, _, usage, err := parseDirTarget(rng, ":go:test", "dir help")
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.True(t, help)
 		assert.Equal(t, "", out)
-		assert.Contain(t, "Usage of :go:test", tst.Stderr())
+		want := "" +
+			"Usage of :go:test\n" +
+			"      --dir     dir help\n" +
+			"  -h, --help    show help\n"
+		assert.Equal(t, want, usage)
 	})
 
 	t.Run("error - unknown flag", func(t *testing.T) {
@@ -1664,7 +1666,7 @@ func Test_buildValues_invalid_date(t *testing.T) {
 	assert.Nil(t, have)
 }
 
-func Test_gitOr_tabular(t *testing.T) {
+func Test_orPlaceholder_tabular(t *testing.T) {
 	tt := []struct {
 		testN string
 
@@ -1681,7 +1683,7 @@ func Test_gitOr_tabular(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.testN, func(t *testing.T) {
 			// --- When ---
-			have := gitOr(tc.s, tc.err, tc.ph)
+			have := orPlaceholder(tc.s, tc.err, tc.ph)
 
 			// --- Then ---
 			assert.Equal(t, tc.want, have)

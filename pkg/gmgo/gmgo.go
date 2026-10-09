@@ -28,10 +28,20 @@ import (
 	"github.com/ctx42/xflag/pkg/xflag"
 )
 
-// ErrConfig is returned when a module's entry in the target's "modules"
-// configuration cannot be used to inject build metadata. Its message differs
-// from that of [gomake.ErrConfig], which reports a malformed configuration.
-var ErrConfig = errors.New("invalid build modules configuration")
+// Sentinel errors.
+var (
+	// ErrConfig is returned when a module's entry in the target's "modules"
+	// configuration cannot be used to inject build metadata. Its message
+	// differs from that of [gomake.ErrConfig], which reports a malformed
+	// configuration.
+	ErrConfig = errors.New("invalid build modules configuration")
+
+	// ErrModInit is returned when Go module initialization fails.
+	ErrModInit = errors.New("go module initialization error")
+
+	// ErrImpPath is returned when [ImpPath] cannot resolve the module path.
+	ErrImpPath = errors.New("cannot determine Go module import path")
+)
 
 // expLintVer is the minimum expected version of golangci-lint.
 var expLintVer = semver.MustParse("v2.12.2")
@@ -71,6 +81,18 @@ const (
 	// (see [CovLogFilename], [TestLogFilename]) to keep per-build reports
 	// distinct.
 	BuildIDEnvKey = "BUILD_ID"
+
+	// EnvBldBump is the environment variable naming the version bump a build
+	// heads towards, overriding the one read off the commit messages. It takes
+	// one of [gitaid.BumpPatch], [gitaid.BumpMinor] or [gitaid.BumpMajor], and
+	// is applied after the rule keeping a 0.x version out of 1.0.0 - which is
+	// how a 0.x project deliberately declares its first stable release.
+	//
+	// It is the escape hatch for a project whose commit messages understate or
+	// overstate what is coming.
+	//
+	// Example: minor
+	EnvBldBump = "C42_BLD_BUMP"
 )
 
 // Go collects Go-related targets.
@@ -156,11 +178,12 @@ func (Go) test(ctx context.Context, rng *ring.Ring, verbose bool) error {
 	}
 
 	dirHelp := `directory to put reports to (default: "." or "tmp" if exists)`
-	out, rng, help, err := parseDirTarget(rng, tgtName, dirHelp)
+	out, rng, usage, err := parseDirTarget(rng, tgtName, dirHelp)
 	if err != nil {
 		return err
 	}
-	if help {
+	if usage != "" {
+		_, _ = fmt.Fprint(rng.Stderr(), usage)
 		return nil
 	}
 	args := rng.Args()
@@ -243,33 +266,32 @@ func hasFlagArg(args []string, flag string) bool {
 // parseDirTarget parses the --dir and --help flags shared by the targets that
 // write output to a directory, using dirHelp as the --dir usage description. It
 // returns the resolved --dir value and a clone of the ring with the remaining
-// positional arguments applied; rng itself is left unchanged. help is true
-// when --help was requested, in which case the usage was already written and
-// the caller should return without further work.
+// positional arguments applied; rng itself is left unchanged. usage holds the
+// help text when --help was requested, in which case the caller should print
+// it and return without further work. On a parse error the flag set prints
+// the error and the usage to the ring's stderr.
 func parseDirTarget(
 	rng *ring.Ring,
-	tgtName, dirHelp string,
-) (out string, _ *ring.Ring, help bool, err error) {
+	tgtName string,
+	dirHelp string,
+) (out string, _ *ring.Ring, usage string, err error) {
 
 	fs := xflag.NewFlagSet(tgtName, flag.ContinueOnError)
 	fs.BoolSL("help", "h", false, "show help")
 	fs.StringVar(&out, "dir", "", dirHelp)
 	fs.SetOutput(rng.Stderr())
-	fs.Usage = func() {
-		head := fmt.Sprintf("Usage of %s\n", tgtName)
-		_, _ = fmt.Fprint(rng.Stderr(), head+fs.HelpOptions())
-	}
+	head := fmt.Sprintf("Usage of %s\n", tgtName)
+	fs.Usage = func() { _, _ = fmt.Fprint(rng.Stderr(), head+fs.HelpOptions()) }
 	if err = fs.Parse(rng.Args()); err != nil {
-		return "", rng, false, err
+		return "", rng, "", err
 	}
 	// A clone, so the caller's ring keeps its arguments for the next step of
 	// a composite target such as :go:check.
 	rng = rng.Clone().SetArgs(fs.Args())
 	if fs.GetBool("help") {
-		fs.Usage()
-		return "", rng, true, nil
+		return "", rng, head + fs.HelpOptions(), nil
 	}
-	return out, rng, false, nil
+	return out, rng, "", nil
 }
 
 // Doc starts the godoc documentation engine service and opens it in the default
@@ -436,7 +458,7 @@ func waitForServer(ctx context.Context, url string) bool {
 // buildVarNames lists the canonical ldflags variable names go:build injects,
 // in the order they are emitted. Each is defined in xdef so the names never
 // drift from the ones gomake injects into its own binary.
-var buildVarNames = []string{
+var buildVarNames = [...]string{
 	xdef.VarBldDate,
 	xdef.VarScmRev,
 	xdef.VarScmHash,
@@ -548,15 +570,15 @@ func buildValues(
 	state, stateErr := gitaid.WorkTreeStatus(ctx, "")
 	return map[string]string{
 		xdef.VarBldDate:  buildDate,
-		xdef.VarScmRev:   gitOr(ver.Rev, verErr, xdef.PhTag),
-		xdef.VarScmHash:  gitOr(ver.Hash, verErr, xdef.PhHash),
-		xdef.VarScmState: gitOr(state, stateErr, xdef.PhUnknown),
+		xdef.VarScmRev:   orPlaceholder(ver.Rev, verErr, xdef.PhTag),
+		xdef.VarScmHash:  orPlaceholder(ver.Hash, verErr, xdef.PhHash),
+		xdef.VarScmState: orPlaceholder(state, stateErr, xdef.PhUnknown),
 	}, nil
 }
 
-// gitOr returns s when err is nil and s is non-empty, otherwise the placeholder
-// ph.
-func gitOr(s string, err error, ph string) string {
+// orPlaceholder returns s when err is nil and s is non-empty, otherwise the
+// placeholder ph.
+func orPlaceholder(s string, err error, ph string) string {
 	if err != nil || s == "" {
 		return ph
 	}
