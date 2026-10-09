@@ -5,7 +5,6 @@ package gmgo
 
 import (
 	"bytes"
-	"context"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -28,8 +27,8 @@ import (
 func Test_Lint_Default(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
 		repo := setupConfigRepo(t)
 
 		prj := gmtest.NewProject(t)
@@ -39,11 +38,10 @@ func Test_Lint_Default(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		rng.EnvSet(GoLintConfigRepoEnvKey, repo)
 
 		// --- When ---
-		err := Lint{}.Default(ctx, rng)
+		err := Lint{}.Default(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -55,8 +53,9 @@ func Test_Lint_Default(t *testing.T) {
 
 	t.Run("force config download", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
+		ctx := t.Context()
 		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
 		repo := setupConfigRepo(t)
 
 		prj := gmtest.NewProject(t)
@@ -66,7 +65,6 @@ func Test_Lint_Default(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		rng.EnvSet(GoLintConfigRepoEnvKey, repo)
 
 		assert.NoError(t, Lint{}.Default(ctx, rng))
@@ -85,8 +83,8 @@ func Test_Lint_Default(t *testing.T) {
 
 	t.Run("error - lint reports issue", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
 		repo := setupConfigRepo(t)
 
 		prj := gmtest.NewProject(t)
@@ -96,11 +94,10 @@ func Test_Lint_Default(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		rng.EnvSet(GoLintConfigRepoEnvKey, repo)
 
 		// --- When ---
-		err := Lint{}.Default(ctx, rng)
+		err := Lint{}.Default(t.Context(), rng)
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
@@ -127,7 +124,7 @@ func Test_Lint_Default(t *testing.T) {
 		err := Lint{}.Default(t.Context(), rng)
 
 		// --- Then ---
-		assert.Error(t, err)
+		assert.ExitCode(t, 3, err)
 		want := "#gomake INFO# lint config: using out/.golangci.yml"
 		assert.Contain(t, want, tst.Stderr())
 		assert.Contain(t, "no-such-linter", tst.Stderr())
@@ -148,8 +145,8 @@ func Test_Lint_Default(t *testing.T) {
 
 	t.Run("auto-installs when binary is missing", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
 		repo := setupConfigRepo(t)
 		bin := t.TempDir()
 
@@ -160,20 +157,12 @@ func Test_Lint_Default(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		// exec.Command resolves the binary via the process PATH, not cmd.Env,
-		// so strip golangci-lint from the process PATH. GOBIN/bin is first so
-		// the post-install re-check finds the freshly installed binary.
-		path := bin + string(os.PathListSeparator) +
-			pathWithoutBinary("golangci-lint")
-		t.Setenv("PATH", path)
-
-		rng := tst.Ring()
 		rng.EnvSet(GoLintConfigRepoEnvKey, repo)
 		rng.EnvSet("GOBIN", bin)
-		rng.EnvSet("PATH", path)
+		rng.EnvSet("PATH", pathWithoutBinary("golangci-lint"))
 
 		// --- When ---
-		err := Lint{}.Default(ctx, rng)
+		err := Lint{}.Default(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -191,20 +180,18 @@ func Test_Lint_checkVersion(t *testing.T) {
 		out := exekit.New(t).ExeStdout("golangci-lint", "version")
 		want := must.Value(extractGolangCiVersion(out)).Original()
 
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		ver, err := Lint{}.checkVersion(ctx, rng, prj.Root())
+		have, err := Lint{}.checkVersion(t.Context(), rng, prj.Root())
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, want, ver.Original())
+		assert.Equal(t, want, have.Original())
 	})
 
 	t.Run("binary in GOBIN off PATH", func(t *testing.T) {
@@ -229,16 +216,15 @@ func Test_Lint_checkVersion(t *testing.T) {
 
 	t.Run("error - command fails", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
-		tst := ringtest.New(t)
-		rng := tst.Ring()
+		rng := ringtest.New(t).Ring()
+		dir := "/no/such/dir/gmgo-xyz"
 
 		// --- When ---
-		ver, err := Lint{}.checkVersion(ctx, rng, "/no/such/dir/gmgo-xyz")
+		have, err := Lint{}.checkVersion(t.Context(), rng, dir)
 
 		// --- Then ---
-		assert.Error(t, err)
-		assert.Nil(t, ver)
+		assert.ErrorIs(t, fs.ErrNotExist, err)
+		assert.Nil(t, have)
 	})
 }
 
@@ -282,8 +268,8 @@ func Test_requiredLintVer(t *testing.T) {
 func Test_Lint_lint(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -291,10 +277,8 @@ func Test_Lint_lint(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Lint{}.lint(ctx, rng, prj.Root(), "")
+		err := Lint{}.lint(t.Context(), rng, prj.Root(), "")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -303,8 +287,8 @@ func Test_Lint_lint(t *testing.T) {
 
 	t.Run("error - lint reports issue", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -313,10 +297,8 @@ func Test_Lint_lint(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Lint{}.lint(ctx, rng, prj.Root(), "")
+		err := Lint{}.lint(t.Context(), rng, prj.Root(), "")
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
@@ -326,8 +308,8 @@ func Test_Lint_lint(t *testing.T) {
 
 	t.Run("resolves config under dir without chdir", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.GoModInit()
@@ -336,10 +318,8 @@ func Test_Lint_lint(t *testing.T) {
 		prj.CreateFileWith("version: \"2\"\n", "tmp", ".golangci.yml")
 		prj.Close()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Lint{}.lint(ctx, rng, prj.Root(), "")
+		err := Lint{}.lint(t.Context(), rng, prj.Root(), "")
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
@@ -351,36 +331,34 @@ func Test_Lint_lint(t *testing.T) {
 func Test_Lint_Install(t *testing.T) {
 	t.Run("installs the latest release by default", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 		bin := t.TempDir()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		rng.EnvSet("GOBIN", bin)
 		// "go install" reports each module it fetches on stderr, so what it
 		// writes there depends on the module cache, not on the target.
 		rng.SetStderr(&bytes.Buffer{})
 
 		// --- When ---
-		err := Lint{}.Install(ctx, rng)
+		err := Lint{}.Install(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		exe := filepath.Join(bin, "golangci-lint")
 		out := exekit.New(t).ExeStdout(exe, "version")
-
-		have := must.Value(extractGolangCiVersion(out))
-		assert.True(t, have.Equal(expLintVer) || have.GreaterThan(expLintVer))
+		ver := must.Value(extractGolangCiVersion(out))
+		assert.True(t, ver.Equal(expLintVer) || ver.GreaterThan(expLintVer))
 	})
 
 	t.Run("installs the version from the configuration", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 		bin := t.TempDir()
 
 		prj := gmtest.NewProject(t)
@@ -390,7 +368,6 @@ func Test_Lint_Install(t *testing.T) {
 		// A release older than "@latest", so a target that ignored the
 		// configuration would install a newer version and fail the assertion.
 		want := semver.MustParse("v2.12.1")
-		rng := tst.Ring()
 		rng.EnvSet("GOBIN", bin)
 		// "go install" reports each module it fetches on stderr, so what it
 		// writes there depends on the module cache, not on the target.
@@ -404,15 +381,14 @@ func Test_Lint_Install(t *testing.T) {
 		rng.MetaSet(gomake.ConfigMetaKey, cfg)
 
 		// --- When ---
-		err := Lint{}.Install(ctx, rng)
+		err := Lint{}.Install(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		exe := filepath.Join(bin, "golangci-lint")
 		out := exekit.New(t).ExeStdout(exe, "version")
-
-		have := must.Value(extractGolangCiVersion(out))
-		assert.True(t, have.Equal(want))
+		ver := must.Value(extractGolangCiVersion(out))
+		assert.True(t, ver.Equal(want))
 	})
 
 	t.Run("error - install fails", func(t *testing.T) {
@@ -435,19 +411,18 @@ func Test_Lint_Install(t *testing.T) {
 
 	t.Run("error - config type mismatch", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		cfg := jsonkit.To(t, map[string]any{"version": 5})
 		rng.MetaSet(gomake.ConfigMetaKey, cfg)
 
 		// --- When ---
-		err := Lint{}.Install(ctx, rng)
+		err := Lint{}.Install(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gomake.ErrType, err)
@@ -455,29 +430,28 @@ func Test_Lint_Install(t *testing.T) {
 
 	t.Run("error - invalid target config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		rng.MetaSet(gomake.ConfigMetaKey, []byte("{bad"))
 
 		// --- When ---
-		err := Lint{}.Install(ctx, rng)
+		err := Lint{}.Install(t.Context(), rng)
 
 		// --- Then ---
-		assert.ErrorContain(t, "target config", err)
+		assert.ErrorIs(t, gomake.ErrConfig, err)
 	})
 }
 
 func Test_Lint_Config(t *testing.T) {
 	t.Run("download config file - tmp dir exists", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
 		repo := setupConfigRepo(t)
 
 		prj := gmtest.NewProject(t)
@@ -485,18 +459,16 @@ func Test_Lint_Config(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		rng.EnvSet(GoLintConfigRepoEnvKey, repo)
 
 		// --- When ---
-		err := Lint{}.Config(ctx, rng)
+		err := Lint{}.Config(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		pth := prj.Path("tmp", ".golangci.yml")
 		assert.FileExist(t, pth)
 		assert.True(t, oskit.FileSize(t, pth) > 0)
-
 		want := "#gomake INFO# lint config: downloading from " + repo +
 			" to tmp/.golangci.yml\n"
 		assert.Equal(t, want, tst.Stderr())
@@ -504,26 +476,24 @@ func Test_Lint_Config(t *testing.T) {
 
 	t.Run("download config file - tmp dir does not exist", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
 		repo := setupConfigRepo(t)
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		rng.EnvSet(GoLintConfigRepoEnvKey, repo)
 
 		// --- When ---
-		err := Lint{}.Config(ctx, rng)
+		err := Lint{}.Config(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		pth := prj.Path(".golangci.yml")
 		assert.FileExist(t, pth)
 		assert.True(t, oskit.FileSize(t, pth) > 0)
-
 		want := "#gomake INFO# lint config: downloading from " + repo +
 			" to .golangci.yml\n"
 		assert.Equal(t, want, tst.Stderr())
@@ -531,7 +501,6 @@ func Test_Lint_Config(t *testing.T) {
 
 	t.Run("download config file - custom destination dir", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
 		repo := setupConfigRepo(t)
 
@@ -544,14 +513,13 @@ func Test_Lint_Config(t *testing.T) {
 		rng.EnvSet(GoLintConfigRepoEnvKey, repo)
 
 		// --- When ---
-		err := Lint{}.Config(ctx, rng)
+		err := Lint{}.Config(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		pth := filepath.Join(tmp, ".golangci.yml")
 		assert.FileExist(t, pth)
 		assert.True(t, oskit.FileSize(t, pth) > 0)
-
 		want := "#gomake INFO# lint config: downloading from " + repo +
 			" to " + pth + "\n"
 		assert.Equal(t, want, tst.Stderr())
@@ -559,8 +527,8 @@ func Test_Lint_Config(t *testing.T) {
 
 	t.Run("config file name from configuration", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
 		repo := setupConfigRepo(t, "custom.yml")
 
 		prj := gmtest.NewProject(t)
@@ -568,7 +536,6 @@ func Test_Lint_Config(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		rng.EnvSet(GoLintConfigRepoEnvKey, repo)
 		// The delivered block is the whole go.lint node ({version, file});
 		// Config must use "file" and ignore the sibling "version" key.
@@ -579,14 +546,13 @@ func Test_Lint_Config(t *testing.T) {
 		rng.MetaSet(gomake.ConfigMetaKey, cfg)
 
 		// --- When ---
-		err := Lint{}.Config(ctx, rng)
+		err := Lint{}.Config(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		pth := prj.Path("tmp", "custom.yml")
 		assert.FileExist(t, pth)
 		assert.True(t, oskit.FileSize(t, pth) > 0)
-
 		want := "#gomake INFO# lint config: downloading from " + repo +
 			" to tmp/custom.yml\n"
 		assert.Equal(t, want, tst.Stderr())
@@ -594,8 +560,8 @@ func Test_Lint_Config(t *testing.T) {
 
 	t.Run("source repo from configuration", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
 		repo := setupConfigRepo(t)
 
 		prj := gmtest.NewProject(t)
@@ -603,19 +569,17 @@ func Test_Lint_Config(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		cfg := jsonkit.To(t, map[string]any{"repo": repo})
 		rng.MetaSet(gomake.ConfigMetaKey, cfg)
 
 		// --- When ---
-		err := Lint{}.Config(ctx, rng)
+		err := Lint{}.Config(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		pth := prj.Path("tmp", ".golangci.yml")
 		assert.FileExist(t, pth)
 		assert.True(t, oskit.FileSize(t, pth) > 0)
-
 		want := "#gomake INFO# lint config: downloading from " + repo +
 			" to tmp/.golangci.yml\n"
 		assert.Equal(t, want, tst.Stderr())
@@ -645,8 +609,8 @@ func Test_Lint_Config(t *testing.T) {
 
 	t.Run("env source repo overrides configuration", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
 		repo := setupConfigRepo(t)
 
 		prj := gmtest.NewProject(t)
@@ -654,22 +618,21 @@ func Test_Lint_Config(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		// The env repo is a working clone; the config repo does not exist, so
 		// a successful download proves the env value wins over the config.
-		cfg := jsonkit.To(t, map[string]any{"repo": "git@example.com:no/op.git"})
+		cfgRepo := "git@example.com:no/op.git"
+		cfg := jsonkit.To(t, map[string]any{"repo": cfgRepo})
 		rng.MetaSet(gomake.ConfigMetaKey, cfg)
 		rng.EnvSet(GoLintConfigRepoEnvKey, repo)
 
 		// --- When ---
-		err := Lint{}.Config(ctx, rng)
+		err := Lint{}.Config(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		pth := prj.Path("tmp", ".golangci.yml")
 		assert.FileExist(t, pth)
 		assert.True(t, oskit.FileSize(t, pth) > 0)
-
 		want := "#gomake INFO# lint config: downloading from " + repo +
 			" to tmp/.golangci.yml\n"
 		assert.Equal(t, want, tst.Stderr())
@@ -677,19 +640,18 @@ func Test_Lint_Config(t *testing.T) {
 
 	t.Run("error - config type mismatch", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		cfg := jsonkit.To(t, map[string]any{"file": 5})
 		rng.MetaSet(gomake.ConfigMetaKey, cfg)
 
 		// --- When ---
-		err := Lint{}.Config(ctx, rng)
+		err := Lint{}.Config(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gomake.ErrType, err)
@@ -697,19 +659,18 @@ func Test_Lint_Config(t *testing.T) {
 
 	t.Run("error - repo config type mismatch", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		cfg := jsonkit.To(t, map[string]any{"repo": 5})
 		rng.MetaSet(gomake.ConfigMetaKey, cfg)
 
 		// --- When ---
-		err := Lint{}.Config(ctx, rng)
+		err := Lint{}.Config(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, gomake.ErrType, err)
@@ -717,27 +678,26 @@ func Test_Lint_Config(t *testing.T) {
 
 	t.Run("error - invalid target config", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
 		rng.MetaSet(gomake.ConfigMetaKey, []byte("{bad"))
 
 		// --- When ---
-		err := Lint{}.Config(ctx, rng)
+		err := Lint{}.Config(t.Context(), rng)
 
 		// --- Then ---
-		assert.ErrorContain(t, "target config", err)
+		assert.ErrorIs(t, gomake.ErrConfig, err)
 	})
 
 	t.Run("error - config checked before arguments", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t)
+		rng := tst.Ring("-unknown")
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
@@ -745,12 +705,11 @@ func Test_Lint_Config(t *testing.T) {
 
 		// A bad config and a bad argument at once: the config is read first,
 		// so its error wins and argument parsing never runs.
-		rng := tst.Ring("-unknown")
 		cfg := jsonkit.To(t, map[string]any{"file": 5})
 		rng.MetaSet(gomake.ConfigMetaKey, cfg)
 
 		// --- When ---
-		err := Lint{}.Config(ctx, rng)
+		err := Lint{}.Config(t.Context(), rng)
 
 		// --- Then ---
 		// ErrType (not the "-unknown" flag error) proves the config is read
@@ -760,22 +719,19 @@ func Test_Lint_Config(t *testing.T) {
 
 	t.Run("error - custom dir does not exist", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("--dir", "not_existing")
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("--dir", "not_existing")
-
 		// --- When ---
-		err := Lint{}.Config(ctx, rng)
+		err := Lint{}.Config(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorIs(t, fs.ErrNotExist, err)
 		assert.ErrorContain(t, "not_existing", err)
-
 		want := "#gomake INFO# lint config: downloading from " +
 			"git@github.com:ctx42/xdev.git to not_existing/.golangci.yml\n"
 		assert.Equal(t, want, tst.Stderr())
@@ -783,23 +739,20 @@ func Test_Lint_Config(t *testing.T) {
 
 	t.Run("config file already exists", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
 
 		prj := gmtest.NewProject(t)
 		prj.CreateFileWith("abc", "tmp", ".golangci.yml")
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring()
-
 		// --- When ---
-		err := Lint{}.Config(ctx, rng)
+		err := Lint{}.Config(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, "abc", prj.ReadFileStr("tmp", ".golangci.yml"))
-
 		want := "#gomake INFO# lint config: using tmp/.golangci.yml\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
@@ -845,17 +798,15 @@ func Test_Lint_Config(t *testing.T) {
 
 	t.Run("show help", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("-h")
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("-h")
-
 		// --- When ---
-		err := Lint{}.Config(ctx, rng)
+		err := Lint{}.Config(t.Context(), rng)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -869,17 +820,15 @@ func Test_Lint_Config(t *testing.T) {
 
 	t.Run("error - unknown argument", func(t *testing.T) {
 		// --- Given ---
-		ctx := context.Background()
 		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring("-unknown")
 
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
-		rng := tst.Ring("-unknown")
-
 		// --- When ---
-		err := Lint{}.Config(ctx, rng)
+		err := Lint{}.Config(t.Context(), rng)
 
 		// --- Then ---
 		assert.ErrorContain(t, "flag provided but not defined: -unknown", err)

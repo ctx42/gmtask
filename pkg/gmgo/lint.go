@@ -61,7 +61,8 @@ func (tgt Lint) Default(ctx context.Context, rng *ring.Ring) error {
 		if ver.LessThan(req) {
 			format := "golangci-lint %s at %s is older than %s after " +
 				"installing; another binary may shadow the installed one"
-			return fmt.Errorf(format, ver, lintBin(rng), req)
+			bin, _ := lintBin(rng)
+			return fmt.Errorf(format, ver, bin, req)
 		}
 	}
 	return tgt.lint(ctx, rng, "", cfgPth)
@@ -86,9 +87,10 @@ func requiredLintVer(cfgVer string) (*semver.Version, error) {
 
 // lintBin returns the path of the golangci-lint binary: the first one found on
 // the ring's PATH, else in the directory "go install" puts it - $GOBIN when
-// set, otherwise $GOPATH/bin ($HOME/go/bin by default). It returns the bare
-// name when none is found, so running it fails with a "not found" error.
-func lintBin(rng *ring.Ring) string {
+// set, otherwise $GOPATH/bin ($HOME/go/bin by default). It returns an error
+// wrapping [exec.ErrNotFound] when none is found; the process PATH, which
+// exec would search for a bare name, is never consulted.
+func lintBin(rng *ring.Ring) (string, error) {
 	const name = "golangci-lint"
 	dirs := filepath.SplitList(rng.EnvGet("PATH"))
 	if bin := rng.EnvGet("GOBIN"); bin != "" {
@@ -108,10 +110,10 @@ func lintBin(rng *ring.Ring) string {
 		}
 		pth := filepath.Join(dir, name)
 		if inf, err := os.Stat(pth); err == nil && inf.Mode()&0o111 != 0 {
-			return pth
+			return pth, nil
 		}
 	}
-	return name
+	return "", &exec.Error{Name: name, Err: exec.ErrNotFound}
 }
 
 // checkVersion returns the version of the golangci-lint binary lintBin finds
@@ -127,12 +129,16 @@ func (Lint) checkVersion(
 	repo string,
 ) (*semver.Version, error) {
 
+	bin, err := lintBin(rng)
+	if err != nil {
+		return nil, err
+	}
 	sout, eout := &bytes.Buffer{}, rng.Stderr()
-	cmd := exec.CommandContext(ctx, lintBin(rng), "version")
+	cmd := exec.CommandContext(ctx, bin, "version")
 	cmd.Env = rng.EnvAll()
 	cmd.Stdout, cmd.Stderr = sout, eout
 	cmd.Dir = repo
-	if err := cmd.Run(); err != nil {
+	if err = cmd.Run(); err != nil {
 		return nil, err
 	}
 	return extractGolangCiVersion(sout.String())
@@ -163,7 +169,11 @@ func (Lint) lint(
 	}
 	args = append(args, "./...")
 
-	cmd := exec.CommandContext(ctx, lintBin(rng), args...)
+	bin, err := lintBin(rng)
+	if err != nil {
+		return err
+	}
+	cmd := exec.CommandContext(ctx, bin, args...)
 	cmd.Env = append(rng.EnvAll(), "LOG_LEVEL=error")
 	cmd.Stdout, cmd.Stderr = rng.Stdout(), rng.Stderr()
 	cmd.Dir = dir
