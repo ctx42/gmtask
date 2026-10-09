@@ -16,20 +16,30 @@ import (
 	"github.com/ctx42/xdef/pkg/xdef"
 
 	"github.com/ctx42/gmtask/internal/gmtest"
+	"github.com/ctx42/gmtask/pkg/gmgo"
 )
 
-// TestMain gives git an author identity. [Setup] commits into a repository it
-// initializes itself, so no fixture configures one, and a CI runner has no
-// global identity to fall back on.
+// TestMain gives git an author identity and isolates the tests from the host.
+// [Setup] commits into a repository it initializes itself, so no fixture
+// configures one, and a CI runner has no global identity to fall back on. The
+// host's git configuration (commit signing, for one) and the build variables
+// it may export would otherwise change what the tests see.
 func TestMain(m *testing.M) {
-	idt := map[string]string{
+	env := map[string]string{
 		"GIT_AUTHOR_NAME":     "Test User",
 		"GIT_AUTHOR_EMAIL":    "test@example.com",
 		"GIT_COMMITTER_NAME":  "Test User",
 		"GIT_COMMITTER_EMAIL": "test@example.com",
+		"GIT_CONFIG_GLOBAL":   os.DevNull,
+		"GIT_CONFIG_NOSYSTEM": "1",
 	}
-	for key, val := range idt {
+	for key, val := range env {
 		if err := os.Setenv(key, val); err != nil {
+			panic(err)
+		}
+	}
+	for _, key := range []string{gmgo.EnvBldBump, xdef.EnvBldDate} {
+		if err := os.Unsetenv(key); err != nil {
 			panic(err)
 		}
 	}
