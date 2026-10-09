@@ -390,6 +390,32 @@ func Test_Image_Run(t *testing.T) {
 		assert.Equal(t, "third image\n", tst.Stdout())
 	})
 
+	t.Run("container arguments", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout().WetStderr()
+
+		prj := gmtest.NewProject(t)
+		prj.CfgRegRepoDef()
+		prj.WithDockerfileNEP()
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring(
+			"--name", prj.ImgName(),
+			"--tag", prj.ImgTag(),
+			"--", "echo", "hi",
+		)
+
+		// --- When ---
+		err := Image{}.Run(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "#gomake INFO# DOCKER_BUILDKIT=1 docker build"
+		assert.Count(t, 1, want, tst.Stderr())
+		assert.Equal(t, "hi\n", tst.Stdout())
+	})
+
 	t.Run("error - unknown argument", func(t *testing.T) {
 		// --- Given ---
 		ctx := context.Background()

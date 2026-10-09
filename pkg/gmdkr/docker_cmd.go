@@ -294,7 +294,9 @@ func (dc *DockerCmd) build(
 
 	build := rebuild
 	if !rebuild {
-		ims, err := ImgLs(ctx, rng)
+		// The ring's arguments are the container's; they must not become
+		// "docker image ls" filters.
+		ims, err := ImgLs(ctx, rng.Clone().SetArgs(nil))
 		if err != nil {
 			return err
 		}
