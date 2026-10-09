@@ -79,6 +79,9 @@ func (dc *DockerCmd) Init(
 
 // Build builds docker image(s).
 func (dc *DockerCmd) Build(ctx context.Context, rng *ring.Ring) error {
+	if dc.Config == nil || dc.Info == nil {
+		return ErrNoBuilds
+	}
 	if dc.Config.push && !isRemoteSet(dc.Info.Config) {
 		return ErrNoPrvRepo
 	}
@@ -109,6 +112,9 @@ func (dc *DockerCmd) Build(ctx context.Context, rng *ring.Ring) error {
 // "latest" is tagged "latest" from the pushed reference first, so the pushed
 // "latest" is the version just pushed, never an older local one.
 func (dc *DockerCmd) Push(ctx context.Context, rng *ring.Ring) error {
+	if dc.Info == nil {
+		return ErrNoBuilds
+	}
 	if !isRemoteSet(dc.Info.Config) {
 		return ErrNoPrvRepo
 	}
@@ -144,7 +150,7 @@ func (dc *DockerCmd) Push(ctx context.Context, rng *ring.Ring) error {
 // Run runs Docker image or target defined by project.
 func (dc *DockerCmd) Run(ctx context.Context, rng *ring.Ring) error {
 	if len(dc.Builds) == 0 {
-		return ErrNoTarget
+		return ErrNoBuilds
 	}
 	if len(dc.Builds) > 1 {
 		argTgs := dc.Flags.Targets
@@ -182,7 +188,7 @@ func (dc *DockerCmd) Run(ctx context.Context, rng *ring.Ring) error {
 // Sh runs image and starts its shell.
 func (dc *DockerCmd) Sh(ctx context.Context, rng *ring.Ring) error {
 	if len(dc.Builds) == 0 {
-		return ErrNoTarget
+		return ErrNoBuilds
 	}
 	if len(dc.Builds) > 1 {
 		argTgs := dc.Flags.Targets
@@ -236,7 +242,7 @@ func (dc *DockerCmd) Sh(ctx context.Context, rng *ring.Ring) error {
 // Reference returns the selected image reference.
 func (dc *DockerCmd) Reference() (string, error) {
 	if len(dc.Builds) == 0 {
-		return "", ErrNoTarget
+		return "", ErrNoBuilds
 	}
 	argTgs := dc.Flags.Targets
 	if len(argTgs) == 0 && len(dc.Builds) > 1 {

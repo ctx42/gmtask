@@ -124,7 +124,11 @@ var (
 
 	// ErrUnkTarget is returned when docker rejects a multi-stage --target that
 	// is not a stage in the Dockerfile (build-time failure from the daemon).
-	ErrUnkTarget = errors.New("unknown target name")
+	ErrUnkTarget = errors.New("target stage not in Dockerfile")
+
+	// ErrNoBuilds is returned when a [DockerCmd] has no builds to act on,
+	// because [DockerCmd.Init] was not called or failed.
+	ErrNoBuilds = errors.New("no image builds; docker command not initialized")
 )
 
 // Docker groups the ":docker:*" gomake targets.

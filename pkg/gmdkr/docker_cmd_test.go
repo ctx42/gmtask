@@ -1038,7 +1038,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 		err := dc.Run(ctx, rng)
 
 		// --- Then ---
-		assert.ErrorIs(t, ErrNoTarget, err)
+		assert.ErrorIs(t, ErrNoBuilds, err)
 	})
 
 	t.Run("run default target", func(t *testing.T) {
@@ -1438,7 +1438,7 @@ func Test_DockerCmd_Sh(t *testing.T) {
 		err := dc.Sh(ctx, rng)
 
 		// --- Then ---
-		assert.ErrorIs(t, ErrNoTarget, err)
+		assert.ErrorIs(t, ErrNoBuilds, err)
 	})
 
 	t.Run("error - must pick target when multiple defined", func(t *testing.T) {
@@ -1833,5 +1833,41 @@ func Test_DockerCmd_build(t *testing.T) {
 		ref, refLatest := prj.ImgRef(), prj.ImgRefLatest()
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(ref))
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(refLatest))
+	})
+}
+
+func Test_DockerCmd_not_initialized(t *testing.T) {
+	t.Run("build", func(t *testing.T) {
+		// --- Given ---
+		dc := NewDockerCmd(&Flags{})
+
+		// --- When ---
+		err := dc.Build(t.Context(), ringtest.New(t).Ring())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNoBuilds, err)
+	})
+
+	t.Run("push", func(t *testing.T) {
+		// --- Given ---
+		dc := NewDockerCmd(&Flags{})
+
+		// --- When ---
+		err := dc.Push(t.Context(), ringtest.New(t).Ring())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNoBuilds, err)
+	})
+
+	t.Run("reference", func(t *testing.T) {
+		// --- Given ---
+		dc := NewDockerCmd(&Flags{})
+
+		// --- When ---
+		have, err := dc.Reference()
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNoBuilds, err)
+		assert.Empty(t, have)
 	})
 }
