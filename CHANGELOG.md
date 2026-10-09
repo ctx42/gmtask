@@ -1,3 +1,100 @@
+## v0.12.0 (Fri, 09 Oct 2026 13:01:58 UTC)
+- fix(gmtest): validate project names and fail on nil projects.
+- fix(gmclog): keep the changelog file mode on save.
+- fix(gmclog): update the target of a symlinked changelog.
+- fix(gmclog): create the changelog without truncating or accepting dirs.
+- fix(gmclog): treat only version-led headers as releases.
+- fix(gmclog)!: reject release dates outside UTC.
+- fix(gmclog): stop mangling blank and punctuated change lines.
+- fix(gmclog): name the line of a malformed release header.
+- fix(gmclog): keep the changelog title above new releases.
+- refactor(gmclog)!: leave the release separator to Save.
+- test(gmclog): cover a failed rename in Save.
+- docs(gmclog): correct sort order, nil and normalization notes.
+- refactor(gmclog): move CreateFile to helpers and tidy writes.
+- test(gmclog): align tests with the project test style.
+- fix(gmmce): track code fences when injecting examples.
+- fix(gmmce): refuse a marker whose code fence never closes.
+- fix(gmmce): warn about markers that name no example.
+- fix(gmmce): find CRLF and indented markers.
+- fix(gmmce)!: skip testdata, vendor and hidden dirs when scanning.
+- fix(gmmce)!: reject positional arguments to :doc:mce.
+- fix(gmmce): keep raw string lines verbatim in example bodies.
+- fix(gmmce): write the Markdown file atomically and only on change.
+- fix(gmmce): collect only real example functions.
+- test(gmmce): cover invalid source and failed write paths.
+- refactor(gmmce): wrap scan errors and tidy declarations.
+- test(gmmce): align tests with the project test style.
+- fix(gmbump): tag the canonical form of a typed version.
+- test(gmbump): make the -p test fail when -p is ignored.
+- fix(gmbump): refuse a version not newer than the current tag.
+- fix(gmbump): accept a last answer without a trailing newline.
+- fix(gmbump): say what a half-done release left behind.
+- refactor(gmbump): keep prompts in the target and tidy declarations.
+- test(gmbump): align tests with the project test style.
+- fix(gmgo): resolve one module path inside a Go workspace.
+- fix(gmgo): parse target flags without rewriting the caller's ring.
+- fix(gmgo): lint with the config :go:lint placed, and stop on --help.
+- fix(gmgo): let a -timeout argument win over the configured one.
+- fix(gmgo): honor a zero test timeout and reject negative ones.
+- fix(gmgo,gmprj)!: reject an unparseable C42_BLD_DATE.
+- fix(gmgo): refuse builds that would lose injected metadata.
+- fix(gmgo): fetch the lint config from the default branch.
+- docs(gmgo): say the lint config comes from the default branch.
+- fix(gmgo): clone the lint config with the ring environment.
+- fix(gmgo)!: read GOMAKE_GOLINT_CONFIG_FORCE as a boolean.
+- fix(gmgo): find golangci-lint where go install puts it.
+- fix(gmgo): tell gmgo.ErrConfig apart from gomake.ErrConfig.
+- test(gmgo): keep host environment variables out of the tests.
+- test(gmgo): cover pinGoMajorMinor and untested error paths.
+- fix(gmgo): drop the dangling separator from the no-go.mod error.
+- test(gmgo): fail instead of panicking and drop a duplicate test.
+- docs(gmgo): fix godoc grammar and stale package wording.
+- refactor(gmgo): gather package-wide declarations in gmgo.go.
+- test(gmgo): align tests with the project test style.
+- fix(gmgo): never find golangci-lint on the process PATH.
+- test(gmgo): fail fast when the first lint run in a test fails.
+- fix(gmprj): derive the module path from URL remotes.
+- fix(gmprj): ignore a /vN module suffix when naming the project.
+- fix(gmprj,gmdkr)!: single-quote values in --export output.
+- fix(gmprj): write the Docker repository as C42_REG_REPO.
+- fix(gmprj): apply a directory node's mode after its children.
+- fix(gmprj): honor setuid, setgid and sticky bits in node modes.
+- fix(gmprj): reject structure node names that leave their parent.
+- fix(gmprj): make Info.Set safe on a zero Info.
+- fix(gmprj): make a relative project root absolute in NewSetup.
+- fix(gmprj): derive a valid Go identifier for the package name.
+- fix(gmprj)!: reject stray arguments to the project targets.
+- fix(gmprj): take the Go spec only from a go.mod in the project root.
+- test(gmprj): isolate the tests from the host git config and env.
+- perf(gmprj): look values up without rebuilding the environment.
+- fix(gmprj): name the step that failed in setup and info errors.
+- docs(gmprj): correct stale godoc and tidy constant groups.
+- style(gmprj): wrap lines over 80 columns.
+- docs(gmprj): add GetInfo and ExportEnv examples.
+- test(gmprj): drop duplicate tests and tighten weak assertions.
+- test(gmprj): align tests with the project test style.
+- fix(gmdkr): keep container arguments out of docker image ls.
+- fix(gmdkr): keep the exec error and cancellation in docker errors.
+- fix(gmdkr): let dry runs of run and sh skip the image listing.
+- fix(gmdkr): accept a target named twice in --targets.
+- fix(gmdkr)!: report an uninitialized DockerCmd with ErrNoBuilds.
+- fix(gmdkr)!: do not move "latest" unless a release asks for it.
+- fix(gmdkr)!: give :docker:image:clean flags and reject arguments.
+- fix(gmdkr): split --cmd with shell quoting.
+- fix(gmdkr): stream run and sh sessions and cap docker error text.
+- fix(gmdkr): mount the SSH socket where run-proj mounts it in sh.
+- fix(gmdkr): parse target flags without rewriting the caller's ring.
+- test(gmdkr): fix leaks, dead checks and flaky timing in tests.
+- refactor(gmdkr): tidy errors, declarations and godoc.
+- style(gmdkr): wrap lines over 80 columns.
+- docs(gmdkr): add ImgName, ImgTag and Build.Cmd examples.
+- test(gmdkr): align tests with the project test style.
+- docs: spell the gomake hidden tag with its required space.
+- test(gmdkr): build pickTargets arguments in Given.
+- fix(gmdkr)!: log in to the registry host in :docker:login.
+- docs(gmgo): note that :go:test always tests the whole module.
+
 ## v0.11.0 (Thu, 08 Oct 2026 12:52:59 UTC)
 - build(deps): upgrade dotenv, gomake, ring and xflag.
 - feat(gmbump): add -m and -M flags to force minor and major bumps.
