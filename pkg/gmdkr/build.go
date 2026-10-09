@@ -4,30 +4,24 @@
 package gmdkr
 
 import (
-	"errors"
 	"fmt"
 	"path"
 	"sort"
 	"strings"
 )
 
-// Sentinel errors.
-var (
-	// ErrEmptyTag is the error returned when the Docker image tag is empty.
-	ErrEmptyTag = errors.New("image tag must not be empty")
-
-	// ErrEmptyName is the error returned when the Docker image name is empty.
-	ErrEmptyName = errors.New("image name must not be empty")
-)
+// Compile-time assertion of the interface implemented in this file.
+var _ fmt.Stringer = (*Build)(nil)
 
 type hidBC = Config // Don't export embedded struct.
 
-// Build represents single "docker build" command.
+// Build represents a single "docker build" command.
 type Build struct {
 	hidBC
 }
 
-// NewBuild returns new instance of Build.
+// NewBuild returns a new instance of Build. It returns [ErrEmptyName] or
+// [ErrEmptyTag] when the configuration lacks the image name or tag.
 func NewBuild(cfg Config) (*Build, error) {
 	bld := &Build{hidBC: cfg}
 	if bld.name == "" {
@@ -78,7 +72,7 @@ func (bld *Build) ImgRef() string {
 	return fmt.Sprintf("%s:%s", bld.ImgName(), bld.tag)
 }
 
-// ImgRefLatest returns latest Docker image reference. (prvRepo+imgName+latest).
+// ImgRefLatest returns the Docker image reference with the "latest" tag.
 //
 // Reference is private repo + image name + "latest"
 //

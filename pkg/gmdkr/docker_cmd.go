@@ -15,7 +15,7 @@ import (
 	"github.com/ctx42/gmtask/pkg/gmprj"
 )
 
-// DockerCmd represents docker command.
+// DockerCmd represents a docker command.
 type DockerCmd struct {
 	// Arguments passed to gomake target.
 	Flags *Flags
@@ -23,20 +23,20 @@ type DockerCmd struct {
 	// Docker build configuration.
 	Config *Config
 
-	// Project info initialized based on current working directory,
+	// Project info initialized based on the current working directory.
 	Info *gmprj.Info
 
 	// Build instances created based on project info and command arguments.
 	Builds []*Build
 }
 
-// NewDockerCmd returns new instance of DockerCmd.
+// NewDockerCmd returns a new instance of DockerCmd.
 func NewDockerCmd(fls *Flags) *DockerCmd {
 	return &DockerCmd{Flags: fls}
 }
 
-// Init based on gomake arguments and project in root directory initializes
-// project information and creates Build instances.
+// Init initializes the project information from the project in the root
+// directory and creates Build instances based on the gomake arguments.
 func (dc *DockerCmd) Init(
 	ctx context.Context,
 	env []string,

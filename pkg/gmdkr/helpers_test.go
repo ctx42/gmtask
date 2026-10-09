@@ -646,7 +646,7 @@ func Test_parseGetent(t *testing.T) {
 		have, err := parseGetent("docker:x:992:thor:")
 
 		// --- Then ---
-		assert.ErrorEqual(t, "unexpected getent response format", err)
+		assert.ErrorContain(t, "unexpected getent response format: ", err)
 		assert.Equal(t, 0, have)
 	})
 

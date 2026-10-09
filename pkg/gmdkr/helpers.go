@@ -26,7 +26,7 @@ import (
 	"github.com/ctx42/gmtask/pkg/gmprj"
 )
 
-// ImgName returns Docker image name based on project name.
+// ImgName returns the Docker image name based on the project name.
 func ImgName(projectName string) string {
 	if strings.HasPrefix(projectName, "dki-") ||
 		projectName == "" ||
@@ -48,7 +48,7 @@ func ImgTag(rev string) string {
 	return strings.ReplaceAll(rev, "+", "_")
 }
 
-// splitTargets splits list of comma separated target names.
+// splitTargets splits a list of comma-separated target names.
 func splitTargets(targets string) []string {
 	split := strings.Split(targets, ",")
 	ret := make([]string, 0, len(split))
@@ -72,7 +72,7 @@ func pickTargets(haveTgs, wantTgs []string) ([]string, error) {
 		return nil, fmt.Errorf("%w: %v", ErrNoTargets, wantTgs)
 	}
 
-	if len(haveTgs) > 0 && len(wantTgs) == 0 {
+	if len(wantTgs) == 0 {
 		return haveTgs, nil
 	}
 
@@ -279,7 +279,10 @@ func GetGIDbyName(name string) (int, error) {
 	cmd.Stdout, cmd.Stderr = sout, eout
 	if err := cmd.Run(); err != nil {
 		msg := strings.TrimSpace(eout.String())
-		return 0, fmt.Errorf("getent group %q: %w: %s", name, err, msg)
+		if msg == "" {
+			return 0, fmt.Errorf("getent group %q: %w", name, err)
+		}
+		return 0, fmt.Errorf("getent group %q: %s: %w", name, msg, err)
 	}
 	return parseGetent(sout.String())
 }
@@ -289,7 +292,7 @@ func GetGIDbyName(name string) (int, error) {
 func parseGetent(line string) (int, error) {
 	elems := strings.Split(line, ":")
 	if len(elems) != 4 {
-		return 0, errors.New("unexpected getent response format")
+		return 0, fmt.Errorf("unexpected getent response format: %q", line)
 	}
 	gid, err := strconv.Atoi(elems[2])
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -22,6 +23,10 @@ type ImageInfo struct {
 	CreatedAt  time.Time `json:"CreatedAt"`  // Image creation date.
 }
 
+var _ json.Unmarshaler = (*ImageInfo)(nil)
+
+// UnmarshalJSON decodes the image info "docker image ls --format={{json .}}"
+// prints, whose creation date is not in RFC 3339 format.
 func (img *ImageInfo) UnmarshalJSON(i []byte) error {
 	type T1 ImageInfo
 	t1 := struct {
@@ -29,11 +34,11 @@ func (img *ImageInfo) UnmarshalJSON(i []byte) error {
 		CreatedAt string `json:"CreatedAt"`
 	}{T1: (*T1)(img)}
 	if err := json.Unmarshal(i, &t1); err != nil {
-		return err
+		return fmt.Errorf("decode image info: %w", err)
 	}
 	tim, err := time.Parse("2006-01-02 15:04:05 -0700 MST", t1.CreatedAt)
 	if err != nil {
-		return err
+		return fmt.Errorf("parse image creation date: %w", err)
 	}
 	img.CreatedAt = tim.UTC()
 	return nil
@@ -70,8 +75,8 @@ func (ims *ImageInfos) RemoveDuplicates() {
 	*ims = slices.DeleteFunc(*ims, uniqueFn)
 }
 
-// ImgLs lists docker images. The [ring.Ring.Args] may have additional
-// arguments to "docker image ls" base command.
+// ImgLs lists Docker images. The ring's arguments, if any, are added to the
+// "docker image ls" base command.
 func ImgLs(ctx context.Context, rng *ring.Ring) (ImageInfos, error) {
 	// We override printers because this function is utility function and its
 	// results should not be printed to standard output or standard error
@@ -95,7 +100,7 @@ func ImgLs(ctx context.Context, rng *ring.Ring) (ImageInfos, error) {
 	for dec.More() {
 		var img *ImageInfo
 		if err = dec.Decode(&img); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("decode docker image list: %w", err)
 		}
 		ims = append(ims, img)
 	}

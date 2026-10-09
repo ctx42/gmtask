@@ -23,7 +23,7 @@ import (
 	"github.com/ctx42/gmtask/pkg/gmprj"
 )
 
-// shim is a simple Dockerfile used to create image with users and groups
+// shim is a simple Dockerfile used to create an image with users and groups
 // matching the current user.
 //
 //go:embed data/Dockerfile
@@ -38,8 +38,8 @@ const EnvSSHSock = "SSH_AUTH_SOCK"
 // because xdef names a project's build inputs, while these report what the
 // build produced, which is this package's own concern.
 const (
-	// EnvDkrImgName holds Docker image name. Set when project builds only
-	// one image.
+	// EnvDkrImgName holds the Docker image name. Set when the project builds
+	// only one image.
 	EnvDkrImgName = "C42_DKI_NAME"
 
 	// EnvDkrImgNameStem holds stem of Docker image file. The value is the
@@ -112,7 +112,7 @@ var (
 	// ErrNoDockerfile is returned when no Dockerfile is found.
 	ErrNoDockerfile = errors.New("no Dockerfile found")
 
-	// ErrNoPrvRepo is returned when private Docker repository is required.
+	// ErrNoPrvRepo is returned when a private Docker repository is required.
 	ErrNoPrvRepo = errors.New("private docker repository is required")
 
 	// ErrMultiTarget is returned when multiple targets are picked when only
@@ -129,12 +129,18 @@ var (
 	// ErrNoBuilds is returned when a [DockerCmd] has no builds to act on,
 	// because [DockerCmd.Init] was not called or failed.
 	ErrNoBuilds = errors.New("no image builds; docker command not initialized")
+
+	// ErrEmptyTag is the error returned when the Docker image tag is empty.
+	ErrEmptyTag = errors.New("image tag must not be empty")
+
+	// ErrEmptyName is the error returned when the Docker image name is empty.
+	ErrEmptyName = errors.New("image name must not be empty")
 )
 
 // Docker groups the ":docker:*" gomake targets.
 type Docker struct{} //gomake:ns_root
 
-// Login logs in to Docker private repo.
+// Login logs in to the private Docker repository.
 func (Docker) Login(ctx context.Context, rng *ring.Ring) error {
 	fp := NewFlagParser(":docker:login", rng.Stderr())
 	fp.Add(FlagHelp)
@@ -192,8 +198,8 @@ func initTarget(
 	return dc, rng, nil
 }
 
-// Build builds image(s) based on Dockerfile. Runs docker commands in current
-// working directory.
+// Build builds image(s) based on the Dockerfile. Runs docker commands in the
+// current working directory.
 func (Image) Build(ctx context.Context, rng *ring.Ring) error {
 	dc, rng, err := initTarget(
 		ctx,
@@ -216,8 +222,8 @@ func (Image) Build(ctx context.Context, rng *ring.Ring) error {
 	return dc.Build(ctx, rng)
 }
 
-// Push pushes image(s) to private Docker repository. Runs docker commands in
-// current working directory.
+// Push pushes image(s) to the private Docker repository. Runs docker commands
+// in the current working directory.
 func (Image) Push(ctx context.Context, rng *ring.Ring) error {
 	dc, rng, err := initTarget(
 		ctx,
@@ -236,7 +242,7 @@ func (Image) Push(ctx context.Context, rng *ring.Ring) error {
 	return dc.Push(ctx, rng)
 }
 
-// Run runs image or target.
+// Run runs the image or a target.
 func (Image) Run(ctx context.Context, rng *ring.Ring) error {
 	dc, rng, err := initTarget(
 		ctx,
@@ -255,7 +261,7 @@ func (Image) Run(ctx context.Context, rng *ring.Ring) error {
 	return dc.Run(ctx, rng)
 }
 
-// RunProj runs Docker image in current working directory.
+// RunProj runs the Docker image in the current working directory.
 //
 // gomake:hidden This does not yet work - especially the UID, GID mapping.
 func (Image) RunProj(ctx context.Context, rng *ring.Ring) error {
@@ -357,7 +363,7 @@ func (Image) RunProj(ctx context.Context, rng *ring.Ring) error {
 	return nil
 }
 
-// Sh runs image shell.
+// Sh runs a shell in the image.
 func (Image) Sh(ctx context.Context, rng *ring.Ring) error {
 	dc, rng, err := initTarget(
 		ctx,
@@ -376,9 +382,9 @@ func (Image) Sh(ctx context.Context, rng *ring.Ring) error {
 	return dc.Sh(ctx, rng)
 }
 
-// Reference prints docker image reference. When there are multiple targets
-// defined in project configuration file you must provide which target name
-// you want reference for using command arguments.
+// Reference prints the Docker image reference. When the project configuration
+// file defines multiple targets, name the target whose reference you want
+// with the command arguments.
 func (Image) Reference(ctx context.Context, rng *ring.Ring) error {
 	fp := NewFlagParser(":docker:image:reference", rng.Stderr())
 	fp.Add(FlagHelp, FlagTargets)
@@ -455,7 +461,8 @@ func (Image) Info(ctx context.Context, rng *ring.Ring) error {
 	fs.SetOutput(eout)
 	fs.Usage = func() {
 		head := fmt.Sprintf("Usage of %s:\n", tgtName)
-		examples := "\nEXAMPLES:\n" +
+		examples := "" +
+			"\nEXAMPLES:\n" +
 			"\t:docker:image:info\n" +
 			"\t:docker:image:info ENV_VAR_NAME\n"
 		_, _ = fmt.Fprint(eout, head+fs.HelpOptions()+examples)

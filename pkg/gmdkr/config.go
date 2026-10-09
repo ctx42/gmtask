@@ -21,7 +21,7 @@ type Config struct {
 	// Docker image tag.
 	tag string
 
-	// Tag docker image with "latest" when building (default: true).
+	// Tag the docker image with "latest" when building (default: false).
 	latest bool
 
 	// Dockerfile target to build. When empty it means default target.
@@ -54,7 +54,7 @@ type Config struct {
 	push bool
 
 	// External cache specifications "docker build" imports from and
-	// exports to, with [cacheImgVar] still unexpanded. Empty keeps only the
+	// exports to, with cacheImgVar still unexpanded. Empty keeps only the
 	// builder's own cache.
 	cacheFrom string
 	cacheTo   string
