@@ -27,23 +27,23 @@ func WithSetupDockerRepo(repo string) func(*Setup) {
 	return func(setup *Setup) { setup.repo = repo }
 }
 
-// WithSetupGitOrigin is option for [NewSetup] setting Git remote repository.
+// WithSetupGitOrigin is an option for [NewSetup] setting the git remote.
 func WithSetupGitOrigin(origin string) func(*Setup) {
 	return func(setup *Setup) { setup.origin = origin }
 }
 
-// WithSetupGoModule is option for [NewSetup] setting Go module.
+// WithSetupGoModule is an option for [NewSetup] setting the Go module.
 func WithSetupGoModule(module string) func(*Setup) {
 	return func(setup *Setup) { setup.module = module }
 }
 
-// WithSetupMkdir is option for [NewSetup] making [Setup.Setup] create the
+// WithSetupMkdir is an option for [NewSetup] making [Setup.Setup] create the
 // project root directory instead of scaffolding into an existing one.
 func WithSetupMkdir(mkdir bool) func(*Setup) {
 	return func(setup *Setup) { setup.mkdir = mkdir }
 }
 
-// WithSetupForce is option for [NewSetup] allowing [Setup.Setup] to scaffold
+// WithSetupForce is an option for [NewSetup] allowing [Setup.Setup] to scaffold
 // into a directory that already holds entries.
 func WithSetupForce(force bool) func(*Setup) {
 	return func(setup *Setup) { setup.force = force }
@@ -80,7 +80,7 @@ func checkSetupRoot(pth string, force bool) error {
 	return nil
 }
 
-// Setup is used to set up new project.
+// Setup sets up a new project.
 type Setup struct {
 	root   string // Absolute path to the project's root directory.
 	origin string // Git repository origin.

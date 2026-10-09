@@ -24,7 +24,7 @@ var (
 	// ErrTooManyArgs is returned when a target gets too many arguments.
 	ErrTooManyArgs = errors.New("too many arguments")
 
-	// ErrNoConfig is returned when project is missing configuration file.
+	// ErrNoConfig is returned when the project has no configuration file.
 	ErrNoConfig = errors.New("no project configuration file")
 
 	// ErrNoStructure is returned when the running target's gomake.yaml carries
@@ -57,7 +57,6 @@ const EnvSSHAuthSock = "SSH_AUTH_SOCK"
 
 // Configuration file name and relative path.
 const (
-	// CfgFile is the project configuration file name.
 	CfgFile = "project.conf"
 
 	// CfgPath is the relative (to project root) path to the project's
@@ -78,10 +77,10 @@ const (
 	tagInitial = "v0.0.0"
 )
 
-// ScmNo is the [xdef.EnvScmState] value of a project that is not part of a
-// git repository. The other two states are gitaid's [gitaid.StateClean] and
-// [gitaid.StateDirty], and gitaid reports an error rather than a state for
-// this one, so it is named here.
+// ScmNo is the [xdef.EnvScmState] value of a project that is not part of a git
+// repository, or whose repository has no commit yet. The other two states are
+// gitaid's [gitaid.StateClean] and [gitaid.StateDirty], and gitaid reports an
+// error rather than a state for this one, so it is named here.
 //
 // It is project information only: the version [gitaid.Derive] assembles
 // carries the tree state in its own identifier, so this value never reaches
@@ -92,8 +91,8 @@ const ScmNo = "no-scm"
 type Project struct{} //gomake:ns_root
 
 // Env prints "env" formatted information about the project. An additional
-// argument may be passed to the target in form of an environment variable name
-// to display a single value.
+// argument may be passed to the target in the form of an environment variable
+// name to display a single value.
 //
 // Example usage:
 //
@@ -145,7 +144,8 @@ func (Project) Env(ctx context.Context, rng *ring.Ring) error {
 
 // Info prints formatted project information. Its output is a more readable
 // version of the [Project.Env] target. An additional argument may be passed to
-// the target in form of an environment variable name to display a single value.
+// the target in the form of an environment variable name to display a single
+// value.
 //
 // Example usage:
 //

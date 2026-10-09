@@ -37,7 +37,7 @@ type Info struct {
 	Other map[string]string
 
 	// By default set to the current date in UTC, but may be overwritten by the
-	// [xdef.EnvBldDate] environment variable which must be in RFC3339 format.
+	// [xdef.EnvBldDate] environment variable, which must be in RFC3339 format.
 	BuildDate time.Time
 
 	// Version derived from the git working tree. It is the zero value when
@@ -47,15 +47,14 @@ type Info struct {
 	// True when the project has a Dockerfile in its root directory.
 	HasDockerfile bool
 
-	// LDFlags used to set values in the project's "version.go" file.
-	//
-	// If the project is not part of a git repository "ScmRev" and "ScmHash"
-	// will be empty strings and the working directory state will be reported as
-	// dirty.
+	// LDFlags are the "-X" linker flags injecting the build metadata into the
+	// project's root package, under the xdef.Var* variable names. They are
+	// empty when the project root holds no go.mod. Outside a git repository
+	// the revision and hash are empty and the state is [ScmNo].
 	LDFlags string
 }
 
-// NewInfo returns an Info seeded from env. BuildDate defaults to the current
+// NewInfo returns an [Info] seeded from env. BuildDate defaults to the current
 // UTC time, overridden by [xdef.EnvBldDate] (RFC3339) when it is set to a
 // valid date; an invalid one is ignored here and rejected by [GetInfo].
 func NewInfo(env []string) *Info {
@@ -135,7 +134,7 @@ func (inf *Info) CfgLookup(name string) (string, bool) {
 	return val, ok
 }
 
-// Set adds a custom environment variable to the Info instance.
+// Set adds a custom environment variable to the [Info] instance.
 func (inf *Info) Set(name, value string) {
 	if inf.Other == nil {
 		inf.Other = make(map[string]string)
@@ -169,7 +168,7 @@ func (inf *Info) Custom() []string {
 	return toAlphabeticalEnv(inf.Other)
 }
 
-// Env returns environment variables representing Info fields.
+// Env returns environment variables representing [Info] fields.
 func (inf *Info) Env() []string {
 	all := make(map[string]string, len(inf.Config)+len(inf.Other))
 	maps.Copy(all, inf.Config)
@@ -177,7 +176,7 @@ func (inf *Info) Env() []string {
 	return toAlphabeticalEnv(all)
 }
 
-// String returns a string representing Info fields in human readable form.
+// String returns a string representing [Info] fields in human-readable form.
 func (inf *Info) String() string {
 	buf := &bytes.Buffer{}
 	_ = gomake.PrettyPrintEnv(inf.Env(), buf)
@@ -246,7 +245,7 @@ func (inf *Info) setScm(
 // values into the version package at the import spec. It injects into the
 // canonical build-metadata variable names (the xdef.Var* constants) that
 // gomake's :go:build target reads, so a project scaffolded here links the same
-// way gomake builds it. The import spec must not be an empty string.
+// way gomake builds it. An empty spec leaves LDFlags unset.
 func (inf *Info) setLDFlags(spec string) {
 	if spec == "" {
 		return

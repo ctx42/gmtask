@@ -22,10 +22,7 @@ import (
 
 // Default permissions for structure nodes that set no explicit mode.
 const (
-	// dirMode is the default directory permission.
-	dirMode os.FileMode = 0o777
-
-	// fileMode is the default file permission.
+	dirMode  os.FileMode = 0o777
 	fileMode os.FileMode = 0o600
 )
 
@@ -47,11 +44,8 @@ const (
 
 // Node kinds carried by a structure node's "type" key.
 const (
-	// typeFile marks a node that scaffolds a file.
 	typeFile = "file"
-
-	// typeDir marks a node that scaffolds a directory.
-	typeDir = "dir"
+	typeDir  = "dir"
 )
 
 // Project features gating a structure node. An empty node feature defaults to
@@ -60,10 +54,7 @@ const (
 	// featureBase marks a node always created, regardless of enabled features.
 	featureBase = "base"
 
-	// featureGit marks a node created only when the git feature is enabled.
-	featureGit = "git"
-
-	// featureGolang marks a node created only when the Go feature is enabled.
+	featureGit    = "git"
 	featureGolang = "golang"
 )
 
@@ -71,14 +62,16 @@ const (
 // block: its top-level files and directories keyed by name.
 type structure map[string]*structNode
 
-// structNode is one file or directory in a [structure]. A directory nests its
+// structNode is one file or directory in a structure. A directory nests its
 // children under keys other than the reserved attribute keys (type, content,
-// mode, feature), which carry the node's own settings.
+// mode, feature), which carry the node's own settings, so no child can be
+// named after one of them.
 type structNode struct {
 	// Type is the node kind: typeFile or typeDir.
 	Type string
 
-	// Content is a file node's body, subject to template expansion.
+	// Content is a file node's body, subject to text/template expansion; write
+	// a literal "{{" as {{"{{"}}, as in a GitHub Actions ${{ matrix.go }}.
 	Content string
 
 	// Mode is the node's octal permission string, e.g. "0755"; empty selects
@@ -156,7 +149,7 @@ func loadStructure(rng *ring.Ring) (structure, error) {
 }
 
 // validate checks every node in the structure and returns the first violation
-// found, naming the offending node by its path. See [structNode.validate] for
+// found, naming the offending node by its path. See structNode.validate for
 // the rules.
 func (str structure) validate() error {
 	for name, nod := range str {
@@ -297,7 +290,7 @@ func featureSet(names ...string) map[string]bool {
 }
 
 // create writes the node at rel below root and, for a directory, recurses into
-// its children. See [structure.materialize] for the creation and logging rules.
+// its children. See structure.materialize for the creation and logging rules.
 // Nodes whose feature is not in enabled are skipped with no error.
 func (nod *structNode) create(
 	w io.Writer,
