@@ -1,3 +1,6 @@
+## v0.15.2 (Sat, 10 Oct 2026 19:52:34 UTC)
+- fix(gmgo): pin go directive to the toolchain's major.minor.
+
 ## v0.15.1 (Sat, 10 Oct 2026 19:31:14 UTC)
 - docs: shorten the opening sentence of target godoc.
 - build(deps): update 7 ctx42 dependencies.
