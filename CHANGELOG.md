@@ -1,3 +1,7 @@
+## v0.15.1 (Sat, 10 Oct 2026 19:31:14 UTC)
+- docs: shorten the opening sentence of target godoc.
+- build(deps): update 7 ctx42 dependencies.
+
 ## v0.15.0 (Sat, 10 Oct 2026 12:14:44 UTC)
 - feat(gmbump): add --unattended to release without input.
 
