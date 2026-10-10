@@ -75,12 +75,14 @@ func Test_BumpTarget(t *testing.T) {
 		assert.NoError(t, err)
 		want := "" +
 			"Usage of :bump:\n" +
-			"  -f, --force    release when origin cannot be checked\n" +
-			"  -h, --help     show help\n" +
-			"  -M, --major    force a major version bump\n" +
-			"  -m, --minor    force a minor version bump\n" +
-			"  -p, --patch    force a patch version bump\n" +
-			"  -s, --set      release the given version without asking\n"
+			"  -f, --force         release when origin cannot be checked\n" +
+			"  -h, --help          show help\n" +
+			"  -M, --major         force a major version bump\n" +
+			"  -m, --minor         force a minor version bump\n" +
+			"  -p, --patch         force a patch version bump\n" +
+			"  -s, --set           release the given version " +
+			"without asking\n" +
+			"  -u, --unattended    release without reading any input\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
 
@@ -1531,6 +1533,165 @@ func Test_BumpTarget(t *testing.T) {
 		// --- Then ---
 		assert.ErrorIs(t, ErrTagExists, err)
 		assert.Contain(t, "Version: v0.0.2\n", tst.Stdout())
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+	})
+
+	t.Run("unattended", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("--unattended")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.1.0")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("", "feat: a feature")
+		origin := t.TempDir()
+		prj.Exe("git", "init", "--bare", origin)
+		prj.GitSetRemote(origin)
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"Current tag: v0.1.0\n" +
+			"Version: v0.2.0\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.Equal(t, "v0.2.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+		cl := must.Value(gmclog.ReadReleases(prj.Root(), "CHANGELOG.md"))
+		assert.Equal(t, "v0.2.0", cl.Releases[0].Version.Original())
+		assert.True(t, must.Value(gitaid.IsClean(t.Context(), prj.Root())))
+		tags := prj.ExeStdout("git", "-C", origin, "tag", "--list")
+		assert.Equal(t, "v0.1.0\nv0.2.0\n", tags)
+	})
+
+	t.Run("unattended with forced bump", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("-u", "-p")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.1.0")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("", "feat: a feature")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"Current tag: v0.1.0\n" +
+			"Version: v0.1.1\n" +
+			"No remote configured; skip push.\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.Equal(t, "v0.1.1", oskit.ReadFileStr(t, prj.Root(), "VER"))
+	})
+
+	t.Run("unattended with set version", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("-u", "-s", "v1.0.0")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.1.0")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("", "fix: a defect")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"Current tag: v0.1.0\n" +
+			"Version: v1.0.0\n" +
+			"No remote configured; skip push.\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.Equal(t, "v1.0.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+	})
+
+	t.Run("unattended with HEAD on tag", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("-u")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.1.0")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"Current tag: v0.1.0\n" +
+			"HEAD on tag. Nothing to do.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+	})
+
+	t.Run("error - unattended off default branch", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("-u")
+
+		prj := gmtest.NewProject(t, prjkit.WithGitBranch("feature/x"))
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNotDefBranch, err)
+		want := "" +
+			"bump aborted: branch \"feature/x\" is not a default " +
+			"branch (master, main)"
+		assert.ErrorEqual(t, want, err)
+		assert.Equal(t, "Current tag: \n", tst.Stdout())
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "CHANGELOG.md"))
+	})
+
+	t.Run("error - unattended proposal already a tag", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("-u")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.0.1")
+		prj.Exe("git", "checkout", "-q", "-b", "other")
+		prj.CreateFileWith("other", "other.txt")
+		prj.GitCommit("v0.0.2")
+		prj.Exe("git", "checkout", "-q", "-")
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitCommit("")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrTagExists, err)
+		want := "" +
+			"Current tag: v0.0.1\n" +
+			"Version: v0.0.2\n"
+		assert.Equal(t, want, tst.Stdout())
 		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
 	})
 

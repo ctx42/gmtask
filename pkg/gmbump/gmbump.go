@@ -11,7 +11,9 @@
 // major bump advances the minor. You confirm or override the proposal, or skip
 // the question with -s and a version, and it then prepends a CHANGELOG.md
 // entry built from the commits since that tag, writes the version to a VER
-// file, then commits, tags, and pushes to origin.
+// file, then commits, tags, and pushes to origin. With -u it reads no input at
+// all: it releases the proposal, or the -s version, as if -s gave it, and
+// skips the pause for editing CHANGELOG.md.
 //
 // A version must be a full MAJOR.MINOR.PATCH with an optional pre-release and
 // "v" prefix; partial versions and leading zeros are refused, and so is build
@@ -23,7 +25,8 @@
 // A release needs a clean working tree and a branch to cut from. The target
 // refuses a detached HEAD outright, and on a branch other than "master" or
 // "main" it asks to confirm before releasing - after establishing there is
-// anything to release, so a no-op bump never asks.
+// anything to release, so a no-op bump never asks. With -u it refuses such a
+// branch instead of asking.
 //
 // Import path:
 //
@@ -57,6 +60,10 @@ const (
 	branchMaster = "master"
 	branchMain   = "main"
 )
+
+// notDefBranch formats the error refusing a release from a branch, given the
+// branch name and [ErrNotDefBranch].
+const notDefBranch = "bump aborted: branch %q is %w (master, main)"
 
 // Sentinel errors.
 var (
@@ -106,6 +113,11 @@ func Bump(ctx context.Context, rng *ring.Ring) error {
 // origin that cannot be queried returns an error wrapping [gitaid.ErrRemote]
 // unless --force is given.
 //
+// With --unattended it reads no input: the proposed version is released as if
+// --set gave it, so one refused returns the same errors, the CHANGELOG.md edit
+// pause is skipped, and a branch other than "master" or "main" returns
+// [ErrNotDefBranch] without asking.
+//
 //nolint:cyclop
 func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	tgtName := ":bump"
@@ -121,6 +133,7 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	fs.BoolSL(gitaid.BumpMajor, "M", false, "force a major version bump")
 	fs.StringSL("set", "s", "", "release the given version without asking")
 	fs.BoolSL("force", "f", false, "release when origin cannot be checked")
+	fs.BoolSL("unattended", "u", false, "release without reading any input")
 	if err := fs.Parse(rng.Args()); err != nil {
 		return err
 	}
@@ -133,6 +146,7 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	if err != nil {
 		return err
 	}
+	unattended := fs.GetBool("unattended")
 
 	// Go modules cannot fetch a version carrying build metadata.
 	gomod := gomake.FileExists(filepath.Join(repo, "go.mod"))
@@ -197,6 +211,11 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 
 	rdr := bufio.NewReader(rng.Stdin())
 	if branch != branchMaster && branch != branchMain {
+		// Nobody is there to approve it, so an unattended release from a
+		// topic branch is refused rather than assumed.
+		if unattended {
+			return fmt.Errorf(notDefBranch, branch, ErrNotDefBranch)
+		}
 		format := "Release from branch %q? [y/N]: "
 		_, _ = fmt.Fprintf(rng.Stdout(), format, branch)
 		if err = approveBranch(rdr, branch); err != nil {
@@ -220,6 +239,11 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		gomod:  gomod,
 		force:  fs.GetBool("force"),
 	}
+	// Unattended, the proposal is released as if it were given up front, so
+	// a refused one stops the release instead of being asked for again.
+	if set == nil && unattended {
+		set = next
+	}
 	if next, err = grd.choose(ctx, rng.Stdout(), rdr, set, next); err != nil {
 		return err
 	}
@@ -228,17 +252,19 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 		return err
 	}
 
-	msg := "Now you may edit CHANGELOG.md. Then press ENTER to continue.\n"
-	_, _ = fmt.Fprint(rng.Stdout(), msg)
 	// From here on a failure leaves the release half done; every error says
 	// what state the repository was left in.
 	const unfinished = "release not finished; " +
 		"CHANGELOG.md and VER may be modified: %w"
-	if _, err = readLine(rdr); err != nil {
-		err = fmt.Errorf("read continue input: %w", err)
-		return fmt.Errorf(unfinished, err)
+	if !unattended {
+		msg := "Now you may edit CHANGELOG.md. Then press ENTER to continue.\n"
+		_, _ = fmt.Fprint(rng.Stdout(), msg)
+		if _, err = readLine(rdr); err != nil {
+			err = fmt.Errorf("read continue input: %w", err)
+			return fmt.Errorf(unfinished, err)
+		}
+		_, _ = fmt.Fprint(rng.Stdout(), "Continuing.\n")
 	}
-	_, _ = fmt.Fprint(rng.Stdout(), "Continuing.\n")
 
 	pth := filepath.Join(repo, "VER")
 	if err = os.WriteFile(pth, []byte(next.Original()), 0o600); err != nil {
@@ -483,8 +509,7 @@ func approveBranch(rdr *bufio.Reader, branch string) error {
 
 		return nil
 	}
-	format := "bump aborted: branch %q is %w (master, main)"
-	return fmt.Errorf(format, branch, ErrNotDefBranch)
+	return fmt.Errorf(notDefBranch, branch, ErrNotDefBranch)
 }
 
 // readLine reads one line of input from rdr. A last line not ended by a

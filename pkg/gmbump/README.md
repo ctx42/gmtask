@@ -33,6 +33,7 @@ exported `Bump` and `BumpTarget` functions are also usable as a plain library.
   heading towards, read off the Conventional Commits since the last tag.
 - **Interactive confirmation** — accept the proposal or type your own version.
 - **Explicit version** — `-s` sets the version up front and skips the question.
+- **Unattended release** — `-u` reads no input, for scripts and automation.
 - **Strict validation** — full semantic versions only, asked again if refused.
 - **Tag collision guard** — refuses a version already tagged locally or on
   origin, before any file is written.
@@ -104,10 +105,16 @@ gomake :bump -m         # force a minor bump instead
 gomake :bump -M         # force a major bump instead (minor while on 0.x)
 gomake :bump -s v1.0.0  # release this version without asking for one
 gomake :bump -f         # release even when origin cannot be checked
+gomake :bump -u         # release the proposal without reading any input
 gomake :bump -h         # show help
 ```
 
 `-s` cannot be combined with `-p`, `-m`, or `-M`.
+
+`-u` runs without reading any input: the proposal (or the `-s` version) is
+released as if `-s` gave it, so a refused one stops the release instead of
+being asked for again, the pause for editing `CHANGELOG.md` is skipped, and a
+branch other than `master` or `main` is refused rather than asked about.
 
 A run:
 
