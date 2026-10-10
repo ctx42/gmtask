@@ -145,30 +145,50 @@ func Test_pinGoMajorMinor(t *testing.T) {
 		// --- Given ---
 		rng := ringtest.New(t).Ring()
 		dir := t.TempDir()
-		oskit.Write(t, "module x\n\ngo 1.26.3\n", dir, "go.mod")
+		ver := semver.MustParse(strings.TrimPrefix(runtime.Version(), "go"))
+		oskit.Write(t, "module x\n\ngo "+ver.String()+"\n", dir, "go.mod")
 
 		// --- When ---
 		err := pinGoMajorMinor(t.Context(), rng, dir)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Contain(t, "\ngo 1.26\n", oskit.ReadFileStr(t, dir, "go.mod"))
+		want := fmt.Sprintf("\ngo %d.%d\n", ver.Major(), ver.Minor())
+		assert.Contain(t, want, oskit.ReadFileStr(t, dir, "go.mod"))
+	})
+
+	t.Run("rewrites previous minor", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		dir := t.TempDir()
+		ver := semver.MustParse(strings.TrimPrefix(runtime.Version(), "go"))
+		format := "module x\n\ngo %d.%d.0\n"
+		mod := fmt.Sprintf(format, ver.Major(), ver.Minor()-1)
+		oskit.Write(t, mod, dir, "go.mod")
+
+		// --- When ---
+		err := pinGoMajorMinor(t.Context(), rng, dir)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := fmt.Sprintf("\ngo %d.%d\n", ver.Major(), ver.Minor())
+		assert.Contain(t, want, oskit.ReadFileStr(t, dir, "go.mod"))
 	})
 
 	t.Run("already major minor", func(t *testing.T) {
 		// --- Given ---
 		rng := ringtest.New(t).Ring()
-		rng.EnvSet("PATH", "")
 		dir := t.TempDir()
-		oskit.Write(t, "module x\n\ngo 1.26\n", dir, "go.mod")
+		ver := semver.MustParse(strings.TrimPrefix(runtime.Version(), "go"))
+		mod := fmt.Sprintf("module x\n\ngo %d.%d\n", ver.Major(), ver.Minor())
+		oskit.Write(t, mod, dir, "go.mod")
 
 		// --- When ---
 		err := pinGoMajorMinor(t.Context(), rng, dir)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		want := "module x\n\ngo 1.26\n"
-		assert.Equal(t, want, oskit.ReadFileStr(t, dir, "go.mod"))
+		assert.Equal(t, mod, oskit.ReadFileStr(t, dir, "go.mod"))
 	})
 
 	t.Run("no go directive", func(t *testing.T) {
@@ -195,6 +215,21 @@ func Test_pinGoMajorMinor(t *testing.T) {
 		// --- Then ---
 		assert.ErrorIs(t, ErrModInit, err)
 		assert.ErrorIs(t, fs.ErrNotExist, err)
+	})
+
+	t.Run("error - go env fails", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("GOTOOLCHAIN", "bogus")
+		dir := t.TempDir()
+		oskit.Write(t, "module x\n\ngo 1.26.3\n", dir, "go.mod")
+
+		// --- When ---
+		err := pinGoMajorMinor(t.Context(), rng, dir)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrModInit, err)
+		assert.ErrorContain(t, `invalid GOTOOLCHAIN "bogus"`, err)
 	})
 
 	t.Run("error - go mod edit fails", func(t *testing.T) {

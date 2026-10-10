@@ -88,9 +88,12 @@ func InitModule(ctx context.Context, rng *ring.Ring, dir, name string) error {
 var rxGoDirective = regexp.MustCompile(`(?m)^go (\d+\.\d+(?:\.\d+)?)`)
 
 // pinGoMajorMinor rewrites the "go" directive in the go.mod located in dir to
-// its "major.minor" form (e.g. "go 1.26" instead of "go 1.26.3"), so the
-// project is not pinned to the patch version of the toolchain that created it.
-// It is a no-op when the directive is already "major.minor" or absent.
+// the "major.minor" version of the go toolchain (e.g. "go 1.26" for go1.26.3),
+// so the project is not pinned to the patch version of the toolchain that
+// created it. The version comes from the toolchain, not the directive, because
+// "go mod init" in go1.26.0 writes the previous minor ("go 1.25.0"). It is a
+// no-op when the directive is absent, already matches, or the toolchain
+// version is not a release (e.g. a devel build).
 func pinGoMajorMinor(ctx context.Context, rng *ring.Ring, dir string) error {
 	data, err := os.ReadFile(filepath.Join(dir, "go.mod")) //nolint:gosec
 	if err != nil {
@@ -100,10 +103,23 @@ func pinGoMajorMinor(ctx context.Context, rng *ring.Ring, dir string) error {
 	if m == nil {
 		return nil
 	}
-	ver, err := semver.NewVersion(string(m[1]))
+
+	sout, eout := &bytes.Buffer{}, &bytes.Buffer{}
+	cmd := exec.CommandContext(ctx, "go", "env", "GOVERSION")
+	cmd.Env = rng.EnvAll()
+	cmd.Stdout, cmd.Stderr = sout, eout
+	cmd.Dir = dir
+	if err = cmd.Run(); err != nil {
+		msg := strings.TrimSpace(eout.String())
+		if msg != "" {
+			return fmt.Errorf("%w: %s: %s: %w", ErrModInit, dir, msg, err)
+		}
+		return fmt.Errorf("%w: %s: %w", ErrModInit, dir, err)
+	}
+	gover := strings.TrimPrefix(strings.TrimSpace(sout.String()), "go")
+	ver, err := semver.NewVersion(gover)
 	if err != nil {
-		// The go directive is not a version we can parse; leave it as is
-		// rather than rewriting an unexpected value.
+		// Not a release toolchain; leave the directive "go mod init" wrote.
 		return nil
 	}
 	mm := fmt.Sprintf("%d.%d", ver.Major(), ver.Minor())
@@ -111,12 +127,12 @@ func pinGoMajorMinor(ctx context.Context, rng *ring.Ring, dir string) error {
 		return nil
 	}
 
-	eout := &bytes.Buffer{}
-	cmd := exec.CommandContext(ctx, "go", "mod", "edit", "-go="+mm)
+	eout.Reset()
+	cmd = exec.CommandContext(ctx, "go", "mod", "edit", "-go="+mm)
 	cmd.Env = rng.EnvAll()
 	cmd.Stdout, cmd.Stderr = io.Discard, eout
 	cmd.Dir = dir
-	if err := cmd.Run(); err != nil {
+	if err = cmd.Run(); err != nil {
 		msg := strings.TrimSpace(eout.String())
 		if msg != "" {
 			return fmt.Errorf("%w: %s: %s: %w", ErrModInit, dir, msg, err)
