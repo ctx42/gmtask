@@ -1,3 +1,7 @@
+## v0.14.0 (Sat, 10 Oct 2026 09:01:07 UTC)
+- feat(gmbump): release a --set version with no new commits.
+- feat(gmprj): override config file keys from the environment.
+
 ## v0.13.0 (Fri, 09 Oct 2026 19:41:41 UTC)
 - feat(gmbump)!: add --set and validate release versions.
 
