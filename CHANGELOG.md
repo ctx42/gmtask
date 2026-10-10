@@ -1,3 +1,6 @@
+## v0.15.0 (Sat, 10 Oct 2026 12:14:44 UTC)
+- feat(gmbump): add --unattended to release without input.
+
 ## v0.14.0 (Sat, 10 Oct 2026 09:01:07 UTC)
 - feat(gmbump): release a --set version with no new commits.
 - feat(gmprj): override config file keys from the environment.
