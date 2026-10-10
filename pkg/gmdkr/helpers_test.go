@@ -4,6 +4,7 @@
 package gmdkr
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os/exec"
@@ -297,6 +298,38 @@ func Test_updateInfo(t *testing.T) {
 			"C42_DKI_TAG=tag0",
 		}
 		assert.Equal(t, want, inf.Custom())
+	})
+}
+
+func Test_printOverrides(t *testing.T) {
+	t.Run("overrides", func(t *testing.T) {
+		// --- Given ---
+		buf := &bytes.Buffer{}
+		inf := &gmprj.Info{
+			Config:    map[string]string{"A": "env-a", "B": "", "C": "c"},
+			Overrides: []string{"A", "B"},
+		}
+
+		// --- When ---
+		printOverrides(buf, inf)
+
+		// --- Then ---
+		want := "" +
+			"#gomake INFO# override A=env-a\n" +
+			"#gomake INFO# override B=\n"
+		assert.Equal(t, want, buf.String())
+	})
+
+	t.Run("no overrides", func(t *testing.T) {
+		// --- Given ---
+		buf := &bytes.Buffer{}
+		inf := &gmprj.Info{Config: map[string]string{"A": "a"}}
+
+		// --- When ---
+		printOverrides(buf, inf)
+
+		// --- Then ---
+		assert.Empty(t, buf.String())
 	})
 }
 

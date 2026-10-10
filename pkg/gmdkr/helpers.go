@@ -129,6 +129,15 @@ func updateInfo(inf *gmprj.Info, bls []*Build) {
 	}
 }
 
+// printOverrides writes one line to w for every project configuration key the
+// environment overrode, so an unintended override shows in the target output.
+func printOverrides(w io.Writer, inf *gmprj.Info) {
+	for _, key := range inf.Overrides {
+		format := "#gomake INFO# override %s=%s\n"
+		_, _ = fmt.Fprintf(w, format, key, inf.Config[key])
+	}
+}
+
 // sshAuthSock returns value of SSH_AUTH_SOCK environment variable.
 func sshAuthSock(env []string) string {
 	if val, set := gomake.LookupEnv(env, EnvSSHSock); set {

@@ -30,8 +30,13 @@ type Info struct {
 	// locations inside the image rather than on the host.
 	Root string
 
-	// Parsed content of the project's configuration file.
+	// Parsed content of the project's configuration file. [GetInfo] replaces
+	// the value of every key also set in the environment with the environment
+	// one; see Overrides.
 	Config map[string]string
+
+	// Sorted keys of Config whose values the environment overrode, or nil.
+	Overrides []string
 
 	// All other project information values.
 	Other map[string]string
@@ -75,9 +80,10 @@ func NewInfo(env []string) *Info {
 }
 
 // GetInfo retrieves information about a project at the root path. The root may
-// be set to the "." value to indicate the current working directory. It
-// returns an error when [xdef.EnvBldDate] is set to a value that is not an
-// RFC3339 date.
+// be set to the "." value to indicate the current working directory. A
+// variable in env named like a configuration file key overrides that key's
+// value; variables the file does not declare are ignored. It returns an error
+// when [xdef.EnvBldDate] is set to a value that is not an RFC3339 date.
 func GetInfo(ctx context.Context, env []string, root string) (*Info, error) {
 	var err error
 	if root, err = filepath.Abs(root); err != nil {
@@ -104,6 +110,7 @@ func GetInfo(ctx context.Context, env []string, root string) (*Info, error) {
 	if err = inf.setConfig(filepath.Join(root, CfgPath)); err != nil {
 		return nil, err
 	}
+	inf.Overrides = dotenv.Override(inf.Config, env)
 	if err = inf.setScm(ctx, root, ring.New(ring.WithEnv(env))); err != nil {
 		return nil, err
 	}

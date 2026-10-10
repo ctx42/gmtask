@@ -158,7 +158,8 @@ func Test_GetInfo(t *testing.T) {
 			xdef.EnvScmState + "=" + ScmNo,
 		}
 		assert.Equal(t, want, have.Env())
-		assert.Fields(t, 7, Info{})
+		assert.Nil(t, have.Overrides)
+		assert.Fields(t, 8, Info{})
 	})
 
 	t.Run("SSH socket set from environment", func(t *testing.T) {
@@ -188,7 +189,8 @@ func Test_GetInfo(t *testing.T) {
 			EnvSSHAuthSock + "=socket",
 		}
 		assert.Equal(t, want, have.Env())
-		assert.Fields(t, 7, Info{})
+		assert.Nil(t, have.Overrides)
+		assert.Fields(t, 8, Info{})
 	})
 
 	t.Run("config file loaded", func(t *testing.T) {
@@ -212,6 +214,52 @@ func Test_GetInfo(t *testing.T) {
 		assert.Empty(t, have.LDFlags)
 		assert.HasKeyValue(t, "KEY", "VAL", have.Config)
 		assert.Len(t, 1, have.Config)
+	})
+
+	t.Run("config overridden from environment", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t)
+		rng := tst.Ring()
+		rng.EnvSet("KEY_B", "env-b")
+		rng.EnvSet("KEY_A", "")
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd("KEY_A", "file-a")
+		prj.CfgAdd("KEY_B", "file-b")
+		prj.CfgAdd("KEY_C", "file-c")
+		prj.Close()
+
+		// --- When ---
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := map[string]string{
+			"KEY_A": "",
+			"KEY_B": "env-b",
+			"KEY_C": "file-c",
+		}
+		assert.Equal(t, want, have.Config)
+		assert.Equal(t, []string{"KEY_A", "KEY_B"}, have.Overrides)
+	})
+
+	t.Run("environment variable not in config ignored", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t)
+		rng := tst.Ring()
+		rng.EnvSet("OTHER", "env-other")
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd("KEY", "VAL")
+		prj.Close()
+
+		// --- When ---
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, map[string]string{"KEY": "VAL"}, have.Config)
+		assert.Nil(t, have.Overrides)
 	})
 
 	t.Run("initialized git repo", func(t *testing.T) {

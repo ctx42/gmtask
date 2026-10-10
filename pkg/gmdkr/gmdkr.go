@@ -140,7 +140,8 @@ var (
 // Docker groups the ":docker:*" gomake targets.
 type Docker struct{} //gomake:ns_root
 
-// Login logs in to the private Docker registry host.
+// Login logs in to the private Docker registry host. It prints the
+// configuration keys the environment overrode to standard error.
 func (Docker) Login(ctx context.Context, rng *ring.Ring) error {
 	fp := NewFlagParser(":docker:login", rng.Stderr())
 	fp.Add(FlagHelp)
@@ -156,6 +157,7 @@ func (Docker) Login(ctx context.Context, rng *ring.Ring) error {
 	if err != nil {
 		return err
 	}
+	printOverrides(rng.Stderr(), inf)
 	host := inf.CfgGet(xdef.EnvRegHost)
 	if host == "" {
 		format := "docker registry host not configured in %s"
@@ -170,8 +172,9 @@ func (Docker) Login(ctx context.Context, rng *ring.Ring) error {
 // Image groups the ":docker:image:*" gomake targets.
 type Image Docker
 
-// initTarget parses the flags of the target named name and initializes a
-// [DockerCmd] for the current working directory. It returns a nil DockerCmd
+// initTarget parses the flags of the target named name, initializes a
+// [DockerCmd] for the current working directory, and prints the configuration
+// keys the environment overrode to standard error. It returns a nil DockerCmd
 // and nil error when the help flag was set (usage is printed as a side
 // effect); the caller should then return without doing further work.
 func initTarget(
@@ -195,6 +198,7 @@ func initTarget(
 	if err := dc.Init(ctx, rng.EnvAll(), "."); err != nil {
 		return nil, rng, err
 	}
+	printOverrides(rng.Stderr(), dc.Info)
 	return dc, rng, nil
 }
 

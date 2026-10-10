@@ -94,6 +94,27 @@ func Test_Docker_Login(t *testing.T) {
 		assert.ErrorContain(t, "interactive login", err)
 		assert.Contain(t, "interactive login", tst.Stderr())
 	})
+
+	t.Run("registry host overridden from environment", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
+		rng.EnvSet(xdef.EnvRegHost, "registry.acme.io")
+
+		prj := gmtest.NewProject(t)
+		prj.CfgRegRepoDef()
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Docker{}.Login(t.Context(), rng)
+
+		// --- Then ---
+		assert.Error(t, err)
+		assert.Equal(t, "login to registry.acme.io\n", tst.Stdout())
+		want := "#gomake INFO# override C42_REG_HOST=registry.acme.io\n"
+		assert.Contain(t, want, tst.Stderr())
+	})
 }
 
 func Test_Image_Build(t *testing.T) {
@@ -162,6 +183,35 @@ func Test_Image_Build(t *testing.T) {
 		assert.NotContain(t, refLatest, tst.Stderr())
 		assert.NotNil(t, dkrkit.NewT(t).ImgLs().FindByRef(ref))
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(refLatest))
+	})
+
+	t.Run("build argument overridden from environment", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+
+		prj := gmtest.NewProject(t)
+		prj.CfgRegRepoDef()
+		prj.CfgAdd(xdef.EnvGoPrivate, "github.com/ctx42")
+		prj.WithDockerfile()
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring(
+			"--name", prj.ImgName(),
+			"--tag", prj.ImgTag(),
+			"--dry-run",
+		)
+		rng.EnvSet(xdef.EnvGoPrivate, "github.com/acme")
+
+		// --- When ---
+		err := Image{}.Build(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		eoutS := tst.Stderr()
+		want := "#gomake INFO# override C42_GOPRIVATE=github.com/acme\n"
+		assert.Contain(t, want, eoutS)
+		assert.Contain(t, "--build-arg C42_GOPRIVATE=github.com/acme ", eoutS)
 	})
 
 	t.Run("show help", func(t *testing.T) {
@@ -269,6 +319,36 @@ func Test_Image_Push(t *testing.T) {
 		// Test image exist.
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(ref))
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(refLatest))
+	})
+
+	t.Run("registry repo overridden from environment", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+
+		prj := gmtest.NewProject(t)
+		prj.CfgRegRepoDef()
+		prj.WithDockerfile()
+		prj.Close()
+		prj.Chdir()
+
+		rng := tst.Ring(
+			"--name", prj.ImgName(),
+			"--tag", prj.ImgTag(),
+			"--dry-run",
+		)
+		rng.EnvSet(xdef.EnvRegRepo, "registry.acme.io/platform")
+
+		// --- When ---
+		err := Image{}.Push(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		ref := "registry.acme.io/platform/" + prj.ImgName() + ":" + prj.ImgTag()
+		want := "" +
+			"#gomake INFO# override " +
+			"C42_REG_REPO=registry.acme.io/platform\n" +
+			"#gomake INFO# docker push " + ref + "\n"
+		assert.Equal(t, want, tst.Stderr())
 	})
 
 	t.Run("show help", func(t *testing.T) {
