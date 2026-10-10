@@ -296,9 +296,10 @@ func parseDirTarget(
 	return out, rng, "", nil
 }
 
-// Doc starts the godoc documentation engine service and opens it in the default
-// browser at the module in the current working directory. The server binds an
-// OS-assigned free port, so concurrent Doc runs do not collide.
+// Doc starts the godoc documentation server and opens it in the default
+// browser. The browser opens at the module in the current working directory.
+// The server binds an OS-assigned free port, so concurrent Doc runs do not
+// collide.
 //
 // Example usage:
 //
@@ -309,8 +310,9 @@ func (Go) Doc(ctx context.Context, rng *ring.Ring) error {
 }
 
 // Pkgsite starts the pkgsite documentation server and opens it in the default
-// browser at the module in the current working directory. The server binds
-// an OS-assigned free port, so concurrent Pkgsite runs do not collide.
+// browser. The browser opens at the module in the current working directory.
+// The server binds an OS-assigned free port, so concurrent Pkgsite runs do not
+// collide.
 //
 // Example usage:
 //
@@ -467,11 +469,12 @@ var buildVarNames = [...]string{
 	xdef.VarScmState,
 }
 
-// Build runs "go build", injecting build metadata via "-ldflags -X" when the
-// current module has an entry in the target's "modules" configuration. Without
-// a matching entry it builds normally and injects nothing. Extra arguments are
-// forwarded to "go build"; with an entry they must not set -ldflags, and the
-// package, names and values must not contain a single quote.
+// Build runs "go build", injecting build metadata when the current module is
+// configured. The metadata goes in via "-ldflags -X" when the module has an
+// entry in the target's "modules" configuration. Without a matching entry it
+// builds normally and injects nothing. Extra arguments are forwarded to "go
+// build"; with an entry they must not set -ldflags, and the package, names
+// and values must not contain a single quote.
 //
 // Example usage:
 //

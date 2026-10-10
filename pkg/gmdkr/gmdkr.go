@@ -500,9 +500,9 @@ func (Image) Info(ctx context.Context, rng *ring.Ring) error {
 	return nil
 }
 
-// Clean removes dangling images and images whose repository reference contains
-// "ctx42-tst-img-" that were created more than an hour ago. It takes no
-// arguments.
+// Clean removes dangling images and test images created more than an hour
+// ago. Test images are those whose repository reference contains
+// "ctx42-tst-img-". It takes no arguments.
 func (Image) Clean(ctx context.Context, rng *ring.Ring) error {
 	fp := NewFlagParser(":docker:image:clean", rng.Stderr())
 	fp.Add(FlagHelp)

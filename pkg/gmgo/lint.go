@@ -20,10 +20,10 @@ import (
 // Lint collects Go linting targets.
 type Lint Go
 
-// Default fetches the shared config when needed, ensures golangci-lint is
-// installed at the required version, and lints the current working directory
-// and its subdirectories with that config. It takes the arguments of
-// [Lint.Config]. Lint output is written to the ring streams.
+// Default lints the current working directory and its subdirectories with
+// golangci-lint and the shared config. It fetches the config when needed and
+// ensures golangci-lint is installed at the required version. It takes the
+// arguments of [Lint.Config]. Lint output is written to the ring streams.
 //
 // Example usage:
 //
