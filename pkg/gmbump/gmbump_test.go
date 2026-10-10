@@ -6,6 +6,7 @@ package gmbump
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"flag"
 	"io"
 	"path/filepath"
@@ -1932,6 +1933,46 @@ func Test_guard_check(t *testing.T) {
 		// --- Then ---
 		assert.ErrorIs(t, gitaid.ErrNotRepo, err)
 		assert.ErrorContain(t, "check tags", err)
+	})
+}
+
+func Test_push(t *testing.T) {
+	t.Run("head and tags pushed", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.1.0")
+		origin := t.TempDir()
+		prj.Exe("git", "init", "--bare", origin)
+		prj.GitSetRemote(origin)
+		prj.Close()
+
+		// --- When ---
+		err := push(t.Context(), prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		tags := prj.ExeStdout("git", "-C", origin, "tag", "--list")
+		assert.Equal(t, "v0.1.0\n", tags)
+	})
+
+	t.Run("error - context canceled", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll()
+		origin := t.TempDir()
+		prj.Exe("git", "init", "--bare", origin)
+		prj.GitSetRemote(origin)
+		prj.Close()
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+
+		// --- When ---
+		err := push(ctx, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, context.Canceled, err)
 	})
 }
 

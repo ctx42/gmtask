@@ -61,6 +61,11 @@ const (
 	branchMain   = "main"
 )
 
+// netTimeout bounds each call to origin a release makes: the check that the
+// tag is not on origin yet, and the push. It replaces gitaid's own default of
+// 15s, which a slow origin, or a push of many objects, can run past.
+const netTimeout = 2 * time.Minute
+
 // notDefBranch formats the error refusing a release from a branch, given the
 // branch name and [ErrNotDefBranch].
 const notDefBranch = "bump aborted: branch %q is %w (master, main)"
@@ -111,7 +116,8 @@ func Bump(ctx context.Context, rng *ring.Ring) error {
 // or "main" is not approved. A --set version not newer than the current tag
 // returns [ErrNotNewer], and one already a tag returns [ErrTagExists]. An
 // origin that cannot be queried returns an error wrapping [gitaid.ErrRemote]
-// unless --force is given.
+// unless --force is given. Each call to origin, the tag check and the push, is
+// given [netTimeout] unless ctx ends sooner.
 //
 // With --unattended it reads no input: the proposed version is released as if
 // --set gave it, so one refused returns the same errors, the CHANGELOG.md edit
@@ -288,7 +294,7 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 
 	if origin == "" {
 		_, _ = fmt.Fprint(rng.Stdout(), "No remote configured; skip push.\n")
-	} else if err = gitaid.Push(ctx, repo); err != nil {
+	} else if err = push(ctx, repo); err != nil {
 		format := "release %s committed and tagged locally; " +
 			"push it manually: git push: %w"
 		return fmt.Errorf(format, next.Original(), err)
@@ -422,7 +428,9 @@ func (grd guard) check(ctx context.Context, ver *semver.Version) error {
 	if grd.origin == "" {
 		return nil
 	}
-	has, err = gitaid.HasRemoteTag(ctx, grd.repo, "origin", tag)
+	rctx, cancel := context.WithTimeout(ctx, netTimeout)
+	has, err = gitaid.HasRemoteTag(rctx, grd.repo, "origin", tag)
+	cancel()
 	if err != nil {
 		if grd.force && errors.Is(err, gitaid.ErrRemote) {
 			return nil
@@ -433,6 +441,14 @@ func (grd guard) check(ctx context.Context, ver *semver.Version) error {
 		return fmt.Errorf("%w on origin: %s", ErrTagExists, tag)
 	}
 	return nil
+}
+
+// push pushes HEAD of the repository rooted at repo, with its tags, to
+// origin, given [netTimeout] unless ctx ends sooner.
+func push(ctx context.Context, repo string) error {
+	ctx, cancel := context.WithTimeout(ctx, netTimeout)
+	defer cancel()
+	return gitaid.Push(ctx, repo)
 }
 
 // parseVersion parses txt as a full semantic version with an optional "v"
