@@ -1,3 +1,6 @@
+## v0.15.3 (Sat, 10 Oct 2026 19:55:54 UTC)
+- build(deps): update 7 ctx42 dependencies.
+
 ## v0.15.2 (Sat, 10 Oct 2026 19:52:34 UTC)
 - fix(gmgo): pin go directive to the toolchain's major.minor.
 
