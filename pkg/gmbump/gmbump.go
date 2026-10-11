@@ -11,9 +11,11 @@
 // major bump advances the minor. You confirm or override the proposal, or skip
 // the question with -s and a version, and it then prepends a CHANGELOG.md
 // entry built from the commits since that tag, writes the version to a VER
-// file, then commits, tags, and pushes to origin. With -u it reads no input at
-// all: it releases the proposal, or the -s version, as if -s gave it, and
-// skips the pause for editing CHANGELOG.md.
+// file, then commits, tags, and pushes to origin. With HEAD on the version tag
+// there is nothing to release, unless -s gives a version or -p, -m or -M force
+// a bump of that tag; the release then gets an entry with no changes. With -u
+// it reads no input at all: it releases the proposal, or the -s version, as if
+// -s gave it, and skips the pause for editing CHANGELOG.md.
 //
 // A version must be a full MAJOR.MINOR.PATCH with an optional pre-release and
 // "v" prefix; partial versions and leading zeros are refused, and so is build
@@ -188,7 +190,7 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	if err != nil {
 		return fmt.Errorf("resolve version: %w", err)
 	}
-	next, err := nextRelease(ver)
+	next, err := nextRelease(ver, bump)
 	if err != nil {
 		return fmt.Errorf("resolve version: %w", err)
 	}
@@ -209,8 +211,9 @@ func BumpTarget(ctx context.Context, rng *ring.Ring, repo string) error {
 	_, _ = fmt.Fprintf(rng.Stdout(), "Current tag: %s\n", curStr)
 
 	// A version given up front is released even without new commits, so a
-	// release candidate can be promoted to the release it names.
-	if len(changes) == 0 && set == nil {
+	// release candidate can be promoted to the release it names, and so is
+	// a forced bump, which advances the tag HEAD is on.
+	if len(changes) == 0 && set == nil && bump == "" {
 		_, _ = fmt.Fprint(rng.Stdout(), "HEAD on tag. Nothing to do.\n")
 		return nil
 	}
@@ -542,11 +545,20 @@ func readLine(rdr *bufio.Reader) (string, error) {
 // nextRelease returns the release ver heads towards. It is the version core
 // of the development version [gitaid.Derive] built, which is the last tag
 // already advanced by the bump - so the tag cut here and the one stamped into
-// a development build can never name different releases.
-func nextRelease(ver gitaid.Version) (*semver.Version, error) {
-	sem, err := semver.NewVersion(ver.Rev)
+// a development build can never name different releases. A release has no
+// development version past it, so when bump, a forced bump level, is not
+// empty, the release's tag is advanced by it with [gitaid.Bumped] instead.
+func nextRelease(ver gitaid.Version, bump string) (*semver.Version, error) {
+	rev := ver.Rev
+	if ver.Release && bump != "" {
+		var err error
+		if rev, err = gitaid.Bumped(ver.Tag, bump); err != nil {
+			return nil, err
+		}
+	}
+	sem, err := semver.NewVersion(rev)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", ver.Rev, err)
+		return nil, fmt.Errorf("%s: %w", rev, err)
 	}
 	core := fmt.Sprintf("v%d.%d.%d", sem.Major(), sem.Minor(), sem.Patch())
 	return semver.NewVersion(core)

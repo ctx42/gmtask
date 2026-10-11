@@ -100,9 +100,10 @@ Run from the repository root:
 
 ```shell
 gomake :bump            # propose the release the commits imply
-gomake :bump -p         # force a patch bump instead
-gomake :bump -m         # force a minor bump instead
-gomake :bump -M         # force a major bump instead (minor while on 0.x)
+gomake :bump -p         # force a patch bump, even with HEAD on a tag
+gomake :bump -m         # force a minor bump, even with HEAD on a tag
+gomake :bump -M         # force a major bump, even with HEAD on a tag;
+                        # minor while on 0.x
 gomake :bump -s v1.0.0  # release this version without asking for one
 gomake :bump -f         # release even when origin cannot be checked
 gomake :bump -u         # release the proposal without reading any input
@@ -121,7 +122,9 @@ A run:
 1. Verifies the working tree is clean; aborts otherwise.
 2. Reads the current branch; aborts on a detached HEAD.
 3. Prints the current tag, and stops here when there is nothing to release —
-   unless `-s` is given, which releases even with no new commits.
+   unless `-s`, `-p`, `-m`, or `-M` is given, which releases even with no new
+   commits: `-p`, `-m`, and `-M` then bump the tag HEAD is on, and the
+   `CHANGELOG.md` entry lists no changes.
 4. On a branch other than `master` or `main`, asks to confirm the release —
    only `y` or `yes` goes on, anything else aborts.
 5. Prompts for the next version, pre-filled with the proposal — press ENTER to

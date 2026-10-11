@@ -873,6 +873,109 @@ func Test_BumpTarget(t *testing.T) {
 		assert.Equal(t, "v0.2.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
 	})
 
+	t.Run("bump minor with HEAD on tag", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring("-m")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.15.3")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"Current tag: v0.15.3\n" +
+			"Enter a version number [v0.16.0]: " +
+			"Now you may edit CHANGELOG.md. Then press ENTER to continue.\n" +
+			"Continuing.\n" +
+			"No remote configured; skip push.\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.Equal(t, "v0.16.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+		cl := must.Value(gmclog.ReadReleases(prj.Root(), "CHANGELOG.md"))
+		assert.Len(t, 1, cl.Releases)
+		assert.Equal(t, "v0.16.0", cl.Releases[0].Version.Original())
+		assert.Len(t, 0, cl.Releases[0].Changes)
+		tags := prj.ExeStdout("git", "tag", "--list")
+		assert.Equal(t, "v0.15.3\nv0.16.0\n", tags)
+	})
+
+	t.Run("major bump with HEAD on 0 major tag", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring("-M")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.15.3")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "Enter a version number [v0.16.0]: ", tst.Stdout())
+		assert.Equal(t, "v0.16.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+	})
+
+	t.Run("force alone with HEAD on tag", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("-f")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.15.3")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"Current tag: v0.15.3\n" +
+			"HEAD on tag. Nothing to do.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+		tags := prj.ExeStdout("git", "tag", "--list")
+		assert.Equal(t, "v0.15.3\n", tags)
+	})
+
+	t.Run("error - bump on tag with origin unreachable", func(t *testing.T) {
+		// --- Given ---
+		sin := bytes.NewBufferString("\n\n")
+		tst := ringtest.New(t).WetStdout().SetStdin(sin)
+		rng := tst.Ring("-m")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.15.3")
+		prj.GitSetRemote(filepath.Join(t.TempDir(), "missing"))
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, gitaid.ErrRemote, err)
+		assert.ErrorContain(t, "--force skips", err)
+		want := "" +
+			"Current tag: v0.15.3\n" +
+			"Enter a version number [v0.16.0]: "
+		assert.Equal(t, want, tst.Stdout())
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "CHANGELOG.md"))
+	})
+
 	t.Run("force custom tag", func(t *testing.T) {
 		// --- Given ---
 		sin := bytes.NewBufferString("v0.10.0\n\n")
@@ -1644,6 +1747,49 @@ func Test_BumpTarget(t *testing.T) {
 		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
 	})
 
+	t.Run("unattended forced bump with HEAD on tag", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("-u", "-m")
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.15.3")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"Current tag: v0.15.3\n" +
+			"Version: v0.16.0\n" +
+			"No remote configured; skip push.\n" +
+			"Done.\n"
+		assert.Equal(t, want, tst.Stdout())
+		assert.Equal(t, "v0.16.0", oskit.ReadFileStr(t, prj.Root(), "VER"))
+	})
+
+	t.Run("error - unattended bump on tag on topic branch", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("-u", "-m")
+
+		prj := gmtest.NewProject(t, prjkit.WithGitBranch("feature/x"))
+		prj.CreateFileWith("file0 0", "file0.txt")
+		prj.GitInitAddAll("v0.15.3")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNotDefBranch, err)
+		assert.Equal(t, "Current tag: v0.15.3\n", tst.Stdout())
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+	})
+
 	t.Run("error - unattended off default branch", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t).WetStdout()
@@ -2061,7 +2207,7 @@ func Test_nextRelease(t *testing.T) {
 		ver := gitaid.Version{Rev: "v0.4.1-dev.3.dirty+g7f93fb4"}
 
 		// --- When ---
-		have, err := nextRelease(ver)
+		have, err := nextRelease(ver, "")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -2073,7 +2219,7 @@ func Test_nextRelease(t *testing.T) {
 		ver := gitaid.Version{Rev: "v1.2.3"}
 
 		// --- When ---
-		have, err := nextRelease(ver)
+		have, err := nextRelease(ver, "")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -2085,7 +2231,7 @@ func Test_nextRelease(t *testing.T) {
 		ver := gitaid.Version{Rev: "nightly"}
 
 		// --- When ---
-		have, err := nextRelease(ver)
+		have, err := nextRelease(ver, "")
 
 		// --- Then ---
 		assert.ErrorIs(t, semver.ErrInvalidSemVer, err)
@@ -2106,7 +2252,7 @@ func Test_nextRelease(t *testing.T) {
 		ver := must.Value(gmgo.ProjectVersion(t.Context(), rng, prj.Root(), ""))
 
 		// --- When ---
-		have, err := nextRelease(ver)
+		have, err := nextRelease(ver, "")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -2127,7 +2273,7 @@ func Test_nextRelease(t *testing.T) {
 		ver := must.Value(gmgo.ProjectVersion(t.Context(), rng, prj.Root(), ""))
 
 		// --- When ---
-		have, err := nextRelease(ver)
+		have, err := nextRelease(ver, "")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -2150,7 +2296,7 @@ func Test_nextRelease(t *testing.T) {
 		ver := must.Value(gmgo.ProjectVersion(ctx, rng, prj.Root(), bump))
 
 		// --- When ---
-		have, err := nextRelease(ver)
+		have, err := nextRelease(ver, bump)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -2171,13 +2317,69 @@ func Test_nextRelease(t *testing.T) {
 		ver := must.Value(gmgo.ProjectVersion(t.Context(), rng, prj.Root(), ""))
 
 		// --- When ---
-		have, err := nextRelease(ver)
+		have, err := nextRelease(ver, "")
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, "v0.9.0", ver.Tag)
 		assert.Equal(t, "v0.9.1", have.Original())
 	})
+
+	t.Run("release without forced bump", func(t *testing.T) {
+		// --- Given ---
+		ver := gitaid.Version{Tag: "v1.2.3", Rev: "v1.2.3", Release: true}
+
+		// --- When ---
+		have, err := nextRelease(ver, "")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "v1.2.3", have.Original())
+	})
+
+	t.Run("error - release with unknown bump", func(t *testing.T) {
+		// --- Given ---
+		ver := gitaid.Version{Tag: "v1.2.3", Rev: "v1.2.3", Release: true}
+
+		// --- When ---
+		have, err := nextRelease(ver, "sideways")
+
+		// --- Then ---
+		assert.ErrorIs(t, gitaid.ErrBadBump, err)
+		assert.Nil(t, have)
+	})
+}
+
+func Test_nextRelease_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		tag  string
+		bump string
+		want string
+	}{
+		{"release patch", "v1.2.3", gitaid.BumpPatch, "v1.2.4"},
+		{"release minor", "v1.2.3", gitaid.BumpMinor, "v1.3.0"},
+		{"release major", "v1.2.3", gitaid.BumpMajor, "v2.0.0"},
+		{"release major below 1", "v0.15.3", gitaid.BumpMajor, "v0.16.0"},
+		{"pre-release patch", "v1.1.0-rc.1", gitaid.BumpPatch, "v1.1.0"},
+		{"pre-release minor", "v1.1.0-rc.1", gitaid.BumpMinor, "v1.2.0"},
+		{"pre-release major", "v1.1.0-rc.1", gitaid.BumpMajor, "v2.0.0"},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- Given ---
+			ver := gitaid.Version{Tag: tc.tag, Rev: tc.tag, Release: true}
+
+			// --- When ---
+			have, err := nextRelease(ver, tc.bump)
+
+			// --- Then ---
+			assert.NoError(t, err)
+			assert.Equal(t, tc.want, have.Original())
+		})
+	}
 }
 
 func Test_setVersion(t *testing.T) {
