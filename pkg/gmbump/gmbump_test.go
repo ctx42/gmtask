@@ -1614,6 +1614,35 @@ func Test_BumpTarget(t *testing.T) {
 		assert.NoFileExist(t, filepath.Join(prj.Root(), "CHANGELOG.md"))
 	})
 
+	t.Run("error - unattended below tag on origin", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("-u")
+
+		prj := gmtest.NewProject(t, prjkit.WithGitBranch("main"))
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll("v0.1.0")
+		origin := t.TempDir()
+		prj.Exe("git", "init", "--bare", origin)
+		prj.GitSetRemote(origin)
+		prj.Exe("git", "push", "origin", "main")
+		prj.Exe("git", "-C", origin, "tag", "v0.2.0", "main")
+		prj.CreateFileWith("file0 2", "file0.txt")
+		prj.GitCommit("")
+		prj.Close()
+
+		// --- When ---
+		err := BumpTarget(t.Context(), rng, prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNotHighest, err)
+		assert.ErrorContain(t, "on origin: v0.1.1, v0.2.0 exists", err)
+		assert.Contain(t, "Version: v0.1.1\n", tst.Stdout())
+		assert.Equal(t, "v0.1.0\n", prj.ExeStdout("git", "tag", "--list"))
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "VER"))
+		assert.NoFileExist(t, filepath.Join(prj.Root(), "CHANGELOG.md"))
+	})
+
 	t.Run("error - force keeps local tag check", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t).WetStdout()
@@ -1999,6 +2028,31 @@ func Test_guard_ask(t *testing.T) {
 		assert.Equal(t, want, out.String())
 	})
 
+	t.Run("below existing tag asked again", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll("v0.3.0")
+		prj.Close()
+
+		grd := guard{repo: prj.Root()}
+		out := &bytes.Buffer{}
+		rdr := bufio.NewReader(bytes.NewBufferString("v0.2.0\nv0.4.0\n"))
+		def := semver.MustParse("v0.2.0")
+
+		// --- When ---
+		have, err := grd.ask(t.Context(), out, rdr, def)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "v0.4.0", have.Original())
+		want := "" +
+			"Enter a version number [v0.2.0]: " +
+			"Rejected: version below an existing tag: v0.2.0, v0.3.0 exists\n" +
+			"Enter a version number [v0.2.0]: "
+		assert.Equal(t, want, out.String())
+	})
+
 	t.Run("error - check fails", func(t *testing.T) {
 		// --- Given ---
 		prj := gmtest.NewProject(t)
@@ -2066,6 +2120,49 @@ func Test_guard_check(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("error - higher tag on another branch", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll("v0.1.0")
+		prj.Exe("git", "checkout", "-q", "-b", "other")
+		prj.CreateFileWith("other", "other.txt")
+		prj.GitCommit("v0.3.0")
+		prj.Exe("git", "checkout", "-q", "-")
+		prj.Close()
+
+		grd := guard{repo: prj.Root(), cur: "v0.1.0"}
+
+		// --- When ---
+		err := grd.check(t.Context(), semver.MustParse("v0.2.0"))
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNotHighest, err)
+		assert.ErrorContain(t, "tag: v0.2.0, v0.3.0 exists", err)
+	})
+
+	t.Run("error - higher tag on origin", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t, prjkit.WithGitBranch("main"))
+		prj.CreateFileWith("file0 1", "file0.txt")
+		prj.GitInitAddAll("v0.1.0")
+		origin := t.TempDir()
+		prj.Exe("git", "init", "--bare", origin)
+		prj.GitSetRemote(origin)
+		prj.Exe("git", "push", "origin", "main")
+		prj.Exe("git", "-C", origin, "tag", "v0.3.0", "main")
+		prj.Close()
+
+		grd := guard{repo: prj.Root(), origin: origin, cur: "v0.1.0"}
+
+		// --- When ---
+		err := grd.check(t.Context(), semver.MustParse("v0.2.0"))
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNotHighest, err)
+		assert.ErrorContain(t, "on origin: v0.2.0, v0.3.0 exists", err)
+	})
+
 	t.Run("error - not git repo", func(t *testing.T) {
 		// --- Given ---
 		prj := gmtest.NewProject(t)
@@ -2079,6 +2176,59 @@ func Test_guard_check(t *testing.T) {
 		// --- Then ---
 		assert.ErrorIs(t, gitaid.ErrNotRepo, err)
 		assert.ErrorContain(t, "check tags", err)
+	})
+}
+
+func Test_vetTags(t *testing.T) {
+	t.Run("no tags", func(t *testing.T) {
+		// --- When ---
+		err := vetTags(semver.MustParse("v0.2.0"), nil, "")
+
+		// --- Then ---
+		assert.NoError(t, err)
+	})
+
+	t.Run("only lower and other tags", func(t *testing.T) {
+		// --- Given ---
+		tags := []string{"v0.1.0", "0.1.5", "v0.3.0-rc.1", "v1.0.0", "x-v0.9.0"}
+
+		// --- When ---
+		err := vetTags(semver.MustParse("v0.2.0"), tags, "")
+
+		// --- Then ---
+		assert.NoError(t, err)
+	})
+
+	t.Run("error - tag exists", func(t *testing.T) {
+		// --- Given ---
+		tags := []string{"v0.1.0", "v0.2.0"}
+
+		// --- When ---
+		err := vetTags(semver.MustParse("v0.2.0"), tags, " on origin")
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrTagExists, err)
+		assert.ErrorContain(t, "tag already exists on origin: v0.2.0", err)
+	})
+
+	t.Run("error - highest of tags above", func(t *testing.T) {
+		// --- Given ---
+		tags := []string{"v0.4.0", "0.5.0", "v0.3.0"}
+
+		// --- When ---
+		err := vetTags(semver.MustParse("v0.2.0"), tags, "")
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNotHighest, err)
+		assert.ErrorContain(t, "tag: v0.2.0, 0.5.0 exists", err)
+	})
+
+	t.Run("error - release above pre-release", func(t *testing.T) {
+		// --- When ---
+		err := vetTags(semver.MustParse("v0.2.0-rc.1"), []string{"v0.2.0"}, "")
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNotHighest, err)
 	})
 }
 

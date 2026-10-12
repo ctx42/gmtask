@@ -36,7 +36,8 @@ exported `Bump` and `BumpTarget` functions are also usable as a plain library.
 - **Unattended release** — `-u` reads no input, for scripts and automation.
 - **Strict validation** — full semantic versions only, asked again if refused.
 - **Tag collision guard** — refuses a version already tagged locally or on
-  origin, before any file is written.
+  origin, or below a release tag of its major on any branch, before any file
+  is written.
 - **Changelog generation** — a dated release from commits, ready to edit.
 - **Clean-tree guard** — refuses to run when the working tree is dirty.
 - **Branch guard** — refuses a detached HEAD, and asks before releasing from
@@ -137,13 +138,18 @@ A run:
      released with a warning.
    - It must not be a tag yet, locally or on origin. An origin that cannot be
      reached stops the release unless `-f` is given.
+   - No release tag of the same major may be above it, locally or on origin,
+     on any branch: Go would keep resolving that tag as the latest version.
+     Pre-release tags do not count.
 
    A typed version that is refused is reported and asked for again; with `-s`
    the run stops instead.
 6. Prepends the release to `CHANGELOG.md` and pauses so you can edit it; press
    ENTER to continue.
 7. Writes `VER`, commits `CHANGELOG.md` and `VER`, tags the commit, and pushes
-   the tag to origin (a missing remote is not an error).
+   the branch with the tag to origin (a missing remote is not an error). The
+   push is atomic: when origin rejects the branch, the tag is not pushed
+   either.
 
 A `v0.1.0` repository with a `feat:` commit since the tag looks like:
 

@@ -97,6 +97,10 @@ var (
 	// ErrTagExists is returned when the version to release already names a
 	// tag, locally or on origin.
 	ErrTagExists = errors.New("tag already exists")
+
+	// ErrNotHighest is returned when a release tag of the same major version
+	// above the version to release exists, locally or on origin.
+	ErrNotHighest = errors.New("version below an existing tag")
 )
 
 // Bump runs the ":bump" target against the current working directory. It is the
@@ -116,7 +120,8 @@ func Bump(ctx context.Context, rng *ring.Ring) error {
 // [ErrNotClean] for a dirty working tree, [gitaid.ErrDetached] for a detached
 // HEAD, and [ErrNotDefBranch] when a release from a branch other than "master"
 // or "main" is not approved. A --set version not newer than the current tag
-// returns [ErrNotNewer], and one already a tag returns [ErrTagExists]. An
+// returns [ErrNotNewer], one already a tag returns [ErrTagExists], and one
+// below a release tag of its major, on any branch, returns [ErrNotHighest]. An
 // origin that cannot be queried returns an error wrapping [gitaid.ErrRemote]
 // unless --force is given. Each call to origin, the tag check and the push, is
 // given [netTimeout] unless ctx ends sooner.
@@ -367,8 +372,9 @@ func (grd guard) choose(
 
 // ask prompts on out for the version to release, proposing def, and reads
 // answers from rdr until one passes [guard.check]; an empty answer takes def.
-// A version that is invalid, not newer, or already a tag is reported on out
-// and asked for again. Any other failure, and running out of input, ends it.
+// A version that is invalid, not newer, already a tag, or below an existing
+// tag is reported on out and asked for again. Any other failure, and running
+// out of input, ends it.
 func (grd guard) ask(
 	ctx context.Context,
 	out io.Writer,
@@ -396,7 +402,8 @@ func (grd guard) ask(
 		}
 		if !errors.Is(err, ErrBadVersion) &&
 			!errors.Is(err, ErrNotNewer) &&
-			!errors.Is(err, ErrTagExists) {
+			!errors.Is(err, ErrTagExists) &&
+			!errors.Is(err, ErrNotHighest) {
 
 			return nil, err
 		}
@@ -405,9 +412,10 @@ func (grd guard) ask(
 }
 
 // check returns nil when ver may be released: it is newer than the current
-// tag and names no tag yet, locally or on origin. It returns [ErrNotNewer],
-// [ErrTagExists], or - unless forced - an error wrapping [gitaid.ErrRemote]
-// when origin cannot be queried.
+// tag, names no tag yet, and no release tag of its major is above it, locally
+// or on origin. It returns [ErrNotNewer], [ErrTagExists], [ErrNotHighest], or
+// - unless forced - an error wrapping [gitaid.ErrRemote] when origin cannot be
+// queried.
 func (grd guard) check(ctx context.Context, ver *semver.Version) error {
 	if cur, err := semver.NewVersion(grd.cur); err == nil &&
 		!ver.GreaterThan(cur) {
@@ -416,15 +424,14 @@ func (grd guard) check(ctx context.Context, ver *semver.Version) error {
 		return fmt.Errorf(format, ErrNotNewer, ver.Original(), grd.cur)
 	}
 
-	// The current tag is only the closest one reachable from HEAD; the tag
-	// may still exist on another branch.
-	tag := ver.Original()
-	has, err := gitaid.HasTag(ctx, grd.repo, tag)
+	// The current tag is only the closest one reachable from HEAD; the tag,
+	// or a higher one, may still exist on another branch.
+	tags, err := gitaid.Tags(ctx, grd.repo)
 	if err != nil {
 		return fmt.Errorf("check tags: %w", err)
 	}
-	if has {
-		return fmt.Errorf("%w: %s", ErrTagExists, tag)
+	if err = vetTags(ver, tags, ""); err != nil {
+		return err
 	}
 
 	// A tag only someone else has pushed is invisible locally.
@@ -432,7 +439,7 @@ func (grd guard) check(ctx context.Context, ver *semver.Version) error {
 		return nil
 	}
 	rctx, cancel := context.WithTimeout(ctx, netTimeout)
-	has, err = gitaid.HasRemoteTag(rctx, grd.repo, "origin", tag)
+	tags, err = gitaid.RemoteTags(rctx, grd.repo, "origin")
 	cancel()
 	if err != nil {
 		if grd.force && errors.Is(err, gitaid.ErrRemote) {
@@ -440,8 +447,35 @@ func (grd guard) check(ctx context.Context, ver *semver.Version) error {
 		}
 		return fmt.Errorf("check origin tags (--force skips): %w", err)
 	}
-	if has {
-		return fmt.Errorf("%w on origin: %s", ErrTagExists, tag)
+	return vetTags(ver, tags, " on origin")
+}
+
+// vetTags returns [ErrTagExists] when tags hold ver, and [ErrNotHighest] when
+// they hold a release of ver's major above it, naming the highest. Where is
+// appended to the error kind, saying where the tags are.
+func vetTags(ver *semver.Version, tags []string, where string) error {
+	var top *semver.Version
+	var topTag string
+	for _, tag := range tags {
+		if tag == ver.Original() {
+			return fmt.Errorf("%w%s: %s", ErrTagExists, where, tag)
+		}
+		have, err := semver.StrictNewVersion(strings.TrimPrefix(tag, "v"))
+		if err != nil {
+			continue
+		}
+		// Go never picks a pre-release as the latest version while a
+		// release exists, and another major is another module.
+		if have.Prerelease() != "" || have.Major() != ver.Major() {
+			continue
+		}
+		if have.GreaterThan(ver) && (top == nil || have.GreaterThan(top)) {
+			top, topTag = have, tag
+		}
+	}
+	if top != nil {
+		format := "%w%s: %s, %s exists"
+		return fmt.Errorf(format, ErrNotHighest, where, ver.Original(), topTag)
 	}
 	return nil
 }
