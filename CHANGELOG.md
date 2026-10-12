@@ -1,3 +1,8 @@
+## v0.16.0 (Mon, 12 Oct 2026 13:36:51 UTC)
+- fix(gmbump): give calls to origin a 2-minute timeout.
+- feat(gmbump): release a forced bump with HEAD on a tag.
+- feat(gmbump): refuse a version below an existing tag.
+
 ## v0.15.3 (Sat, 10 Oct 2026 19:55:54 UTC)
 - build(deps): update 7 ctx42 dependencies.
 
