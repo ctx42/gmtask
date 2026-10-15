@@ -1,3 +1,6 @@
+## v0.16.1 (Thu, 15 Oct 2026 15:01:06 UTC)
+- chore(deps): update dependencies.
+
 ## v0.16.0 (Mon, 12 Oct 2026 13:36:51 UTC)
 - fix(gmbump): give calls to origin a 2-minute timeout.
 - feat(gmbump): release a forced bump with HEAD on a tag.
