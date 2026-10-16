@@ -50,6 +50,10 @@ var expLintVer = semver.MustParse("v2.12.2")
 // configuration.
 const goDevRepo = "git@github.com:ctx42/xdev.git"
 
+// prjCfgPath is the path of the project configuration file relative to the
+// project root.
+const prjCfgPath = "configs/project.conf"
+
 // bldDateLayout is the layout [BldDateFmt] renders a build date with: an
 // RFC3339 timestamp whose fractional second is always three digits. It is the
 // layout xdef renders [xdef.EnvBldDate] with, so a date written here and one
@@ -71,9 +75,10 @@ const (
 	// golangci-lint config even if a local .golangci.yml already exists.
 	GoLintConfigForceEnvKey = "GOMAKE_GOLINT_CONFIG_FORCE"
 
-	// GoLintConfigRepoEnvKey is the environment variable overriding the git
-	// repository the shared golangci-lint config is fetched from. Unset
-	// defaults to the goDevRepo repository.
+	// GoLintConfigRepoEnvKey is the environment variable overriding the
+	// source the shared golangci-lint config is fetched from, in the forms
+	// [EnvBldGolintConfig] describes. It takes precedence over every other
+	// source setting.
 	GoLintConfigRepoEnvKey = "GOMAKE_GOLINT_CONFIG_REPO"
 
 	// BuildIDEnvKey is the environment variable carrying the CI/CD build
@@ -93,6 +98,17 @@ const (
 	//
 	// Example: minor
 	EnvBldBump = "C42_BLD_BUMP"
+
+	// EnvBldGolintConfig is the project configuration key naming the source
+	// the shared golangci-lint config is fetched from. An https URL whose path
+	// does not end in ".git" is downloaded as the config file itself; any
+	// other value is a git repository the file is taken from. An environment
+	// variable of the same name overrides the key's value.
+	//
+	// Example:
+	//
+	//	https://raw.githubusercontent.com/ctx42/xdev/v0.1.0/.golangci.yml
+	EnvBldGolintConfig = "C42_BLD_GOLINT_CONFIG"
 )
 
 // Go collects Go-related targets.

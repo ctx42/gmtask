@@ -40,9 +40,12 @@ targets:
         # Applied to both the downloaded and the local file. Default: .golangci.yml.
         file: .golangci.yml
 
-        # Git repository the shared config file is fetched from (shallow clone
-        # of its "master" branch). Any remote git can clone, SSH or HTTPS.
-        # Overridden per run by the GOMAKE_GOLINT_CONFIG_REPO env var.
+        # Source the shared config file is fetched from. An https URL whose
+        # path does not end in ".git" is downloaded as the file itself; any
+        # other value is a git repository (shallow clone of its default
+        # branch, any remote git can clone, SSH or HTTPS). Overridden by the
+        # C42_BLD_GOLINT_CONFIG key in configs/project.conf (or the env var of
+        # that name), and per run by the GOMAKE_GOLINT_CONFIG_REPO env var.
         # Default: git@github.com:ctx42/xdev.git.
         repo: git@github.com:acme/dev.git
 

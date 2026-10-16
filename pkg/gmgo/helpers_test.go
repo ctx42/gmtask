@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io/fs"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -16,6 +18,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/ctx42/dotenv/pkg/dotenv"
 	"github.com/ctx42/gomake/pkg/gomake"
 	"github.com/ctx42/ring/pkg/ring/ringtest"
 	"github.com/ctx42/testing/pkg/assert"
@@ -477,6 +480,155 @@ func Test_gitGetFile(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, fs.ErrNotExist, err)
+	})
+}
+
+func Test_prjCfgValue(t *testing.T) {
+	t.Run("declared key", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd("C42_KEY", "value")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		have, err := prjCfgValue("C42_KEY")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "value", have)
+	})
+
+	t.Run("undeclared key", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd("C42_OTHER", "value")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		have, err := prjCfgValue("C42_KEY")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "", have)
+	})
+
+	t.Run("no project configuration", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		have, err := prjCfgValue("C42_KEY")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "", have)
+	})
+
+	t.Run("error - invalid project configuration", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("not a key value\n", "configs", "project.conf")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		have, err := prjCfgValue("C42_KEY")
+
+		// --- Then ---
+		assert.ErrorIs(t, dotenv.ErrInvLine, err)
+		assert.ErrorContain(t, "configs/project.conf: ", err)
+		assert.Equal(t, "", have)
+	})
+}
+
+func Test_httpGetFile(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		// --- Given ---
+		srv := httptest.NewTLSServer(http.HandlerFunc(
+			func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte("version: \"2\"\n"))
+			},
+		))
+		t.Cleanup(srv.Close)
+		dst := filepath.Join(t.TempDir(), ".golangci.yml")
+
+		// --- When ---
+		err := httpGetFile(t.Context(), srv.Client(), srv.URL+"/x.yml", dst)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "version: \"2\"\n", oskit.ReadFileStr(t, dst))
+	})
+
+	t.Run("error - destination directory missing", func(t *testing.T) {
+		// --- Given ---
+		src := "https://example.com/x.yml"
+		dst := filepath.Join(t.TempDir(), "missing", ".golangci.yml")
+
+		// --- When ---
+		err := httpGetFile(t.Context(), http.DefaultClient, src, dst)
+
+		// --- Then ---
+		assert.ErrorIs(t, fs.ErrNotExist, err)
+	})
+
+	t.Run("error - invalid URL", func(t *testing.T) {
+		// --- Given ---
+		dst := filepath.Join(t.TempDir(), ".golangci.yml")
+
+		// --- When ---
+		err := httpGetFile(t.Context(), http.DefaultClient, "https://\x7f", dst)
+
+		// --- Then ---
+		assert.ErrorContain(t, "invalid control character in URL", err)
+		assert.NoFileExist(t, dst)
+	})
+
+	t.Run("error - request fails", func(t *testing.T) {
+		// --- Given ---
+		src := "https://" + must.Value(freeAddr()) + "/x.yml"
+		dst := filepath.Join(t.TempDir(), ".golangci.yml")
+
+		// --- When ---
+		err := httpGetFile(t.Context(), http.DefaultClient, src, dst)
+
+		// --- Then ---
+		assert.ErrorContain(t, "Get \""+src+"\": ", err)
+		assert.NoFileExist(t, dst)
+	})
+
+	t.Run("error - status not OK", func(t *testing.T) {
+		// --- Given ---
+		srv := httptest.NewTLSServer(http.NotFoundHandler())
+		t.Cleanup(srv.Close)
+		src := srv.URL + "/x.yml"
+		dst := filepath.Join(t.TempDir(), ".golangci.yml")
+
+		// --- When ---
+		err := httpGetFile(t.Context(), srv.Client(), src, dst)
+
+		// --- Then ---
+		assert.ErrorEqual(t, "GET "+src+": 404 Not Found", err)
+		assert.NoFileExist(t, dst)
+	})
+
+	t.Run("error - context cancelled", func(t *testing.T) {
+		// --- Given ---
+		srv := httptest.NewTLSServer(http.NotFoundHandler())
+		t.Cleanup(srv.Close)
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		dst := filepath.Join(t.TempDir(), ".golangci.yml")
+
+		// --- When ---
+		err := httpGetFile(ctx, srv.Client(), srv.URL, dst)
+
+		// --- Then ---
+		assert.ErrorIs(t, context.Canceled, err)
 	})
 }
 

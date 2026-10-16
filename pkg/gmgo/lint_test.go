@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/ctx42/dotenv/pkg/dotenv"
 	"github.com/ctx42/gomake/pkg/gomake"
 	"github.com/ctx42/ring/pkg/ring/ringtest"
 	"github.com/ctx42/testing/pkg/assert"
@@ -638,6 +639,187 @@ func Test_Lint_Config(t *testing.T) {
 		assert.Equal(t, want, tst.Stderr())
 	})
 
+	t.Run("source from project configuration", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		repo := setupConfigRepo(t)
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(EnvBldGolintConfig, repo)
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Lint{}.Config(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		pth := prj.Path(".golangci.yml")
+		assert.True(t, oskit.FileSize(t, pth) > 0)
+		want := "#gomake INFO# lint config: downloading from " + repo +
+			" to .golangci.yml\n"
+		assert.Equal(t, want, tst.Stderr())
+	})
+
+	t.Run("project configuration overrides configuration", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		repo := setupConfigRepo(t)
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(EnvBldGolintConfig, repo)
+		prj.Close()
+		prj.Chdir()
+
+		// The target config repo does not exist, so a successful download
+		// proves the project configuration wins over it.
+		cfgRepo := "git@example.com:no/op.git"
+		cfg := jsonkit.To(t, map[string]any{"repo": cfgRepo})
+		rng.MetaSet(gomake.ConfigMetaKey, cfg)
+
+		// --- When ---
+		err := Lint{}.Config(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.True(t, oskit.FileSize(t, prj.Path(".golangci.yml")) > 0)
+		assert.Contain(t, "downloading from "+repo+" ", tst.Stderr())
+	})
+
+	t.Run("env project key overrides project config", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		repo := setupConfigRepo(t)
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(EnvBldGolintConfig, "git@example.com:no/op.git")
+		prj.Close()
+		prj.Chdir()
+
+		rng.EnvSet(EnvBldGolintConfig, repo)
+
+		// --- When ---
+		err := Lint{}.Config(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.True(t, oskit.FileSize(t, prj.Path(".golangci.yml")) > 0)
+		assert.Contain(t, "downloading from "+repo+" ", tst.Stderr())
+	})
+
+	t.Run("empty env project key falls back", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		repo := setupConfigRepo(t)
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(EnvBldGolintConfig, "git@example.com:no/op.git")
+		prj.Close()
+		prj.Chdir()
+
+		// The empty value replaces the project one, so the target config
+		// repo is used.
+		rng.EnvSet(EnvBldGolintConfig, "")
+		cfg := jsonkit.To(t, map[string]any{"repo": repo})
+		rng.MetaSet(gomake.ConfigMetaKey, cfg)
+
+		// --- When ---
+		err := Lint{}.Config(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.True(t, oskit.FileSize(t, prj.Path(".golangci.yml")) > 0)
+		assert.Contain(t, "downloading from "+repo+" ", tst.Stderr())
+	})
+
+	t.Run("env source repo overrides project config", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		repo := setupConfigRepo(t)
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(EnvBldGolintConfig, "git@example.com:no/op.git")
+		prj.Close()
+		prj.Chdir()
+
+		rng.EnvSet(EnvBldGolintConfig, "git@example.com:no/env.git")
+		rng.EnvSet(GoLintConfigRepoEnvKey, repo)
+
+		// --- When ---
+		err := Lint{}.Config(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.True(t, oskit.FileSize(t, prj.Path(".golangci.yml")) > 0)
+		assert.Contain(t, "downloading from "+repo+" ", tst.Stderr())
+	})
+
+	t.Run("error - https file source fetched over HTTP", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		src := "https://" + must.Value(freeAddr()) + "/.golangci.yml"
+		rng.EnvSet(GoLintConfigRepoEnvKey, src)
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Lint{}.Config(t.Context(), rng)
+
+		// --- Then ---
+		// Nothing listens on the address: the request error proves the
+		// source was fetched over HTTP, not cloned.
+		assert.ErrorContain(t, "Get \""+src+"\": ", err)
+		want := "#gomake INFO# lint config: downloading from " + src +
+			" to .golangci.yml\n"
+		assert.Equal(t, want, tst.Stderr())
+	})
+
+	t.Run("error - https git source cloned", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		src := "https://" + must.Value(freeAddr()) + "/dev.git"
+		rng.EnvSet(GoLintConfigRepoEnvKey, src)
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Lint{}.Config(t.Context(), rng)
+
+		// --- Then ---
+		assert.ErrorContain(t, "git clone "+src+": ", err)
+		want := "#gomake INFO# lint config: downloading from " + src +
+			" to .golangci.yml\n"
+		assert.Equal(t, want, tst.Stderr())
+	})
+
+	t.Run("error - invalid project configuration", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("not a key value\n", "configs", "project.conf")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Lint{}.Config(t.Context(), rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, dotenv.ErrInvLine, err)
+		assert.ErrorContain(t, "configs/project.conf: ", err)
+	})
+
 	t.Run("error - config type mismatch", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t)
@@ -839,5 +1021,156 @@ func Test_Lint_Config(t *testing.T) {
 			"\".\" or \"tmp\" if exists)\n" +
 			"  -h, --help    show help\n"
 		assert.Equal(t, want, tst.Stderr())
+	})
+}
+
+func Test_lintSource(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		have, err := lintSource(rng, "git@example.com:acme/cfg.git")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "git@example.com:acme/cfg.git", have)
+	})
+
+	t.Run("from project configuration", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(EnvBldGolintConfig, "git@example.com:acme/prj.git")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		have, err := lintSource(rng, "git@example.com:acme/cfg.git")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "git@example.com:acme/prj.git", have)
+	})
+
+	t.Run("environment overrides project configuration", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet(EnvBldGolintConfig, "https://example.com/.golangci.yml")
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(EnvBldGolintConfig, "git@example.com:acme/prj.git")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		have, err := lintSource(rng, "git@example.com:acme/cfg.git")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "https://example.com/.golangci.yml", have)
+	})
+
+	t.Run("empty environment falls back to cfgRepo", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet(EnvBldGolintConfig, "")
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(EnvBldGolintConfig, "git@example.com:acme/prj.git")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		have, err := lintSource(rng, "git@example.com:acme/cfg.git")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "git@example.com:acme/cfg.git", have)
+	})
+
+	t.Run("source repo environment takes precedence", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet(GoLintConfigRepoEnvKey, "git@example.com:acme/env.git")
+		rng.EnvSet(EnvBldGolintConfig, "https://example.com/.golangci.yml")
+
+		// The project configuration is invalid: it is never read.
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("not a key value\n", "configs", "project.conf")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		have, err := lintSource(rng, "git@example.com:acme/cfg.git")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "git@example.com:acme/env.git", have)
+	})
+
+	t.Run("error - invalid project configuration", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.CreateFileWith("not a key value\n", "configs", "project.conf")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		have, err := lintSource(rng, "git@example.com:acme/cfg.git")
+
+		// --- Then ---
+		assert.ErrorIs(t, dotenv.ErrInvLine, err)
+		assert.Equal(t, "", have)
+	})
+}
+
+func Test_fetchLintConfig(t *testing.T) {
+	t.Run("git repository", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		repo := setupConfigRepo(t, "custom.yml")
+		dst := filepath.Join(t.TempDir(), "out.yml")
+
+		// --- When ---
+		err := fetchLintConfig(t.Context(), rng, repo, "custom.yml", dst)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := oskit.ReadFileStr(t, "testdata/golangci.yml")
+		assert.Equal(t, want, oskit.ReadFileStr(t, dst))
+	})
+
+	t.Run("error - https file fetched over HTTP", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		src := "https://" + must.Value(freeAddr()) + "/.golangci.yml"
+		dst := filepath.Join(t.TempDir(), ".golangci.yml")
+
+		// --- When ---
+		err := fetchLintConfig(t.Context(), rng, src, ".golangci.yml", dst)
+
+		// --- Then ---
+		assert.ErrorContain(t, "Get \""+src+"\": ", err)
+	})
+
+	t.Run("error - https git repository cloned", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		src := "https://" + must.Value(freeAddr()) + "/dev.git"
+		dst := filepath.Join(t.TempDir(), ".golangci.yml")
+
+		// --- When ---
+		err := fetchLintConfig(t.Context(), rng, src, ".golangci.yml", dst)
+
+		// --- Then ---
+		assert.ErrorContain(t, "git clone "+src+": ", err)
 	})
 }

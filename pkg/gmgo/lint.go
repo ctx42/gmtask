@@ -7,10 +7,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ctx42/gomake/pkg/gomake"
@@ -211,16 +213,22 @@ func (Lint) Install(ctx context.Context, rng *ring.Ring) error {
 // customizable with target arguments. If the execution context has no deadline
 // set, it will be set to 60 seconds. You may force the config file download by
 // setting the [GoLintConfigForceEnvKey] environment variable to a true value
-// such as "1" or "true"; a value that is not a boolean is an error. The source
-// repository defaults to goDevRepo but may be overridden by the target's
-// "repo" configuration, or, taking precedence over both, the
-// [GoLintConfigRepoEnvKey] environment variable. The config file name defaults
-// to ".golangci.yml" but may be overridden by the target's "file"
-// configuration, applied to both the fetched and the written file.
+// such as "1" or "true"; a value that is not a boolean is an error. The config
+// file name defaults to ".golangci.yml" but may be overridden by the target's
+// "file" configuration, applied to both the fetched and the written file.
 //
-// The configuration is fetched with a shallow clone of the source repository
-// (see gitGetFile) rather than "git archive --remote", which hosts such as
-// GitHub reject.
+// The source is the first of these that is set, highest precedence first:
+//
+//   - the [GoLintConfigRepoEnvKey] environment variable,
+//   - the [EnvBldGolintConfig] environment variable or, when it is not set,
+//     the key of that name in the project's "configs/project.conf",
+//   - the target's "repo" configuration,
+//   - the goDevRepo repository.
+//
+// An https URL whose path does not end in ".git" is downloaded as the config
+// file itself. Any other source is a git repository; the file is taken from a
+// shallow clone of its default branch (see gitGetFile) rather than with
+// "git archive --remote", which hosts such as GitHub reject.
 //
 // Example usage:
 //
@@ -247,6 +255,10 @@ func (Lint) config(
 		return "", false, err
 	}
 	repo, err := gomake.GetCfgDefault(cfg, "repo", goDevRepo)
+	if err != nil {
+		return "", false, err
+	}
+	src, err := lintSource(rng, repo)
 	if err != nil {
 		return "", false, err
 	}
@@ -283,13 +295,49 @@ func (Lint) config(
 			return dst, false, nil
 		}
 	}
-	if env := rng.EnvGet(GoLintConfigRepoEnvKey); env != "" {
-		repo = env
-	}
 	format := "#gomake INFO# lint config: downloading from %s to %s\n"
-	_, _ = fmt.Fprintf(rng.Stderr(), format, repo, dst)
-	if err = gitGetFile(ctx, rng, repo, "", cfgFile, dst); err != nil {
+	_, _ = fmt.Fprintf(rng.Stderr(), format, src, dst)
+	if err = fetchLintConfig(ctx, rng, src, cfgFile, dst); err != nil {
 		return "", false, err
 	}
 	return dst, false, nil
+}
+
+// lintSource returns the source to fetch the shared golangci-lint config from:
+// the [GoLintConfigRepoEnvKey] environment variable when it is not empty; else
+// the [EnvBldGolintConfig] environment variable or, when it is not set, the
+// project configuration key of that name, when the value is not empty; else
+// cfgRepo.
+func lintSource(rng *ring.Ring, cfgRepo string) (string, error) {
+	if src := rng.EnvGet(GoLintConfigRepoEnvKey); src != "" {
+		return src, nil
+	}
+	src, ok := rng.EnvLookup(EnvBldGolintConfig)
+	if !ok {
+		var err error
+		if src, err = prjCfgValue(EnvBldGolintConfig); err != nil {
+			return "", err
+		}
+	}
+	if src != "" {
+		return src, nil
+	}
+	return cfgRepo, nil
+}
+
+// fetchLintConfig writes the config file named file from src to dst. An https
+// URL whose path does not end in ".git" is downloaded as the file itself; any
+// other src is a git repository the file is taken from.
+func fetchLintConfig(
+	ctx context.Context,
+	rng *ring.Ring,
+	src string,
+	file string,
+	dst string,
+) error {
+
+	if strings.HasPrefix(src, "https://") && !strings.HasSuffix(src, ".git") {
+		return httpGetFile(ctx, http.DefaultClient, src, dst)
+	}
+	return gitGetFile(ctx, rng, src, "", file, dst)
 }

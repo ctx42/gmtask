@@ -19,6 +19,7 @@ binary.
     * [Use as a library](#use-as-a-library)
   * [Configuration](#configuration)
     * [gomake.yaml](#gomakeyaml)
+    * [Project configuration](#project-configuration)
     * [Environment variables](#environment-variables)
 <!-- TOC -->
 
@@ -196,15 +197,25 @@ gomake :go:lint:config -dir tmp # to a specific directory
 Pin the golangci-lint version and the config file name in `gomake.yaml` — see
 [Configuration](#configuration).
 
-The config is fetched with a shallow clone of a git repository (the default
-branch's `.golangci.yml`), defaulting to `git@github.com:ctx42/xdev.git`. Point
-it at your own repository with `GOMAKE_GOLINT_CONFIG_REPO` — any remote `git`
-can clone, SSH or HTTPS:
+The config source defaults to `git@github.com:ctx42/xdev.git`. A source takes
+one of two forms:
+
+- an `https://` URL whose path does not end in `.git` — downloaded as the
+  config file itself, with no `git` and no SSH key involved;
+- anything else — a git repository (any remote `git` can clone, SSH or HTTPS);
+  the file is taken from a shallow clone of its default branch.
+
+Point it elsewhere per run with `GOMAKE_GOLINT_CONFIG_REPO`:
 
 ```shell
-GOMAKE_GOLINT_CONFIG_REPO=git@github.com:acme/dev.git gomake :go:lint:config
+GOMAKE_GOLINT_CONFIG_REPO=git@bitbucket.org:acme/dev.git gomake :go:lint:config
 GOMAKE_GOLINT_CONFIG_REPO=https://github.com/acme/dev.git gomake :go:lint
+GOMAKE_GOLINT_CONFIG_REPO=https://raw.githubusercontent.com/ctx42/xdev/v0.1.0/.golangci.yml \
+    gomake :go:lint
 ```
+
+Or per project with the `C42_BLD_GOLINT_CONFIG` key in `configs/project.conf`
+— see [Project configuration](#project-configuration).
 
 Add `GOMAKE_GOLINT_CONFIG_FORCE=1` to re-download over an existing file.
 
@@ -242,9 +253,9 @@ run := gmgo.TestLogFilename(rng) // go_test_run.log      (+ BUILD_ID in CI)
 
 ## Configuration
 
-`gmgo` reads settings from two places: a `gomake.yaml` `targets:` block and
-environment variables. A setting offered in both is overridden by the
-environment variable.
+`gmgo` reads settings from a `gomake.yaml` `targets:` block, the project's
+`configs/project.conf`, and environment variables. A setting offered in more
+than one place is overridden by the environment variable.
 
 ### gomake.yaml
 
@@ -267,10 +278,10 @@ targets:
         repo: git@github.com:acme/dev.git # config source; default: ctx42/xdev.
 ```
 
-The `file` key names the config; the `repo` key sets the git repository it is
-fetched from (a shallow clone of the default branch, any SSH or HTTPS remote).
-`repo` is also settable per run with the `GOMAKE_GOLINT_CONFIG_REPO` environment
-variable, which takes precedence:
+The `file` key names the config; the `repo` key sets the source it is fetched
+from, in either form [Linting config](#linting-config) describes. The project
+configuration's `C42_BLD_GOLINT_CONFIG` overrides `repo`, and the
+`GOMAKE_GOLINT_CONFIG_REPO` environment variable overrides both:
 
 ```shell
 GOMAKE_GOLINT_CONFIG_REPO=git@github.com:acme/dev.git gomake :go:lint
@@ -290,8 +301,26 @@ not applied during a check. Run `:go:lint`, `:go:lint:install`, or
 |--------|-----------|--------------------------------------|---------------------------------|
 | `lint` | `version` | golangci-lint version installed      | `latest`                        |
 | `lint` | `file`    | shared config file fetched + written | `.golangci.yml`                 |
-| `lint` | `repo`    | git repo the config is fetched from  | `git@github.com:ctx42/xdev.git` |
+| `lint` | `repo`    | source the config is fetched from    | `git@github.com:ctx42/xdev.git` |
 | `go`   | `timeout` | `go test -timeout` value             | go tool default                 |
+
+### Project configuration
+
+`:go:lint`, `:go:lint:config`, and `:go:check` read one key from the project's
+`configs/project.conf`, relative to the working directory; a missing file is
+not an error:
+
+- **`C42_BLD_GOLINT_CONFIG`** — the source of the shared golangci-lint config,
+  in either form [Linting config](#linting-config) describes. It overrides the
+  `repo` configuration above. An environment variable of the same name
+  overrides the key; set to an empty value, it falls back to `repo`.
+
+```shell
+C42_BLD_GOLINT_CONFIG=https://raw.githubusercontent.com/ctx42/xdev/v0.1.0/.golangci.yml
+```
+
+Precedence, highest first: `GOMAKE_GOLINT_CONFIG_REPO`, `C42_BLD_GOLINT_CONFIG`
+(environment, then `configs/project.conf`), `repo`, the built-in default.
 
 ### Environment variables
 
@@ -299,9 +328,11 @@ not applied during a check. Run `:go:lint`, `:go:lint:install`, or
   overrides the `timeout` configuration above.
 - **`GOMAKE_GOLINT_CONFIG_FORCE`** (`:go:lint:config`) — re-download the config
   file even if it already exists.
-- **`GOMAKE_GOLINT_CONFIG_REPO`** (`:go:lint:config`) — source repo for the
-  config; overrides the `repo` configuration above (default
+- **`GOMAKE_GOLINT_CONFIG_REPO`** (`:go:lint:config`) — source of the config;
+  overrides `C42_BLD_GOLINT_CONFIG` and the `repo` configuration above (default
   `git@github.com:ctx42/xdev.git`).
+- **`C42_BLD_GOLINT_CONFIG`** (`:go:lint:config`) — overrides the
+  [project configuration](#project-configuration) key of the same name.
 - **`BUILD_ID`** (`:go:test`) — appended to the coverage and run log filenames
   in CI.
 - **`C42_BLD_DATE`** (`:go:build`) — RFC-3339 build date injected as

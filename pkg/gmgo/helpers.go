@@ -6,9 +6,12 @@ package gmgo
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,6 +20,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/ctx42/dotenv/pkg/dotenv"
 	"github.com/ctx42/gomake/pkg/gomake"
 	"github.com/ctx42/ring/pkg/ring"
 )
@@ -248,6 +252,67 @@ func gitGetFile(
 	data, err := os.ReadFile(filepath.Join(tmp, src)) //nolint:gosec
 	if err != nil {
 		return err
+	}
+	return os.WriteFile(dst, data, 0o600) //nolint:gosec
+}
+
+// prjCfgValue returns the value of key in the project configuration file at
+// prjCfgPath, relative to the current working directory. It returns an empty
+// string when the file does not exist or does not declare key.
+func prjCfgValue(key string) (string, error) {
+	fil, err := os.Open(prjCfgPath)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return "", nil
+		}
+		return "", err
+	}
+	defer func() { _ = fil.Close() }()
+
+	cfg := make(map[string]string)
+	if err = dotenv.Parse(cfg, fil); err != nil {
+		return "", fmt.Errorf("%s: %w", prjCfgPath, err)
+	}
+	return cfg[key], nil
+}
+
+// httpGetFile downloads the file at the src URL with cli and writes it to dst.
+// A response status other than 200 OK is an error. When ctx has no deadline
+// set, one of 60 seconds is applied.
+func httpGetFile(ctx context.Context, cli *http.Client, src, dst string) error {
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 60*time.Second)
+		defer cancel()
+	}
+
+	// Fail before touching the network when the destination directory is
+	// missing; the error wraps fs.ErrNotExist and names the offending path.
+	if _, err := os.Stat(filepath.Dir(dst)); err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		src,
+		http.NoBody,
+	)
+	if err != nil {
+		return err
+	}
+	res, err := cli.Do(req)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("GET %s: %s", src, res.Status)
+	}
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		return fmt.Errorf("GET %s: %w", src, err)
 	}
 	return os.WriteFile(dst, data, 0o600) //nolint:gosec
 }
