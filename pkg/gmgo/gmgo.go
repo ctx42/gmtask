@@ -50,10 +50,6 @@ var expLintVer = semver.MustParse("v2.12.2")
 // configuration.
 const goDevRepo = "git@github.com:ctx42/xdev.git"
 
-// prjCfgPath is the path of the project configuration file relative to the
-// project root.
-const prjCfgPath = "configs/project.conf"
-
 // bldDateLayout is the layout [BldDateFmt] renders a build date with: an
 // RFC3339 timestamp whose fractional second is always three digits. It is the
 // layout xdef renders [xdef.EnvBldDate] with, so a date written here and one

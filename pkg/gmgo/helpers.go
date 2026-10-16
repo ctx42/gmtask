@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"net"
 	"net/http"
 	"os"
@@ -20,7 +19,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/ctx42/dotenv/pkg/dotenv"
+	"github.com/ctx42/gmtask/internal/prjcfg"
 	"github.com/ctx42/gomake/pkg/gomake"
 	"github.com/ctx42/ring/pkg/ring"
 )
@@ -256,24 +255,24 @@ func gitGetFile(
 	return os.WriteFile(dst, data, 0o600) //nolint:gosec
 }
 
-// prjCfgValue returns the value of key in the project configuration file at
-// prjCfgPath, relative to the current working directory. It returns an empty
-// string when the file does not exist or does not declare key.
-func prjCfgValue(key string) (string, error) {
-	fil, err := os.Open(prjCfgPath)
+// prjCfgValue returns the value of key in the layered configuration of the
+// project in the current working directory, read with the environment of rng;
+// see [prjcfg.Read]. It returns an empty string when the project has no
+// configuration file or the configuration does not declare key.
+func prjCfgValue(
+	ctx context.Context,
+	rng *ring.Ring,
+	key string,
+) (string, error) {
+
+	cfg, err := prjcfg.Read(ctx, rng.EnvAll(), ".")
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
+		if errors.Is(err, prjcfg.ErrNoConfig) {
 			return "", nil
 		}
 		return "", err
 	}
-	defer func() { _ = fil.Close() }()
-
-	cfg := make(map[string]string)
-	if err = dotenv.Parse(cfg, fil); err != nil {
-		return "", fmt.Errorf("%s: %w", prjCfgPath, err)
-	}
-	return cfg[key], nil
+	return cfg.Values[key], nil
 }
 
 // httpGetFile downloads the file at the src URL with cli and writes it to dst.

@@ -221,7 +221,8 @@ func (Lint) Install(ctx context.Context, rng *ring.Ring) error {
 //
 //   - the [GoLintConfigRepoEnvKey] environment variable,
 //   - the [EnvBldGolintConfig] environment variable or, when it is not set,
-//     the key of that name in the project's "configs/project.conf",
+//     the key of that name in the project's "configs/project.conf", layered
+//     on the configuration of the module its C42_BLD_DKF_MODULE key names,
 //   - the target's "repo" configuration,
 //   - the goDevRepo repository.
 //
@@ -258,7 +259,7 @@ func (Lint) config(
 	if err != nil {
 		return "", false, err
 	}
-	src, err := lintSource(rng, repo)
+	src, err := lintSource(ctx, rng, repo)
 	if err != nil {
 		return "", false, err
 	}
@@ -306,16 +307,22 @@ func (Lint) config(
 // lintSource returns the source to fetch the shared golangci-lint config from:
 // the [GoLintConfigRepoEnvKey] environment variable when it is not empty; else
 // the [EnvBldGolintConfig] environment variable or, when it is not set, the
-// project configuration key of that name, when the value is not empty; else
-// cfgRepo.
-func lintSource(rng *ring.Ring, cfgRepo string) (string, error) {
+// key of that name in the layered project configuration, when the value is
+// not empty; else cfgRepo.
+func lintSource(
+	ctx context.Context,
+	rng *ring.Ring,
+	cfgRepo string,
+) (string, error) {
+
 	if src := rng.EnvGet(GoLintConfigRepoEnvKey); src != "" {
 		return src, nil
 	}
 	src, ok := rng.EnvLookup(EnvBldGolintConfig)
 	if !ok {
 		var err error
-		if src, err = prjCfgValue(EnvBldGolintConfig); err != nil {
+		src, err = prjCfgValue(ctx, rng, EnvBldGolintConfig)
+		if err != nil {
 			return "", err
 		}
 	}

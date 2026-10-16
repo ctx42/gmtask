@@ -28,6 +28,7 @@ import (
 	"github.com/ctx42/xdef/pkg/xdef"
 
 	"github.com/ctx42/gmtask/internal/gmtest"
+	"github.com/ctx42/gmtask/internal/prjcfg"
 )
 
 func Test_ImpPath(t *testing.T) {
@@ -486,13 +487,15 @@ func Test_gitGetFile(t *testing.T) {
 func Test_prjCfgValue(t *testing.T) {
 	t.Run("declared key", func(t *testing.T) {
 		// --- Given ---
+		rng := ringtest.New(t).Ring()
+
 		prj := gmtest.NewProject(t)
 		prj.CfgAdd("C42_KEY", "value")
 		prj.Close()
 		prj.Chdir()
 
 		// --- When ---
-		have, err := prjCfgValue("C42_KEY")
+		have, err := prjCfgValue(t.Context(), rng, "C42_KEY")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -501,27 +504,61 @@ func Test_prjCfgValue(t *testing.T) {
 
 	t.Run("undeclared key", func(t *testing.T) {
 		// --- Given ---
+		rng := ringtest.New(t).Ring()
+
 		prj := gmtest.NewProject(t)
 		prj.CfgAdd("C42_OTHER", "value")
 		prj.Close()
 		prj.Chdir()
 
 		// --- When ---
-		have, err := prjCfgValue("C42_KEY")
+		have, err := prjCfgValue(t.Context(), rng, "C42_KEY")
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, "", have)
 	})
 
+	t.Run("key from the Dockerfile module", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("GOPROXY", "off")
+
+		dir := t.TempDir()
+		oskit.Write(t, "module example.com/dkf\n\ngo 1.26\n", dir, "go.mod")
+		cfg := "C42_VER=v1.0.0\nC42_KEY=https://acme.io/$C42_VER/x\n"
+		oskit.Write(t, cfg, oskit.MkdirAll(t, dir, "configs"), "project.conf")
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd("C42_BLD_DKF_MODULE", "example.com/dkf")
+		prj.CfgAdd("C42_VER", "v2.0.0")
+		prj.Close()
+		mod := "" +
+			"module example.com/comp/project\n\n" +
+			"go 1.26\n\n" +
+			"require example.com/dkf v0.0.0\n\n" +
+			"replace example.com/dkf => " + dir + "\n"
+		oskit.Write(t, mod, prj.Root(), "go.mod")
+		prj.Chdir()
+
+		// --- When ---
+		have, err := prjCfgValue(t.Context(), rng, "C42_KEY")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "https://acme.io/v2.0.0/x", have)
+	})
+
 	t.Run("no project configuration", func(t *testing.T) {
 		// --- Given ---
+		rng := ringtest.New(t).Ring()
+
 		prj := gmtest.NewProject(t)
 		prj.Close()
 		prj.Chdir()
 
 		// --- When ---
-		have, err := prjCfgValue("C42_KEY")
+		have, err := prjCfgValue(t.Context(), rng, "C42_KEY")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -530,17 +567,37 @@ func Test_prjCfgValue(t *testing.T) {
 
 	t.Run("error - invalid project configuration", func(t *testing.T) {
 		// --- Given ---
+		rng := ringtest.New(t).Ring()
+
 		prj := gmtest.NewProject(t)
 		prj.CreateFileWith("not a key value\n", "configs", "project.conf")
 		prj.Close()
 		prj.Chdir()
 
 		// --- When ---
-		have, err := prjCfgValue("C42_KEY")
+		have, err := prjCfgValue(t.Context(), rng, "C42_KEY")
 
 		// --- Then ---
 		assert.ErrorIs(t, dotenv.ErrInvLine, err)
 		assert.ErrorContain(t, "configs/project.conf: ", err)
+		assert.Equal(t, "", have)
+	})
+
+	t.Run("error - Dockerfile module not resolved", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("GOPROXY", "off")
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd("C42_BLD_DKF_MODULE", "example.com/dkf")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		have, err := prjCfgValue(t.Context(), rng, "C42_KEY")
+
+		// --- Then ---
+		assert.ErrorIs(t, prjcfg.ErrDkfModule, err)
 		assert.Equal(t, "", have)
 	})
 }

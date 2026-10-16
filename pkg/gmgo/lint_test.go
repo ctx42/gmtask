@@ -1027,6 +1027,7 @@ func Test_Lint_Config(t *testing.T) {
 func Test_lintSource(t *testing.T) {
 	t.Run("default", func(t *testing.T) {
 		// --- Given ---
+		ctx := t.Context()
 		rng := ringtest.New(t).Ring()
 
 		prj := gmtest.NewProject(t)
@@ -1034,7 +1035,7 @@ func Test_lintSource(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		have, err := lintSource(rng, "git@example.com:acme/cfg.git")
+		have, err := lintSource(ctx, rng, "git@example.com:acme/cfg.git")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1043,6 +1044,7 @@ func Test_lintSource(t *testing.T) {
 
 	t.Run("from project configuration", func(t *testing.T) {
 		// --- Given ---
+		ctx := t.Context()
 		rng := ringtest.New(t).Ring()
 
 		prj := gmtest.NewProject(t)
@@ -1051,7 +1053,7 @@ func Test_lintSource(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		have, err := lintSource(rng, "git@example.com:acme/cfg.git")
+		have, err := lintSource(ctx, rng, "git@example.com:acme/cfg.git")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1060,6 +1062,7 @@ func Test_lintSource(t *testing.T) {
 
 	t.Run("environment overrides project configuration", func(t *testing.T) {
 		// --- Given ---
+		ctx := t.Context()
 		rng := ringtest.New(t).Ring()
 		rng.EnvSet(EnvBldGolintConfig, "https://example.com/.golangci.yml")
 
@@ -1069,7 +1072,7 @@ func Test_lintSource(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		have, err := lintSource(rng, "git@example.com:acme/cfg.git")
+		have, err := lintSource(ctx, rng, "git@example.com:acme/cfg.git")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1078,6 +1081,7 @@ func Test_lintSource(t *testing.T) {
 
 	t.Run("empty environment falls back to cfgRepo", func(t *testing.T) {
 		// --- Given ---
+		ctx := t.Context()
 		rng := ringtest.New(t).Ring()
 		rng.EnvSet(EnvBldGolintConfig, "")
 
@@ -1087,7 +1091,7 @@ func Test_lintSource(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		have, err := lintSource(rng, "git@example.com:acme/cfg.git")
+		have, err := lintSource(ctx, rng, "git@example.com:acme/cfg.git")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1096,6 +1100,7 @@ func Test_lintSource(t *testing.T) {
 
 	t.Run("source repo environment takes precedence", func(t *testing.T) {
 		// --- Given ---
+		ctx := t.Context()
 		rng := ringtest.New(t).Ring()
 		rng.EnvSet(GoLintConfigRepoEnvKey, "git@example.com:acme/env.git")
 		rng.EnvSet(EnvBldGolintConfig, "https://example.com/.golangci.yml")
@@ -1107,7 +1112,7 @@ func Test_lintSource(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		have, err := lintSource(rng, "git@example.com:acme/cfg.git")
+		have, err := lintSource(ctx, rng, "git@example.com:acme/cfg.git")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -1116,6 +1121,7 @@ func Test_lintSource(t *testing.T) {
 
 	t.Run("error - invalid project configuration", func(t *testing.T) {
 		// --- Given ---
+		ctx := t.Context()
 		rng := ringtest.New(t).Ring()
 
 		prj := gmtest.NewProject(t)
@@ -1124,7 +1130,7 @@ func Test_lintSource(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		have, err := lintSource(rng, "git@example.com:acme/cfg.git")
+		have, err := lintSource(ctx, rng, "git@example.com:acme/cfg.git")
 
 		// --- Then ---
 		assert.ErrorIs(t, dotenv.ErrInvLine, err)

@@ -308,7 +308,12 @@ not applied during a check. Run `:go:lint`, `:go:lint:install`, or
 
 `:go:lint`, `:go:lint:config`, and `:go:check` read one key from the project's
 `configs/project.conf`, relative to the working directory; a missing file is
-not an error:
+not an error. The configuration is layered the way the `:docker:*` targets read
+it (see [Dockerfile module](../gmdkr/README.md#dockerfile-module)): when the
+project's `C42_BLD_DKF_MODULE` key names a Dockerfile module, that module's
+`configs/project.conf` is the base the project's file is laid over, so the key
+may come from the module and a value referring to another key follows the
+project's override of it.
 
 - **`C42_BLD_GOLINT_CONFIG`** — the source of the shared golangci-lint config,
   in either form [Linting config](#linting-config) describes. It overrides the
