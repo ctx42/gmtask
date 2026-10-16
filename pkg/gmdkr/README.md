@@ -323,7 +323,15 @@ The `:docker:*` targets then:
   `C42_CTR_ROOT=/opt/acme` above also moves every path the module's
   configuration derives from it;
 - name and tag the images after the project, as for a project's own
-  `Dockerfile`.
+  `Dockerfile`;
+- pass the project directory to the build as the named build context
+  `project`, so the module's `Dockerfile` can read optional files from the
+  project:
+
+  ```dockerfile
+  RUN --mount=type=bind,from=project,target=/project \
+      if [ -d /project/configs/ca ]; then cp /project/configs/ca/*.crt /tmp/; fi
+  ```
 
 A project that names a module and has a `Dockerfile` of its own fails with
 an error naming both files; a module without a `Dockerfile` fails too.

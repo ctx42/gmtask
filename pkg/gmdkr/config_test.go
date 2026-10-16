@@ -40,7 +40,8 @@ func Test_NewConfig(t *testing.T) {
 	assert.Empty(t, cfg.cacheFrom)
 	assert.Empty(t, cfg.cacheTo)
 	assert.Empty(t, cfg.dkfDir)
-	assert.Fields(t, 15, Config{})
+	assert.Empty(t, cfg.prjDir)
+	assert.Fields(t, 16, Config{})
 }
 
 func Test_ConfigFrom(t *testing.T) {
@@ -77,7 +78,8 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheFrom)
 		assert.Empty(t, cfg.cacheTo)
 		assert.Empty(t, cfg.dkfDir)
-		assert.Fields(t, 15, Config{})
+		assert.Empty(t, cfg.prjDir)
+		assert.Fields(t, 16, Config{})
 		bldDate := must.Value(time.Parse(
 			time.RFC3339Nano,
 			cfg.args[xdef.EnvBldDate],
@@ -118,7 +120,8 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheFrom)
 		assert.Empty(t, cfg.cacheTo)
 		assert.Empty(t, cfg.dkfDir)
-		assert.Fields(t, 15, Config{})
+		assert.Empty(t, cfg.prjDir)
+		assert.Fields(t, 16, Config{})
 		wDate := "2000-01-02T03:04:05.600Z"
 		assert.HasKeyValue(t, xdef.EnvBldDate, wDate, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
@@ -158,7 +161,8 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheFrom)
 		assert.Empty(t, cfg.cacheTo)
 		assert.Empty(t, cfg.dkfDir)
-		assert.Fields(t, 15, Config{})
+		assert.Empty(t, cfg.prjDir)
+		assert.Fields(t, 16, Config{})
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev,
 			"v0.0.1-dev.1+g"+cm.Hash, cfg.args)
@@ -202,7 +206,8 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheFrom)
 		assert.Empty(t, cfg.cacheTo)
 		assert.Empty(t, cfg.dkfDir)
-		assert.Fields(t, 15, Config{})
+		assert.Empty(t, cfg.prjDir)
+		assert.Fields(t, 16, Config{})
 		assert.HasKeyValue(t, xdef.EnvScmRepo, prjkit.GitOrigin, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev,
@@ -246,7 +251,8 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheFrom)
 		assert.Empty(t, cfg.cacheTo)
 		assert.Empty(t, cfg.dkfDir)
-		assert.Fields(t, 15, Config{})
+		assert.Empty(t, cfg.prjDir)
+		assert.Fields(t, 16, Config{})
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, cm.Rev, cfg.args)
 		wDate := "2000-01-02T03:04:05.600Z"
@@ -294,7 +300,8 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheFrom)
 		assert.Empty(t, cfg.cacheTo)
 		assert.Empty(t, cfg.dkfDir)
-		assert.Fields(t, 15, Config{})
+		assert.Empty(t, cfg.prjDir)
+		assert.Fields(t, 16, Config{})
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, rev, cfg.args)
 		wDate := "2000-01-02T03:04:05.600Z"
@@ -336,7 +343,8 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheFrom)
 		assert.Empty(t, cfg.cacheTo)
 		assert.Empty(t, cfg.dkfDir)
-		assert.Fields(t, 15, Config{})
+		assert.Empty(t, cfg.prjDir)
+		assert.Fields(t, 16, Config{})
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, "v1.2.3", cfg.args)
 		wDate := "2000-01-02T03:04:05.600Z"
@@ -380,7 +388,8 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheFrom)
 		assert.Empty(t, cfg.cacheTo)
 		assert.Empty(t, cfg.dkfDir)
-		assert.Fields(t, 15, Config{})
+		assert.Empty(t, cfg.prjDir)
+		assert.Fields(t, 16, Config{})
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, "v1.2.3", cfg.args)
 		assert.HasKeyValue(t, EnvSSHSock, "ssh-sock", cfg.args)
@@ -542,14 +551,29 @@ func Test_ConfigFrom(t *testing.T) {
 }
 
 func Test_ConfigFrom_dkfDir(t *testing.T) {
-	// --- Given ---
-	inf := &gmprj.Info{DkfDir: "/mod/dkf"}
+	t.Run("Dockerfile module", func(t *testing.T) {
+		// --- Given ---
+		inf := &gmprj.Info{Root: "/prj", DkfDir: "/mod/dkf"}
 
-	// --- When ---
-	cfg := ConfigFrom(inf, nil)
+		// --- When ---
+		cfg := ConfigFrom(inf, nil)
 
-	// --- Then ---
-	assert.Equal(t, "/mod/dkf", cfg.dkfDir)
+		// --- Then ---
+		assert.Equal(t, "/mod/dkf", cfg.dkfDir)
+		assert.Equal(t, "/prj", cfg.prjDir)
+	})
+
+	t.Run("project Dockerfile", func(t *testing.T) {
+		// --- Given ---
+		inf := &gmprj.Info{Root: "/prj"}
+
+		// --- When ---
+		cfg := ConfigFrom(inf, nil)
+
+		// --- Then ---
+		assert.Empty(t, cfg.dkfDir)
+		assert.Empty(t, cfg.prjDir)
+	})
 }
 
 func Test_Config_ForTarget(t *testing.T) {
@@ -570,6 +594,7 @@ func Test_Config_ForTarget(t *testing.T) {
 		cacheFrom: "from",
 		cacheTo:   "to",
 		dkfDir:    "dkf",
+		prjDir:    "prj",
 	}
 
 	// --- When ---
@@ -592,7 +617,8 @@ func Test_Config_ForTarget(t *testing.T) {
 	assert.Equal(t, "from", have.cacheFrom)
 	assert.Equal(t, "to", have.cacheTo)
 	assert.Equal(t, "dkf", have.dkfDir)
-	assert.Fields(t, 15, Config{})
+	assert.Equal(t, "prj", have.prjDir)
+	assert.Fields(t, 16, Config{})
 
 	// Test it's independent.
 	cfg.target = "changed"

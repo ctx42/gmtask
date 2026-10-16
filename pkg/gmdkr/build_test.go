@@ -417,6 +417,7 @@ func Test_Build_Cmd(t *testing.T) {
 		// --- Given ---
 		cfg := NewConfig("project", "v1.2.3")
 		cfg.dkfDir = filepath.Join("mod", "dkf")
+		cfg.prjDir = "prj"
 		bld := must.Value(NewBuild(*cfg))
 
 		// --- When ---
@@ -427,6 +428,7 @@ func Test_Build_Cmd(t *testing.T) {
 			"build",
 			"--platform", "linux/amd64",
 			"-t", "project:v1.2.3",
+			"--build-context", "project=prj",
 			"--file", filepath.Join("mod", "dkf", "Dockerfile"),
 			filepath.Join("mod", "dkf"),
 		}

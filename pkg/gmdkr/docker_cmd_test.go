@@ -399,8 +399,12 @@ func Test_DockerCmd_Init(t *testing.T) {
 		assert.Len(t, 1, dc.Builds)
 		assert.Equal(t, "dki-project:v1.1.1", dc.Builds[0].ImgRef())
 		have := dc.Builds[0].Cmd()
-		want := []string{"--file", filepath.Join(dir, "Dockerfile"), dir}
-		assert.Equal(t, want, have[len(have)-3:])
+		want := []string{
+			"--build-context", "project=" + prj.Root(),
+			"--file", filepath.Join(dir, "Dockerfile"),
+			dir,
+		}
+		assert.Equal(t, want, have[len(have)-5:])
 	})
 
 	t.Run("error - two Dockerfiles", func(t *testing.T) {

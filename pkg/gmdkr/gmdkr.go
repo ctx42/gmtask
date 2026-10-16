@@ -33,6 +33,13 @@ var shim string
 // socket exposed to "docker build".
 const EnvSSHSock = "SSH_AUTH_SOCK"
 
+// PrjContext is the name of the build context holding the project directory
+// in a Dockerfile module build. The module's Dockerfile reads optional files
+// from the project through it, for example:
+//
+//	RUN --mount=type=bind,from=project,target=/project ...
+const PrjContext = "project"
+
 // Environment variable names for the images a build produces. The variables
 // are set based on the project state. They live here rather than in xdef
 // because xdef names a project's build inputs, while these report what the

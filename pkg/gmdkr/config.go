@@ -63,6 +63,10 @@ type Config struct {
 	// the Dockerfile and serving as the build context. Empty builds the
 	// project's Dockerfile in the current working directory.
 	dkfDir string
+
+	// Project root directory, passed to a Dockerfile module build as the
+	// [PrjContext] build context. Empty when dkfDir is.
+	prjDir string
 }
 
 // NewConfig returns new instance of Config with default field values. It does
@@ -93,7 +97,10 @@ func ConfigFrom(inf *gmprj.Info, fls *Flags) *Config {
 	}
 
 	cfg.repo = inf.CfgGet(xdef.EnvRegRepo)
-	cfg.dkfDir = inf.DkfDir
+	if inf.DkfDir != "" {
+		cfg.dkfDir = inf.DkfDir
+		cfg.prjDir = inf.Root
+	}
 	if inf.Config != nil {
 		cfg.args = maps.Clone(inf.Config)
 	}

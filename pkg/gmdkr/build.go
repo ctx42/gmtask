@@ -104,12 +104,15 @@ func (bld *Build) Env() []string {
 
 // Cmd returns a "docker build" command that builds from "./Dockerfile" in the
 // current working directory, or, for a Dockerfile module, from the Dockerfile
-// in the module directory with that directory as the build context. The last
-// element is always the context path.
+// in the module directory with that directory as the build context and the
+// project directory as the [PrjContext] named build context. The last element
+// is always the context path.
 func (bld *Build) Cmd() []string {
 	if bld.dkfDir != "" {
+		prj := PrjContext + "=" + bld.prjDir
 		dkf := filepath.Join(bld.dkfDir, "Dockerfile")
-		return append(bld.cmdArgs(), "--file", dkf, bld.dkfDir)
+		args := append(bld.cmdArgs(), "--build-context", prj)
+		return append(args, "--file", dkf, bld.dkfDir)
 	}
 	return append(bld.cmdArgs(), "--file", "Dockerfile", ".")
 }
