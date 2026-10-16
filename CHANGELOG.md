@@ -1,3 +1,6 @@
+## v0.17.0 (Fri, 16 Oct 2026 11:21:35 UTC)
+- feat(gmgo): add project and https lint config sources.
+
 ## v0.16.2 (Fri, 16 Oct 2026 10:03:02 UTC)
 - fix(gmprj): normalize a module given without an origin.
 
