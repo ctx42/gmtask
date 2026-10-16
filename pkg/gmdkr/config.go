@@ -58,6 +58,11 @@ type Config struct {
 	// builder's own cache.
 	cacheFrom string
 	cacheTo   string
+
+	// Directory of the Dockerfile module the image is built from, holding
+	// the Dockerfile and serving as the build context. Empty builds the
+	// project's Dockerfile in the current working directory.
+	dkfDir string
 }
 
 // NewConfig returns new instance of Config with default field values. It does
@@ -88,6 +93,7 @@ func ConfigFrom(inf *gmprj.Info, fls *Flags) *Config {
 	}
 
 	cfg.repo = inf.CfgGet(xdef.EnvRegRepo)
+	cfg.dkfDir = inf.DkfDir
 	if inf.Config != nil {
 		cfg.args = maps.Clone(inf.Config)
 	}

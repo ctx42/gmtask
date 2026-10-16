@@ -6,9 +6,11 @@ package gmdkr
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/ctx42/gomake/pkg/gomake"
 	"github.com/ctx42/ring/pkg/ring"
 	"github.com/ctx42/xdef/pkg/xdef"
 
@@ -47,8 +49,8 @@ func (dc *DockerCmd) Init(
 	if dc.Info, err = gmprj.GetInfo(ctx, env, root); err != nil {
 		return err
 	}
-	if !dc.Info.HasDockerfile {
-		return ErrNoDockerfile
+	if err = checkDockerfile(dc.Info); err != nil {
+		return err
 	}
 
 	var wantTgs []string
@@ -74,6 +76,27 @@ func (dc *DockerCmd) Init(
 		dc.Builds = append(dc.Builds, bld)
 	}
 	updateInfo(dc.Info, dc.Builds)
+	return nil
+}
+
+// checkDockerfile returns an error when the project in inf has no Dockerfile
+// to build: neither its own nor, when it names a Dockerfile module, the
+// module's. It returns an error wrapping [ErrTwoDockerfiles] when it has both.
+func checkDockerfile(inf *gmprj.Info) error {
+	own := filepath.Join(inf.Root, "Dockerfile")
+	if inf.DkfDir == "" {
+		if !inf.HasDockerfile {
+			return ErrNoDockerfile
+		}
+		return nil
+	}
+	mod := filepath.Join(inf.DkfDir, "Dockerfile")
+	if inf.HasDockerfile {
+		return fmt.Errorf("%w: %s and %s", ErrTwoDockerfiles, own, mod)
+	}
+	if !gomake.FileExists(mod) {
+		return fmt.Errorf("%w: %s", ErrNoDockerfile, mod)
+	}
 	return nil
 }
 

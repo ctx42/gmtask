@@ -6,6 +6,7 @@ package gmdkr
 import (
 	"fmt"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -102,8 +103,14 @@ func (bld *Build) Env() []string {
 }
 
 // Cmd returns a "docker build" command that builds from "./Dockerfile" in the
-// current working directory. The last element is always the context path ".".
+// current working directory, or, for a Dockerfile module, from the Dockerfile
+// in the module directory with that directory as the build context. The last
+// element is always the context path.
 func (bld *Build) Cmd() []string {
+	if bld.dkfDir != "" {
+		dkf := filepath.Join(bld.dkfDir, "Dockerfile")
+		return append(bld.cmdArgs(), "--file", dkf, bld.dkfDir)
+	}
 	return append(bld.cmdArgs(), "--file", "Dockerfile", ".")
 }
 

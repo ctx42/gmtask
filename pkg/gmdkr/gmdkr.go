@@ -112,6 +112,11 @@ var (
 	// ErrNoDockerfile is returned when no Dockerfile is found.
 	ErrNoDockerfile = errors.New("no Dockerfile found")
 
+	// ErrTwoDockerfiles is returned when the project has a Dockerfile of its
+	// own and also names a Dockerfile module with [gmprj.EnvBldDkfModule],
+	// so it is ambiguous which one to build.
+	ErrTwoDockerfiles = errors.New("two Dockerfiles found")
+
 	// ErrNoPrvRepo is returned when a private Docker repository is required.
 	ErrNoPrvRepo = errors.New("private docker repository is required")
 

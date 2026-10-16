@@ -20,6 +20,7 @@ shell into, publish, and inspect a project's Docker images from one binary.
     * [Use as a library](#use-as-a-library)
   * [Configuration](#configuration)
     * [Project configuration](#project-configuration)
+    * [Dockerfile module](#dockerfile-module)
     * [Image naming](#image-naming)
     * [Build arguments](#build-arguments)
     * [Environment variables](#environment-variables)
@@ -55,6 +56,7 @@ named target images at once. The exported types (`DockerCmd`, `Config`,
 - **BuildKit + SSH** — builds with BuildKit and forwards `SSH_AUTH_SOCK` as
   `--ssh default` when set.
 - **Multi-target** — one command builds/pushes every stage listed in the config.
+- **Dockerfile module** — builds from a `Dockerfile` kept in a Go module.
 
 ## Prerequisites
 
@@ -266,6 +268,7 @@ C42_BLD_IMG_TARGETS=api,worker,migrate  # Dockerfile stages to build (optional)
 | `C42_REG_HOST`        | Private registry host.               | push, login |
 | `C42_REG_REPO`        | Private repo to build from, push to. | push        |
 | `C42_BLD_IMG_TARGETS` | Comma-separated `Dockerfile` stages. | no          |
+| `C42_BLD_DKF_MODULE`  | Go module to build the images from.  | no          |
 
 `C42_REG_HOST` and `C42_REG_REPO` together mark the remote as configured;
 `:push` needs both, and `:login` logs in to `C42_REG_HOST`.
@@ -284,6 +287,46 @@ standard error:
 C42_REG_HOST=registry.acme.io C42_REG_REPO=registry.acme.io/platform \
     gomake :docker:image:push
 ```
+
+### Dockerfile module
+
+A project can build its images from a `Dockerfile` kept in a Go module instead
+of its own, for example to reuse an organization-wide image recipe with a few
+values changed. Name the module in `configs/project.conf`:
+
+```ini
+# configs/project.conf
+C42_BLD_DKF_MODULE=github.com/ctx42/dkigo
+C42_CTR_ROOT=/opt/acme
+C42_REG_HOST=registry.acme.io
+C42_REG_REPO=$C42_REG_HOST/platform
+```
+
+The project's `go.mod` must require the module, at the version to build from.
+Keep the requirement with a blank import in a test file, so `go mod tidy` does
+not drop it:
+
+```go
+// deps_test.go
+package project
+
+import _ "github.com/ctx42/dkigo"
+```
+
+The `:docker:*` targets then:
+
+- build `<module dir>/Dockerfile` with the module directory as the build
+  context;
+- configure the build in layers: the module's `configs/project.conf` (when it
+  has one), the project's `configs/project.conf`, then the environment, each
+  replacing the values the previous one declares before `$VAR` expansion, so
+  `C42_CTR_ROOT=/opt/acme` above also moves every path the module's
+  configuration derives from it;
+- name and tag the images after the project, as for a project's own
+  `Dockerfile`.
+
+A project that names a module and has a `Dockerfile` of its own fails with
+an error naming both files; a module without a `Dockerfile` fails too.
 
 ### Image naming
 

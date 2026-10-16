@@ -5,6 +5,7 @@ package gmdkr
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/ctx42/gomake/pkg/gomake"
@@ -13,6 +14,7 @@ import (
 	"github.com/ctx42/testing/pkg/must"
 	"github.com/ctx42/testkit/pkg/dkrkit"
 	"github.com/ctx42/testkit/pkg/netkit"
+	"github.com/ctx42/testkit/pkg/oskit"
 	"github.com/ctx42/testkit/pkg/prjkit"
 	"github.com/ctx42/xdef/pkg/xdef"
 
@@ -376,6 +378,141 @@ func Test_DockerCmd_Init(t *testing.T) {
 		assert.ErrorContain(t, "[unknown]", err)
 	})
 
+	t.Run("Dockerfile module", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("GOPROXY", "off")
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(gmprj.EnvBldDkfModule, dkfModPath)
+		dir := newDkfModule(t, prj.Root(), true)
+		prj.GitInitAddAll("v1.1.1")
+		prj.Close()
+
+		dc := NewDockerCmd(NewFlags("name"))
+
+		// --- When ---
+		err := dc.Init(t.Context(), rng.EnvAll(), prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Len(t, 1, dc.Builds)
+		assert.Equal(t, "dki-project:v1.1.1", dc.Builds[0].ImgRef())
+		have := dc.Builds[0].Cmd()
+		want := []string{"--file", filepath.Join(dir, "Dockerfile"), dir}
+		assert.Equal(t, want, have[len(have)-3:])
+	})
+
+	t.Run("error - two Dockerfiles", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("GOPROXY", "off")
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(gmprj.EnvBldDkfModule, dkfModPath)
+		prj.WithDockerfile()
+		dir := newDkfModule(t, prj.Root(), true)
+		prj.Close()
+
+		dc := NewDockerCmd(NewFlags("name"))
+
+		// --- When ---
+		err := dc.Init(t.Context(), rng.EnvAll(), prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrTwoDockerfiles, err)
+		want := "two Dockerfiles found: " +
+			filepath.Join(prj.Root(), "Dockerfile") + " and " +
+			filepath.Join(dir, "Dockerfile")
+		assert.ErrorEqual(t, want, err)
+	})
+
+	t.Run("error - Dockerfile module without Dockerfile", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("GOPROXY", "off")
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(gmprj.EnvBldDkfModule, dkfModPath)
+		dir := newDkfModule(t, prj.Root(), false)
+		prj.Close()
+
+		dc := NewDockerCmd(NewFlags("name"))
+
+		// --- When ---
+		err := dc.Init(t.Context(), rng.EnvAll(), prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNoDockerfile, err)
+		assert.ErrorContain(t, filepath.Join(dir, "Dockerfile"), err)
+	})
+}
+
+func Test_checkDockerfile(t *testing.T) {
+	t.Run("own Dockerfile", func(t *testing.T) {
+		// --- Given ---
+		inf := &gmprj.Info{Root: t.TempDir(), HasDockerfile: true}
+
+		// --- When ---
+		err := checkDockerfile(inf)
+
+		// --- Then ---
+		assert.NoError(t, err)
+	})
+
+	t.Run("module Dockerfile", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		oskit.Write(t, "FROM scratch\n", dir, "Dockerfile")
+		inf := &gmprj.Info{Root: t.TempDir(), DkfDir: dir}
+
+		// --- When ---
+		err := checkDockerfile(inf)
+
+		// --- Then ---
+		assert.NoError(t, err)
+	})
+
+	t.Run("error - no Dockerfile", func(t *testing.T) {
+		// --- Given ---
+		inf := &gmprj.Info{Root: t.TempDir()}
+
+		// --- When ---
+		err := checkDockerfile(inf)
+
+		// --- Then ---
+		assert.ErrorEqual(t, "no Dockerfile found", err)
+	})
+
+	t.Run("error - no module Dockerfile", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		inf := &gmprj.Info{Root: t.TempDir(), DkfDir: dir}
+
+		// --- When ---
+		err := checkDockerfile(inf)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNoDockerfile, err)
+		want := "no Dockerfile found: " + filepath.Join(dir, "Dockerfile")
+		assert.ErrorEqual(t, want, err)
+	})
+
+	t.Run("error - two Dockerfiles", func(t *testing.T) {
+		// --- Given ---
+		root, dir := t.TempDir(), t.TempDir()
+		inf := &gmprj.Info{Root: root, HasDockerfile: true, DkfDir: dir}
+
+		// --- When ---
+		err := checkDockerfile(inf)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrTwoDockerfiles, err)
+		want := "two Dockerfiles found: " +
+			filepath.Join(root, "Dockerfile") + " and " +
+			filepath.Join(dir, "Dockerfile")
+		assert.ErrorEqual(t, want, err)
+	})
 }
 
 func Test_DockerCmd_Build(t *testing.T) {

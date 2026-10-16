@@ -4,6 +4,7 @@
 package gmdkr
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/ctx42/ring/pkg/ring/ringtest"
@@ -412,6 +413,26 @@ func Test_Build_Env(t *testing.T) {
 }
 
 func Test_Build_Cmd(t *testing.T) {
+	t.Run("Dockerfile module", func(t *testing.T) {
+		// --- Given ---
+		cfg := NewConfig("project", "v1.2.3")
+		cfg.dkfDir = filepath.Join("mod", "dkf")
+		bld := must.Value(NewBuild(*cfg))
+
+		// --- When ---
+		have := bld.Cmd()
+
+		// --- Then ---
+		want := []string{
+			"build",
+			"--platform", "linux/amd64",
+			"-t", "project:v1.2.3",
+			"--file", filepath.Join("mod", "dkf", "Dockerfile"),
+			filepath.Join("mod", "dkf"),
+		}
+		assert.Equal(t, want, have)
+	})
+
 	t.Run("full example", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t)
