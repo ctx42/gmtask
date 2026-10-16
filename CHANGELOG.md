@@ -1,3 +1,10 @@
+## v0.18.0 (Fri, 16 Oct 2026 21:15:51 UTC)
+- feat(gmprj): resolve the Dockerfile module in project info.
+- chore(deps): update github.com/ctx42/dotenv to v0.7.0.
+- feat(gmprj)!: layer the Dockerfile module's project config.
+- feat(gmdkr): build images from a Dockerfile module.
+- feat(gmdkr): pass the project as a named build context.
+
 ## v0.17.0 (Fri, 16 Oct 2026 11:21:35 UTC)
 - feat(gmgo): add project and https lint config sources.
 
