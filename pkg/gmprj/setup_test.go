@@ -214,6 +214,24 @@ func Test_NewSetup(t *testing.T) {
 		assert.Equal(t, "acme", have.name)
 	})
 
+	t.Run("module as git remote", func(t *testing.T) {
+		// --- Given ---
+		prj := gmtest.NewNamedProject(t, "acme")
+		prj.Close()
+		prj.Chdir()
+
+		module := "bitbucket.org:comp/acme.git"
+
+		// --- When ---
+		have, err := NewSetup(prj.Root(), WithSetupGoModule(module))
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Empty(t, have.origin)
+		assert.Equal(t, "bitbucket.org/comp/acme", have.module)
+		assert.Equal(t, "acme", have.name)
+	})
+
 	t.Run("only remote set", func(t *testing.T) {
 		// --- Given ---
 		prj := gmtest.NewNamedProject(t, "acme")
@@ -482,7 +500,7 @@ func Test_Setup_Setup(t *testing.T) {
 		prj.Close()
 		prj.Chdir()
 
-		module := "example.com:proj/my-repo" // Invalid.
+		module := "example.com/proj/my repo" // Invalid.
 		sup := must.Value(NewSetup("", WithSetupGoModule(module)))
 		setStructure(t, rng)
 
@@ -491,7 +509,7 @@ func Test_Setup_Setup(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, gmgo.ErrModInit, err)
-		assert.ErrorContain(t, "example.com:proj/my-repo", err)
+		assert.ErrorContain(t, "example.com/proj/my repo", err)
 		assert.Contain(t, "setting up project in: ", tst.Stdout())
 	})
 

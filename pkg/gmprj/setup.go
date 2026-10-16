@@ -32,7 +32,8 @@ func WithSetupGitOrigin(origin string) func(*Setup) {
 	return func(setup *Setup) { setup.origin = origin }
 }
 
-// WithSetupGoModule is an option for [NewSetup] setting the Go module.
+// WithSetupGoModule is an option for [NewSetup] setting the Go module. It
+// takes anything [GoModuleName] accepts, so a git remote works as well.
 func WithSetupGoModule(module string) func(*Setup) {
 	return func(setup *Setup) { setup.module = module }
 }
@@ -138,6 +139,7 @@ func NewSetup(root string, opts ...func(*Setup)) (*Setup, error) {
 		sup.name = ProjectName(sup.origin)
 
 	case sup.module != "":
+		sup.module = GoModuleName(sup.module)
 		sup.name = ProjectName(trimMajor(sup.module))
 
 	default:
