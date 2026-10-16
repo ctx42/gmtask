@@ -274,8 +274,8 @@ listed stage — each stage must exist in the `Dockerfile`.
 
 An environment variable named like a key in the file overrides that key's
 value, an empty value included; variables the file does not declare are
-ignored. Overrides apply after `$VAR` expansion, so overriding `C42_REG_HOST`
-leaves a `C42_REG_REPO=$C42_REG_HOST/...` value unchanged. `:docker:login`,
+ignored. Overrides apply before `$VAR` expansion, so overriding `C42_REG_HOST`
+also moves a `C42_REG_REPO=$C42_REG_HOST/...` value. `:docker:login`,
 `:docker:image:build`, `:docker:image:push`, `:docker:image:run`, and
 `:docker:image:sh` print one `override KEY=value` line per overridden key to
 standard error:

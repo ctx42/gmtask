@@ -90,10 +90,19 @@ func NewInfo(env []string) *Info {
 }
 
 // GetInfo retrieves information about a project at the root path. The root may
-// be set to the "." value to indicate the current working directory. A
-// variable in env named like a configuration file key overrides that key's
-// value; variables the file does not declare are ignored. It returns an error
-// when [xdef.EnvBldDate] is set to a value that is not an RFC3339 date.
+// be set to the "." value to indicate the current working directory.
+//
+// The configuration is built in layers, a later one replacing the values of
+// the keys an earlier one declares: the configuration file of the module the
+// project's [EnvBldDkfModule] key names, when set and the module has one; the
+// project's configuration file, which may add keys of its own; and env. A
+// variable in env named like a configuration key overrides that key's value;
+// variables no configuration file declares are ignored. Variable references
+// are expanded after all layers apply, so a value referring to an overridden
+// key follows the override; see [dotenv.Layers].
+//
+// It returns an error when [xdef.EnvBldDate] is set to a value that is not an
+// RFC3339 date, or when the module [EnvBldDkfModule] names cannot be resolved.
 func GetInfo(ctx context.Context, env []string, root string) (*Info, error) {
 	var err error
 	if root, err = filepath.Abs(root); err != nil {
@@ -117,15 +126,8 @@ func GetInfo(ctx context.Context, env []string, root string) (*Info, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = inf.setConfig(filepath.Join(root, CfgPath)); err != nil {
+	if err = inf.setConfig(ctx, env, root); err != nil {
 		return nil, err
-	}
-	inf.Overrides = dotenv.Override(inf.Config, env)
-	if pth := inf.Config[EnvBldDkfModule]; pth != "" {
-		if inf.DkfDir, err = moduleDir(ctx, env, root, pth); err != nil {
-			return nil, err
-		}
-		inf.DkfModule = pth
 	}
 	if err = inf.setScm(ctx, root, ring.New(ring.WithEnv(env))); err != nil {
 		return nil, err
@@ -206,13 +208,42 @@ func (inf *Info) String() string {
 	return buf.String()
 }
 
-// setConfig loads the project configuration from the given path.
-func (inf *Info) setConfig(pth string) error {
-	cfg, err := getConfig(pth)
+// setConfig sets the configuration of the project in root, built in the layers
+// [GetInfo] describes from the configuration files and env, and the keys env
+// overrode. When the project's configuration names a module with the
+// [EnvBldDkfModule] key, it resolves the module too.
+func (inf *Info) setConfig(
+	ctx context.Context,
+	env []string,
+	root string,
+) error {
+
+	pth := filepath.Join(root, CfgPath)
+	var prj dotenv.Layers
+	if err := readLayer(&prj, pth); err != nil {
+		return err
+	}
+	cfg, keys := prj.Expand(env)
+	mod := cfg[EnvBldDkfModule]
+	if mod == "" {
+		inf.Config, inf.Overrides = cfg, keys
+		return nil
+	}
+
+	dir, err := moduleDir(ctx, env, root, mod)
 	if err != nil {
 		return err
 	}
-	inf.Config = cfg
+	var lay dotenv.Layers
+	err = readLayer(&lay, filepath.Join(dir, CfgPath))
+	if err != nil && !errors.Is(err, ErrNoConfig) {
+		return err
+	}
+	if err = readLayer(&lay, pth); err != nil {
+		return err
+	}
+	inf.Config, inf.Overrides = lay.Expand(env)
+	inf.DkfModule, inf.DkfDir = mod, dir
 	return nil
 }
 
@@ -333,20 +364,20 @@ func moduleDir(
 	return goCmd("list", "-m", "-f", "{{.Dir}}", pth)
 }
 
-// getConfig reads the project configuration at the given path.
-func getConfig(pth string) (map[string]string, error) {
+// readLayer reads the configuration file at pth as the next layer of lay. It
+// returns an error wrapping [ErrNoConfig] when the file does not exist.
+func readLayer(lay *dotenv.Layers, pth string) error {
 	fil, err := os.Open(pth) //nolint:gosec
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("%w: %w", ErrNoConfig, err)
+			return fmt.Errorf("%w: %w", ErrNoConfig, err)
 		}
-		return nil, fmt.Errorf("%s: %w", pth, err)
+		return fmt.Errorf("%s: %w", pth, err)
 	}
 	defer func() { _ = fil.Close() }()
 
-	cfg := make(map[string]string, 10)
-	if err = dotenv.Parse(cfg, fil); err != nil {
-		return nil, fmt.Errorf("%s: %w", pth, err)
+	if err = lay.Read(fil); err != nil {
+		return fmt.Errorf("%s: %w", pth, err)
 	}
-	return cfg, nil
+	return nil
 }

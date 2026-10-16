@@ -5,6 +5,7 @@ package gmprj
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -520,7 +521,7 @@ func Test_GetInfo(t *testing.T) {
 
 		prj := gmtest.NewProject(t)
 		prj.CfgAdd(EnvBldDkfModule, dkfModPath)
-		dir := newDkfModule(t, prj.Root())
+		dir := newDkfModule(t, prj.Root(), "")
 		prj.Close()
 
 		// --- When ---
@@ -540,7 +541,7 @@ func Test_GetInfo(t *testing.T) {
 
 		prj := gmtest.NewProject(t)
 		prj.CfgAdd(EnvBldDkfModule, "")
-		dir := newDkfModule(t, prj.Root())
+		dir := newDkfModule(t, prj.Root(), "")
 		prj.Close()
 
 		// --- When ---
@@ -550,6 +551,108 @@ func Test_GetInfo(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, dkfModPath, have.DkfModule)
 		assert.Equal(t, dir, have.DkfDir)
+	})
+
+	t.Run("environment override moves derived key", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet(xdef.EnvRegHost, "registry.acme.io")
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(xdef.EnvRegHost, "ghcr.io")
+		prj.CfgAdd(xdef.EnvRegRepo, "$C42_REG_HOST/ctx42")
+		prj.Close()
+
+		// --- When ---
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := map[string]string{
+			xdef.EnvRegHost: "registry.acme.io",
+			xdef.EnvRegRepo: "registry.acme.io/ctx42",
+		}
+		assert.Equal(t, want, have.Config)
+		assert.Equal(t, []string{xdef.EnvRegHost}, have.Overrides)
+	})
+
+	t.Run("Dockerfile module configuration layered", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("GOPROXY", "off")
+		rng.EnvSet("C42_BLD_GO_VERSION", "1.26.3")
+		rng.EnvSet(xdef.EnvRegHost, "registry.acme.io")
+		rng.EnvSet("C42_NOT_DECLARED", "x")
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(EnvBldDkfModule, dkfModPath)
+		prj.CfgAdd(xdef.EnvCtrRoot, "/vrinf")
+		prj.CfgAdd("C42_NEW", "go$C42_BLD_GO_VERSION")
+		modCfg := "" +
+			"C42_CTR_ROOT=/ctx42\n" +
+			"C42_BLD_GOPATH=$C42_CTR_ROOT/go\n" +
+			"C42_BLD_GO_VERSION=1.26.2\n" +
+			"C42_REG_HOST=ghcr.io\n" +
+			"C42_REG_REPO=$C42_REG_HOST/ctx42\n"
+		newDkfModule(t, prj.Root(), modCfg)
+		prj.Close()
+
+		// --- When ---
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := map[string]string{
+			xdef.EnvCtrRoot:      "/vrinf",
+			"C42_BLD_GOPATH":     "/vrinf/go",
+			"C42_BLD_GO_VERSION": "1.26.3",
+			xdef.EnvRegHost:      "registry.acme.io",
+			xdef.EnvRegRepo:      "registry.acme.io/ctx42",
+			EnvBldDkfModule:      dkfModPath,
+			"C42_NEW":            "go1.26.3",
+		}
+		assert.Equal(t, want, have.Config)
+		wKeys := []string{"C42_BLD_GO_VERSION", xdef.EnvRegHost}
+		assert.Equal(t, wKeys, have.Overrides)
+	})
+
+	t.Run("Dockerfile module without configuration", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("GOPROXY", "off")
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(EnvBldDkfModule, dkfModPath)
+		dir := newDkfModule(t, prj.Root(), "")
+		prj.Close()
+
+		// --- When ---
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := map[string]string{EnvBldDkfModule: dkfModPath}
+		assert.Equal(t, want, have.Config)
+		assert.Equal(t, dir, have.DkfDir)
+	})
+
+	t.Run("error - invalid Dockerfile module config", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("GOPROXY", "off")
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(EnvBldDkfModule, dkfModPath)
+		dir := newDkfModule(t, prj.Root(), "invalid\n")
+		prj.Close()
+
+		// --- When ---
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, dotenv.ErrInvLine, err)
+		assert.ErrorContain(t, filepath.Join(dir, CfgPath)+": ", err)
+		assert.Nil(t, have)
 	})
 
 	t.Run("error - Dockerfile module not required", func(t *testing.T) {
@@ -968,7 +1071,7 @@ func Test_moduleDir(t *testing.T) {
 		rng := ringtest.New(t).Ring()
 		rng.EnvSet("GOPROXY", "off")
 		root := t.TempDir()
-		dir := newDkfModule(t, root)
+		dir := newDkfModule(t, root, "")
 
 		// --- When ---
 		have, err := moduleDir(t.Context(), rng.EnvAll(), root, dkfModPath)
@@ -1012,5 +1115,60 @@ func Test_moduleDir(t *testing.T) {
 		assert.ErrorIs(t, ErrDkfModule, err)
 		assert.ErrorContain(t, "go.mod file not found", err)
 		assert.Equal(t, "", have)
+	})
+}
+
+func Test_readLayer(t *testing.T) {
+	t.Run("layer read", func(t *testing.T) {
+		// --- Given ---
+		pth := oskit.Write(t, "A=1\nB=$A/b\n", t.TempDir(), CfgFile)
+		var lay dotenv.Layers
+
+		// --- When ---
+		err := readLayer(&lay, pth)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		have, _ := lay.Expand(nil)
+		assert.Equal(t, map[string]string{"A": "1", "B": "1/b"}, have)
+	})
+
+	t.Run("error - no file", func(t *testing.T) {
+		// --- Given ---
+		pth := filepath.Join(t.TempDir(), CfgFile)
+		var lay dotenv.Layers
+
+		// --- When ---
+		err := readLayer(&lay, pth)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNoConfig, err)
+		assert.ErrorIs(t, os.ErrNotExist, err)
+	})
+
+	t.Run("error - invalid line", func(t *testing.T) {
+		// --- Given ---
+		pth := oskit.Write(t, "A=1\ninvalid\n", t.TempDir(), CfgFile)
+		var lay dotenv.Layers
+
+		// --- When ---
+		err := readLayer(&lay, pth)
+
+		// --- Then ---
+		assert.ErrorIs(t, dotenv.ErrInvLine, err)
+		assert.ErrorEqual(t, pth+": dotenv: invalid config line: 2", err)
+	})
+
+	t.Run("error - path is a directory", func(t *testing.T) {
+		// --- Given ---
+		pth := t.TempDir()
+		var lay dotenv.Layers
+
+		// --- When ---
+		err := readLayer(&lay, pth)
+
+		// --- Then ---
+		assert.ErrorContain(t, pth+": ", err)
+		assert.ErrorContain(t, "is a directory", err)
 	})
 }

@@ -111,12 +111,16 @@ const dkfModPath = "example.com/dkf"
 
 // newDkfModule creates a Dockerfile module named dkfModPath in a temporary
 // directory and rewrites the go.mod of the project in root to require it,
-// replaced by that directory, so resolving it needs no network. It returns
-// the module directory.
-func newDkfModule(t tester.T, root string) string {
+// replaced by that directory, so resolving it needs no network. A non-empty
+// cfg becomes the module's configs/project.conf. It returns the module
+// directory.
+func newDkfModule(t tester.T, root, cfg string) string {
 	t.Helper()
 	dir := t.TempDir()
 	oskit.Write(t, "module "+dkfModPath+"\n\ngo 1.26\n", dir, "go.mod")
+	if cfg != "" {
+		oskit.Write(t, cfg, oskit.MkdirAll(t, dir, "configs"), CfgFile)
+	}
 	mod := "" +
 		"module example.com/comp/project\n\n" +
 		"go 1.26\n\n" +
