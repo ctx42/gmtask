@@ -12,9 +12,9 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"os"
 	"strings"
 
+	"github.com/ctx42/gmtask/internal/prjcfg"
 	"github.com/ctx42/ring/pkg/ring"
 	"github.com/ctx42/xflag/pkg/xflag"
 )
@@ -25,7 +25,7 @@ var (
 	ErrTooManyArgs = errors.New("too many arguments")
 
 	// ErrNoConfig is returned when the project has no configuration file.
-	ErrNoConfig = errors.New("no project configuration file")
+	ErrNoConfig = prjcfg.ErrNoConfig
 
 	// ErrNoStructure is returned when the running target's gomake.yaml carries
 	// no "structure" block to scaffold from.
@@ -52,7 +52,7 @@ var (
 	// ErrDkfModule is returned when the module [EnvBldDkfModule] names cannot
 	// be resolved, for example because the project's go.mod does not require
 	// it.
-	ErrDkfModule = errors.New("cannot resolve the Dockerfile module")
+	ErrDkfModule = prjcfg.ErrDkfModule
 )
 
 // EnvSSHAuthSock holds the SSH agent socket path. It keeps the standard
@@ -65,15 +65,15 @@ const EnvSSHAuthSock = "SSH_AUTH_SOCK"
 // must require the module; the version it requires is the one used.
 //
 // Example: github.com/ctx42/dkigo
-const EnvBldDkfModule = "C42_BLD_DKF_MODULE"
+const EnvBldDkfModule = prjcfg.EnvBldDkfModule
 
 // Configuration file name and relative path.
 const (
-	CfgFile = "project.conf"
+	CfgFile = prjcfg.File
 
 	// CfgPath is the relative (to project root) path to the project's
 	// configuration file.
-	CfgPath = "configs" + string(os.PathSeparator) + CfgFile //nolint:gocritic
+	CfgPath = prjcfg.Path
 )
 
 // Git layout of a repository [Setup.Setup] initializes.

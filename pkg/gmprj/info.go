@@ -9,18 +9,15 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 
-	"github.com/ctx42/dotenv/pkg/dotenv"
 	"github.com/ctx42/gitaid/pkg/gitaid"
 	"github.com/ctx42/gomake/pkg/gomake"
 	"github.com/ctx42/ring/pkg/ring"
 	"github.com/ctx42/xdef/pkg/xdef"
 
+	"github.com/ctx42/gmtask/internal/prjcfg"
 	"github.com/ctx42/gmtask/pkg/gmgo"
 )
 
@@ -218,32 +215,12 @@ func (inf *Info) setConfig(
 	root string,
 ) error {
 
-	pth := filepath.Join(root, CfgPath)
-	var prj dotenv.Layers
-	if err := readLayer(&prj, pth); err != nil {
-		return err
-	}
-	cfg, keys := prj.Expand(env)
-	mod := cfg[EnvBldDkfModule]
-	if mod == "" {
-		inf.Config, inf.Overrides = cfg, keys
-		return nil
-	}
-
-	dir, err := moduleDir(ctx, env, root, mod)
+	cfg, err := prjcfg.Read(ctx, env, root)
 	if err != nil {
 		return err
 	}
-	var lay dotenv.Layers
-	err = readLayer(&lay, filepath.Join(dir, CfgPath))
-	if err != nil && !errors.Is(err, ErrNoConfig) {
-		return err
-	}
-	if err = readLayer(&lay, pth); err != nil {
-		return err
-	}
-	inf.Config, inf.Overrides = lay.Expand(env)
-	inf.DkfModule, inf.DkfDir = mod, dir
+	inf.Config, inf.Overrides = cfg.Values, cfg.Overrides
+	inf.DkfModule, inf.DkfDir = cfg.Module, cfg.ModuleDir
 	return nil
 }
 
@@ -329,55 +306,4 @@ func getGoSpec(ctx context.Context, env []string, root string) (string, error) {
 		}
 	}
 	return spec, nil
-}
-
-// moduleDir returns the directory of the version of the module at pth that
-// the module in root requires, downloading it to the module cache when needed.
-// The go command runs with env. Errors wrap [ErrDkfModule] and name the
-// [EnvBldDkfModule] key.
-func moduleDir(
-	ctx context.Context,
-	env []string,
-	root string,
-	pth string,
-) (string, error) {
-
-	goCmd := func(args ...string) (string, error) {
-		cmd := exec.CommandContext(ctx, "go", args...)
-		cmd.Env = env
-		cmd.Dir = root
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			msg := strings.TrimSpace(string(out))
-			format := "%w: %s=%s: %s: %w"
-			key := EnvBldDkfModule
-			return "", fmt.Errorf(format, ErrDkfModule, key, pth, msg, err)
-		}
-		return strings.TrimSpace(string(out)), nil
-	}
-	// Download first: it fails for a module go.mod does not require. A module
-	// replaced by a local directory needs no download, and only "go list"
-	// reports its directory.
-	if _, err := goCmd("mod", "download", pth); err != nil {
-		return "", err
-	}
-	return goCmd("list", "-m", "-f", "{{.Dir}}", pth)
-}
-
-// readLayer reads the configuration file at pth as the next layer of lay. It
-// returns an error wrapping [ErrNoConfig] when the file does not exist.
-func readLayer(lay *dotenv.Layers, pth string) error {
-	fil, err := os.Open(pth) //nolint:gosec
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("%w: %w", ErrNoConfig, err)
-		}
-		return fmt.Errorf("%s: %w", pth, err)
-	}
-	defer func() { _ = fil.Close() }()
-
-	if err = lay.Read(fil); err != nil {
-		return fmt.Errorf("%s: %w", pth, err)
-	}
-	return nil
 }
