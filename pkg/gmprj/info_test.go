@@ -159,7 +159,9 @@ func Test_GetInfo(t *testing.T) {
 		}
 		assert.Equal(t, want, have.Env())
 		assert.Nil(t, have.Overrides)
-		assert.Fields(t, 8, Info{})
+		assert.Empty(t, have.DkfModule)
+		assert.Empty(t, have.DkfDir)
+		assert.Fields(t, 10, Info{})
 	})
 
 	t.Run("SSH socket set from environment", func(t *testing.T) {
@@ -190,7 +192,9 @@ func Test_GetInfo(t *testing.T) {
 		}
 		assert.Equal(t, want, have.Env())
 		assert.Nil(t, have.Overrides)
-		assert.Fields(t, 8, Info{})
+		assert.Empty(t, have.DkfModule)
+		assert.Empty(t, have.DkfDir)
+		assert.Fields(t, 10, Info{})
 	})
 
 	t.Run("config file loaded", func(t *testing.T) {
@@ -507,6 +511,65 @@ func Test_GetInfo(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.True(t, have.HasDockerfile)
+	})
+
+	t.Run("Dockerfile module resolved", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("GOPROXY", "off")
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(EnvBldDkfModule, dkfModPath)
+		dir := newDkfModule(t, prj.Root())
+		prj.Close()
+
+		// --- When ---
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, dkfModPath, have.DkfModule)
+		assert.Equal(t, dir, have.DkfDir)
+	})
+
+	t.Run("Dockerfile module from environment", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("GOPROXY", "off")
+		rng.EnvSet(EnvBldDkfModule, dkfModPath)
+
+		prj := gmtest.NewProject(t)
+		prj.CfgAdd(EnvBldDkfModule, "")
+		dir := newDkfModule(t, prj.Root())
+		prj.Close()
+
+		// --- When ---
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, dkfModPath, have.DkfModule)
+		assert.Equal(t, dir, have.DkfDir)
+	})
+
+	t.Run("error - Dockerfile module not required", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("GOPROXY", "off")
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.CfgAdd(EnvBldDkfModule, dkfModPath)
+		prj.Close()
+
+		// --- When ---
+		have, err := GetInfo(t.Context(), rng.EnvAll(), prj.Root())
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrDkfModule, err)
+		want := "C42_BLD_DKF_MODULE=example.com/dkf: .*not a known dependency"
+		assert.ErrorRegexp(t, want, err)
+		assert.Nil(t, have)
 	})
 
 	t.Run("error - empty directory", func(t *testing.T) {
@@ -896,5 +959,58 @@ func Test_Info_String(t *testing.T) {
 			"C    VAL\n" +
 			"D    VAL\n"
 		assert.Equal(t, want, have)
+	})
+}
+
+func Test_moduleDir(t *testing.T) {
+	t.Run("replaced by directory", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("GOPROXY", "off")
+		root := t.TempDir()
+		dir := newDkfModule(t, root)
+
+		// --- When ---
+		have, err := moduleDir(t.Context(), rng.EnvAll(), root, dkfModPath)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, dir, have)
+	})
+
+	t.Run("error - not required", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("GOPROXY", "off")
+		root := t.TempDir()
+		oskit.Write(t, "module example.com/c\n\ngo 1.26\n", root, "go.mod")
+
+		// --- When ---
+		have, err := moduleDir(t.Context(), rng.EnvAll(), root, dkfModPath)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrDkfModule, err)
+		want := "^cannot resolve the Dockerfile module: " +
+			"C42_BLD_DKF_MODULE=example.com/dkf: " +
+			"go: module example.com/dkf: not a known dependency: exit status 1$"
+		assert.ErrorRegexp(t, want, err)
+		assert.Equal(t, "", have)
+	})
+
+	t.Run("error - no go.mod", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+		rng.EnvSet("GOPROXY", "off")
+		rng.EnvSet("GOWORK", "off")
+
+		root := t.TempDir()
+
+		// --- When ---
+		have, err := moduleDir(t.Context(), rng.EnvAll(), root, dkfModPath)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrDkfModule, err)
+		assert.ErrorContain(t, "go.mod file not found", err)
+		assert.Equal(t, "", have)
 	})
 }

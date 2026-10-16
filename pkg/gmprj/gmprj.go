@@ -48,12 +48,24 @@ var (
 	// ErrNotDir is returned when the path to scaffold into exists but is not
 	// a directory.
 	ErrNotDir = errors.New("project path is not a directory")
+
+	// ErrDkfModule is returned when the module [EnvBldDkfModule] names cannot
+	// be resolved, for example because the project's go.mod does not require
+	// it.
+	ErrDkfModule = errors.New("cannot resolve the Dockerfile module")
 )
 
 // EnvSSHAuthSock holds the SSH agent socket path. It keeps the standard
-// operating system variable name, set outside gomake, and is the only project
-// environment variable gmprj declares.
+// operating system variable name, set outside gomake.
 const EnvSSHAuthSock = "SSH_AUTH_SOCK"
+
+// EnvBldDkfModule is the project configuration key naming the Go module whose
+// root holds the Dockerfile the project builds its images from, together with
+// the build context and the base project configuration. The project's go.mod
+// must require the module; the version it requires is the one used.
+//
+// Example: github.com/ctx42/dkigo
+const EnvBldDkfModule = "C42_BLD_DKF_MODULE"
 
 // Configuration file name and relative path.
 const (

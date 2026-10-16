@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ctx42/dotenv/pkg/dotenv"
@@ -51,6 +53,14 @@ type Info struct {
 
 	// True when the project has a Dockerfile in its root directory.
 	HasDockerfile bool
+
+	// DkfModule is the Go module path the [EnvBldDkfModule] key names, or
+	// empty when the key is not set.
+	DkfModule string
+
+	// DkfDir is the directory of the DkfModule version the project's go.mod
+	// requires, or empty when DkfModule is.
+	DkfDir string
 
 	// LDFlags are the "-X" linker flags injecting the build metadata into the
 	// project's root package, under the xdef.Var* variable names. They are
@@ -111,6 +121,12 @@ func GetInfo(ctx context.Context, env []string, root string) (*Info, error) {
 		return nil, err
 	}
 	inf.Overrides = dotenv.Override(inf.Config, env)
+	if pth := inf.Config[EnvBldDkfModule]; pth != "" {
+		if inf.DkfDir, err = moduleDir(ctx, env, root, pth); err != nil {
+			return nil, err
+		}
+		inf.DkfModule = pth
+	}
 	if err = inf.setScm(ctx, root, ring.New(ring.WithEnv(env))); err != nil {
 		return nil, err
 	}
@@ -282,6 +298,39 @@ func getGoSpec(ctx context.Context, env []string, root string) (string, error) {
 		}
 	}
 	return spec, nil
+}
+
+// moduleDir returns the directory of the version of the module at pth that
+// the module in root requires, downloading it to the module cache when needed.
+// The go command runs with env. Errors wrap [ErrDkfModule] and name the
+// [EnvBldDkfModule] key.
+func moduleDir(
+	ctx context.Context,
+	env []string,
+	root string,
+	pth string,
+) (string, error) {
+
+	goCmd := func(args ...string) (string, error) {
+		cmd := exec.CommandContext(ctx, "go", args...)
+		cmd.Env = env
+		cmd.Dir = root
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			msg := strings.TrimSpace(string(out))
+			format := "%w: %s=%s: %s: %w"
+			key := EnvBldDkfModule
+			return "", fmt.Errorf(format, ErrDkfModule, key, pth, msg, err)
+		}
+		return strings.TrimSpace(string(out)), nil
+	}
+	// Download first: it fails for a module go.mod does not require. A module
+	// replaced by a local directory needs no download, and only "go list"
+	// reports its directory.
+	if _, err := goCmd("mod", "download", pth); err != nil {
+		return "", err
+	}
+	return goCmd("list", "-m", "-f", "{{.Dir}}", pth)
 }
 
 // getConfig reads the project configuration at the given path.
