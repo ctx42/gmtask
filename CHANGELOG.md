@@ -1,3 +1,6 @@
+## v0.16.2 (Fri, 16 Oct 2026 10:03:02 UTC)
+- fix(gmprj): normalize a module given without an origin.
+
 ## v0.16.1 (Thu, 15 Oct 2026 15:01:06 UTC)
 - chore(deps): update dependencies.
 
