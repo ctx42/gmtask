@@ -10,6 +10,6 @@ require (
 	github.com/ctx42/ring v0.8.1
 	github.com/ctx42/testing v0.57.0
 	github.com/ctx42/testkit v0.16.2
-	github.com/ctx42/xdef v0.9.1
+	github.com/ctx42/xdef v0.10.0
 	github.com/ctx42/xflag v0.11.1
 )
