@@ -1321,6 +1321,36 @@ func Test_DockerCmd_Run(t *testing.T) {
 		assert.Equal(t, want, tst.Stderr())
 	})
 
+	t.Run("dry run configured layout", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.WithConfig()
+		prj.CfgAdd(xdef.EnvCtrRoot, "/vrinf")
+		prj.CfgAdd(xdef.EnvCtrPrjRoot, "/vrinf/project")
+		prj.WithDockerfile()
+		prj.GitInitAddAll()
+		prj.Close()
+		prj.Chdir()
+
+		fls := NewFlags("name")
+		fls.DryRun = true
+		dc := NewDockerCmd(fls)
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
+
+		// --- When ---
+		err := dc.Run(ctx, rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "#gomake INFO# docker run --rm -v %s:/vrinf/project:ro dki-"
+		want = fmt.Sprintf(want, prj.Root())
+		assert.Contain(t, want, tst.Stderr())
+	})
+
 	t.Run("pick target to run", func(t *testing.T) {
 		// --- Given ---
 		ctx := t.Context()
@@ -1639,6 +1669,42 @@ func Test_DockerCmd_Sh(t *testing.T) {
 		assert.Equal(t, want, tst.Stderr())
 	})
 
+	t.Run("dry run configured layout", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		rng.EnvSet(EnvSSHSock, "ssh-sock")
+
+		prj := gmtest.NewProject(t)
+		prj.WithConfig()
+		prj.CfgAdd(xdef.EnvCtrRoot, "/vrinf")
+		prj.CfgAdd(xdef.EnvCtrPrjRoot, "/vrinf/project")
+		prj.WithDockerfile()
+		prj.GitInitAddAll()
+		prj.Close()
+		prj.Chdir()
+
+		fls := NewFlags("name")
+		fls.DryRun = true
+		dc := NewDockerCmd(fls)
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
+
+		// --- When ---
+		err := dc.Sh(ctx, rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := "" +
+			"#gomake INFO# docker run --rm -it" +
+			" -v %s:/vrinf/project:ro" +
+			" -v ssh-sock:/vrinf/ssh-auth-sock" +
+			" -e SSH_AUTH_SOCK=/vrinf/ssh-auth-sock" +
+			" dki-"
+		want = fmt.Sprintf(want, prj.Root())
+		assert.Contain(t, want, tst.Stderr())
+	})
+
 	t.Run("error - unknown target name", func(t *testing.T) {
 		// --- Given ---
 		ctx := t.Context()
@@ -1932,6 +1998,49 @@ func Test_DockerCmd_build(t *testing.T) {
 		ref, refLatest := prj.TgtRef("third"), prj.TgtRefLatest("third")
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(ref))
 		assert.Nil(t, dkrkit.NewT(t).ImgLs().FindByRef(refLatest))
+	})
+}
+
+func Test_DockerCmd_mounts(t *testing.T) {
+	t.Run("configured layout", func(t *testing.T) {
+		// --- Given ---
+		cfg := map[string]string{
+			xdef.EnvCtrRoot:    "/vrinf",
+			xdef.EnvCtrPrjRoot: "/vrinf/prj",
+		}
+		dc := &DockerCmd{Info: &gmprj.Info{Config: cfg}}
+
+		// --- When ---
+		hPrj, hSock := dc.mounts()
+
+		// --- Then ---
+		assert.Equal(t, "/vrinf/prj", hPrj)
+		assert.Equal(t, "/vrinf/ssh-auth-sock", hSock)
+	})
+
+	t.Run("empty keys keep the ctx42 layout", func(t *testing.T) {
+		// --- Given ---
+		cfg := map[string]string{xdef.EnvCtrRoot: "", xdef.EnvCtrPrjRoot: ""}
+		dc := &DockerCmd{Info: &gmprj.Info{Config: cfg}}
+
+		// --- When ---
+		hPrj, hSock := dc.mounts()
+
+		// --- Then ---
+		assert.Equal(t, "/ctx42/project", hPrj)
+		assert.Equal(t, "/ctx42/ssh-auth-sock", hSock)
+	})
+
+	t.Run("unset keys keep the ctx42 layout", func(t *testing.T) {
+		// --- Given ---
+		dc := &DockerCmd{Info: &gmprj.Info{}}
+
+		// --- When ---
+		hPrj, hSock := dc.mounts()
+
+		// --- Then ---
+		assert.Equal(t, "/ctx42/project", hPrj)
+		assert.Equal(t, "/ctx42/ssh-auth-sock", hSock)
 	})
 }
 

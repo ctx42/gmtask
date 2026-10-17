@@ -81,19 +81,25 @@ const (
 	EnvDkrImgRefs = "C42_DKI_REFS"
 )
 
-// Paths inside the images the targets run. They are the layout the ctx42 base
-// images provide, which [xdef.EnvCtrRoot] and [xdef.EnvCtrPrjRoot] name for
-// the programs running in there; the values are spelled here because a mount
-// has to be built before any container exists to read them from.
+// Paths inside the images the targets run: the layout of the ctx42 base
+// images, which [xdef.EnvCtrRoot] and [xdef.EnvCtrPrjRoot] name for the
+// programs running in there. An image built from a project configuration that
+// sets those keys has the layout they name instead (see [DockerCmd.Run]).
 const (
-	// ctrPrjRoot is where a project is mounted. It must equal the WORKDIR of
-	// the base image, because "docker run" is issued with no -w flag and the
-	// container is expected to start in the project.
-	ctrPrjRoot = "/ctx42/project"
+	// ctrRoot is the image root.
+	ctrRoot = "/ctx42"
 
-	// ctrSSHSock is where the SSH agent socket is mounted. The OCI Image
-	// Spec names nothing for it, so it hangs off the image root.
-	ctrSSHSock = "/ctx42/ssh-auth-sock"
+	// ctrPrjRoot is where a project is mounted. It must equal the WORKDIR of
+	// the image, because "docker run" is issued with no -w flag and the
+	// container is expected to start in the project.
+	ctrPrjRoot = ctrRoot + "/project"
+
+	// ctrSSHSockName is the name of the SSH agent socket mounted in the image
+	// root. The OCI Image Spec names nothing for it.
+	ctrSSHSockName = "ssh-auth-sock"
+
+	// ctrSSHSock is where the SSH agent socket is mounted.
+	ctrSSHSock = ctrRoot + "/" + ctrSSHSockName
 )
 
 // goImageLatest is the latest Docker image reference with Go and test tools

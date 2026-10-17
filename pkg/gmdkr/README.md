@@ -156,7 +156,9 @@ gomake :docker:image:build -n custom-name -t v9.9.9
 
 `:run` and `:sh` build the image first if it is not already present (use `-r` to
 force a rebuild), then run it with the project mounted read-only at
-`/ctx42/project`.
+`C42_CTR_PRJ_ROOT` from the project configuration, `/ctx42/project` when it is
+not set. `:sh` mounts the SSH agent socket as `ssh-auth-sock` in
+`C42_CTR_ROOT`, `/ctx42` when it is not set.
 
 ```shell
 gomake :docker:image:run              # run the single image

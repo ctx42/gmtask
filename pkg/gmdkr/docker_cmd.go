@@ -6,6 +6,7 @@ package gmdkr
 import (
 	"context"
 	"fmt"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -170,7 +171,9 @@ func (dc *DockerCmd) Push(ctx context.Context, rng *ring.Ring) error {
 	return nil
 }
 
-// Run runs Docker image or target defined by project.
+// Run runs Docker image or target defined by project, with the project
+// mounted read-only at the configured [xdef.EnvCtrPrjRoot], "/ctx42/project"
+// when the configuration sets none.
 func (dc *DockerCmd) Run(ctx context.Context, rng *ring.Ring) error {
 	if len(dc.Builds) == 0 {
 		return ErrNoBuilds
@@ -188,8 +191,9 @@ func (dc *DockerCmd) Run(ctx context.Context, rng *ring.Ring) error {
 		return err
 	}
 
+	prjRoot, _ := dc.mounts()
 	args := []string{"run", "--rm"}
-	volume := dc.Info.Root + ":" + ctrPrjRoot + ":ro"
+	volume := dc.Info.Root + ":" + prjRoot + ":ro"
 	args = append(args, "-v", volume, ref)
 	args = append(args, dc.Flags.Args...)
 	_, _ = fmt.Fprintf(
@@ -207,7 +211,9 @@ func (dc *DockerCmd) Run(ctx context.Context, rng *ring.Ring) error {
 	return nil
 }
 
-// Sh runs image and starts its shell.
+// Sh runs image and starts its shell. It mounts the project as [DockerCmd.Run]
+// does, and the SSH agent socket, when there is one, as "ssh-auth-sock" in the
+// configured [xdef.EnvCtrRoot], "/ctx42" when the configuration sets none.
 func (dc *DockerCmd) Sh(ctx context.Context, rng *ring.Ring) error {
 	if len(dc.Builds) == 0 {
 		return ErrNoBuilds
@@ -226,15 +232,16 @@ func (dc *DockerCmd) Sh(ctx context.Context, rng *ring.Ring) error {
 		return err
 	}
 
+	prjRoot, sshSock := dc.mounts()
 	args := []string{"run", "--rm", "-it"}
-	volume := dc.Info.Root + ":" + ctrPrjRoot + ":ro"
+	volume := dc.Info.Root + ":" + prjRoot + ":ro"
 	args = append(args, "-v", volume)
 
 	if dc.Config.ssh != "" {
 		args = append(
 			args,
-			"-v", dc.Config.ssh+":"+ctrSSHSock,
-			"-e", EnvSSHSock+"="+ctrSSHSock,
+			"-v", dc.Config.ssh+":"+sshSock,
+			"-e", EnvSSHSock+"="+sshSock,
 		)
 	}
 
@@ -344,4 +351,20 @@ func (dc *DockerCmd) build(
 		}
 	}
 	return nil
+}
+
+// mounts returns where the project and the SSH agent socket are mounted in an
+// image built from the project configuration. The build passes the configured
+// [xdef.EnvCtrPrjRoot] and [xdef.EnvCtrRoot] to the image as build arguments,
+// so they name the image's layout; a key left empty keeps the ctx42 base
+// image layout.
+func (dc *DockerCmd) mounts() (prjRoot, sshSock string) {
+	prjRoot, sshSock = ctrPrjRoot, ctrSSHSock
+	if val := dc.Info.CfgGet(xdef.EnvCtrPrjRoot); val != "" {
+		prjRoot = val
+	}
+	if val := dc.Info.CfgGet(xdef.EnvCtrRoot); val != "" {
+		sshSock = path.Join(val, ctrSSHSockName)
+	}
+	return prjRoot, sshSock
 }
