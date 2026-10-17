@@ -1,3 +1,6 @@
+## v0.20.1 (Sat, 17 Oct 2026 20:11:59 UTC)
+- fix(gmdkr): keep release images out of the ids file.
+
 ## v0.20.0 (Sat, 17 Oct 2026 18:58:43 UTC)
 - build(deps): bump xdef to v0.10.0.
 - feat(gmdkr): add :docker:run:clean to remove a CI/CD run's resources.
