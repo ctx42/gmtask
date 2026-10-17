@@ -237,6 +237,7 @@ func (Image) Build(ctx context.Context, rng *ring.Ring) error {
 		FlagPush,
 		FlagCacheFrom,
 		FlagCacheTo,
+		FlagIDsFile,
 	)
 	if dc == nil {
 		return err
@@ -257,6 +258,7 @@ func (Image) Push(ctx context.Context, rng *ring.Ring) error {
 		FlagImgTag,
 		FlagImgLatest,
 		FlagDryRun,
+		FlagIDsFile,
 	)
 	if dc == nil {
 		return err

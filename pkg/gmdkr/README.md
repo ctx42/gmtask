@@ -52,6 +52,9 @@ named target images at once. The exported types (`DockerCmd`, `Config`,
 - **`:docker:image:env`** — print the derived image variables in `env` format.
 - **`:docker:image:info`** — the same variables, human-readable.
 - **`:docker:image:clean`** — remove dangling and stale test images.
+- **`:docker:run:clean`** — remove what a CI/CD run created: its labeled
+  containers, networks, volumes, and images, and the images it built and did
+  not push.
 - **`:docker:login`** — log in to the configured private registry.
 - **BuildKit + SSH** — builds with BuildKit and forwards `SSH_AUTH_SOCK` as
   `--ssh default` when set.
@@ -207,6 +210,39 @@ gomake :docker:image:clean            # remove dangling + stale test images
 
 `:clean` removes dangling images, and images whose repository reference contains
 `ctx42-tst-img-` that were created more than an hour ago.
+
+### Cleaning up after a CI/CD run
+
+At the end of a CI/CD run, `:docker:run:clean` removes the Docker resources
+the run created, and nothing else:
+
+```shell
+gomake :docker:image:build --ids-file=tmp/run-images   # record what it builds
+gomake :docker:image:push --ids-file=tmp/run-images    # forget what it pushes
+gomake :docker:run:clean --ids-file=tmp/run-images     # remove the rest
+```
+
+It takes the run ID from `xdef.CCRunID`: `C42_CC_RUN_ID` when set, otherwise
+one derived from the Jenkins, GitHub Actions, or GitLab CI variables. Without
+a run ID it fails with `no CI/CD run ID: set C42_CC_RUN_ID`, so it never
+removes unlabeled resources. It removes, in this order:
+
+1. containers labeled `dev.ctx42.cc.run.id=<run ID>`, running ones too;
+2. networks with that label;
+3. volumes with that label;
+4. images with that label, untagged ones too;
+5. the images whose IDs the `--ids-file` still lists, by ID, then the file.
+
+`:docker:image:build --ids-file` appends an `<image ID> <reference>` line for
+each image it builds, unless it pushes while building (`-p`).
+`:docker:image:push --ids-file` deletes the lines of the references it pushed:
+a pushed image stays on the machine as a cache for later pulls. Removing by ID
+leaves another run's image under the same tag alone. Pulled images, unlabeled
+volumes such as Go cache volumes, and the BuildKit cache are never touched.
+
+A resource already gone counts as removed; any other failure is reported after
+the remaining removals ran. `-d` prints the `docker` commands and removes
+nothing. Listing images with `--all` can take a while on a large image store.
 
 ### Use as a library
 
@@ -414,9 +450,10 @@ Targets take only the flags relevant to them; all support `-h`/`--help`.
 | `--push`       | `-p`  | build                           | Push while building (`--push`).        |
 | `--cache-from` |       | build                           | `docker build --cache-from` spec.      |
 | `--cache-to`   |       | build                           | `docker build --cache-to` spec.        |
+| `--ids-file`   |       | build, push, run:clean          | File of the built, unpushed images.    |
 | `--cmd`        | `-c`  | sh                              | Command to run; shell quoting applies. |
 | `--export`     | `-e`  | env                             | Print `export KEY='value'` lines.      |
-| `--dry-run`    | `-d`  | build, push, run, sh            | Print the `docker` command only.       |
+| `--dry-run`    | `-d`  | build, push, run, sh, run:clean | Print the `docker` command only.       |
 | `--help`       | `-h`  | all                             | Show the target's help.                |
 
 `--latest` is a request, not a guarantee: only a release — a clean checkout

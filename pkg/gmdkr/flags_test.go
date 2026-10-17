@@ -57,6 +57,7 @@ func Test_FlagParser_Parse(t *testing.T) {
 			"--push",
 			"--cache-from", "from-value",
 			"--cache-to", "to-value",
+			"--ids-file", "ids-value",
 		}
 		fp := NewFlagParser(":name", buf)
 		fp.Add(
@@ -71,6 +72,7 @@ func Test_FlagParser_Parse(t *testing.T) {
 			FlagPush,
 			FlagCacheFrom,
 			FlagCacheTo,
+			FlagIDsFile,
 		)
 
 		// --- When ---
@@ -95,6 +97,7 @@ func Test_FlagParser_Parse(t *testing.T) {
 		assert.True(t, fls.Push)
 		assert.Equal(t, "from-value", fls.CacheFrom)
 		assert.Equal(t, "to-value", fls.CacheTo)
+		assert.Equal(t, "ids-value", fls.IDsFile)
 		assert.Empty(t, fls.Args)
 		assert.Empty(t, buf.String())
 	})
@@ -217,4 +220,5 @@ func Test_NewFlags(t *testing.T) {
 	assert.False(t, fls.Push)
 	assert.Empty(t, fls.CacheFrom)
 	assert.Empty(t, fls.CacheTo)
+	assert.Empty(t, fls.IDsFile)
 }

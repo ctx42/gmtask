@@ -5,6 +5,7 @@ package gmdkr
 
 import (
 	"errors"
+	"os/exec"
 	"strings"
 
 	"github.com/ctx42/testing/pkg/tester"
@@ -58,4 +59,29 @@ func infoToEnv(t tester.T, output string) map[string]string {
 		env[key] = fields[1]
 	}
 	return env
+}
+
+// dockerCLI runs docker with args, feeding it stdin, and returns its trimmed
+// standard output. It fails the test on error.
+func dockerCLI(t tester.T, stdin string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("docker", args...)
+	cmd.Stdin = strings.NewReader(stdin)
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("docker %s: %v", strings.Join(args, " "), err)
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// dockerHas reports whether the Docker resource id of kind ("container",
+// "network", "volume", "image") exists.
+func dockerHas(kind, id string) bool {
+	return exec.Command("docker", kind, "inspect", id).Run() == nil
+}
+
+// dockerTry runs docker with args, ignoring any failure. Test cleanups use it
+// for resources a test may already have removed.
+func dockerTry(args ...string) {
+	_ = exec.Command("docker", args...).Run()
 }

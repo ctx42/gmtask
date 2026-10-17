@@ -127,6 +127,14 @@ func (dc *DockerCmd) Build(ctx context.Context, rng *ring.Ring) error {
 			if _, _, err := runDockerCmd(ctx, rngDC); err != nil {
 				return err
 			}
+			// An image pushed while building is the registry's; the run
+			// keeps it, so it is not recorded for removal.
+			if dc.Flags.IDsFile != "" && !dc.Config.push {
+				pth, ref := dc.Flags.IDsFile, bld.ImgRef()
+				if err := recordImageID(ctx, rng, pth, ref); err != nil {
+					return err
+				}
+			}
 		}
 	}
 	return nil
@@ -164,6 +172,12 @@ func (dc *DockerCmd) Push(ctx context.Context, rng *ring.Ring) error {
 			rngDC := rng.Clone()
 			rngDC.SetArgs(args)
 			if _, _, err := runDockerCmd(ctx, rngDC); err != nil {
+				return err
+			}
+		}
+		if dc.Flags.IDsFile != "" && !dc.Flags.DryRun {
+			pth, ref := dc.Flags.IDsFile, bld.ImgRef()
+			if err := forgetImageRef(pth, ref); err != nil {
 				return err
 			}
 		}

@@ -83,6 +83,7 @@ type Flags struct {
 	Push      bool     // Push image(s) to the registry while building.
 	CacheFrom string   // External cache source for "docker build".
 	CacheTo   string   // External cache destination for "docker build".
+	IDsFile   string   // File of the built images a run has not pushed.
 }
 
 // NewFlags returns new instance of [Flags] with mandatory target name.
@@ -157,4 +158,12 @@ func FlagCacheFrom(fp *FlagParser) {
 func FlagCacheTo(fp *FlagParser) {
 	usage := "docker build --cache-to spec; {image} is the image name"
 	fp.fs.StringVar(&fp.fls.CacheTo, "cache-to", "", usage)
+}
+
+// FlagIDsFile adds `ids-file` flag to the [FlagParser]. The value is the path
+// of the file holding one "<image ID> <reference>" line for each image a run
+// built and has not pushed; see [Run.Clean].
+func FlagIDsFile(fp *FlagParser) {
+	usage := "file of the images built and not pushed, for :docker:run:clean"
+	fp.fs.StringVar(&fp.fls.IDsFile, "ids-file", "", usage)
 }

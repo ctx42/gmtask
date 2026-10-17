@@ -587,6 +587,66 @@ func Test_DockerCmd_Build(t *testing.T) {
 		assert.Equal(t, "third image", dkrkit.NewT(t).CtrRun(ref))
 	})
 
+	t.Run("records built images in the ids file", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.WithConfig()
+		prj.WithDockerfile()
+		prj.Close()
+		prj.Chdir()
+
+		fls := NewFlags("name")
+		fls.ImgName = prj.ImgName()
+		fls.ImgTag = prj.ImgTag()
+		fls.IDsFile = filepath.Join(t.TempDir(), "ids")
+		dc := NewDockerCmd(fls)
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
+
+		// --- When ---
+		err := dc.Build(ctx, rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		ref := prj.ImgRef()
+		id := dockerCLI(t, "", "image", "inspect", "--format={{.Id}}", ref)
+		want := id + " " + ref + "\n"
+		assert.Equal(t, want, oskit.ReadFileStr(t, fls.IDsFile))
+		assert.NotEmpty(t, tst.Stderr())
+	})
+
+	t.Run("dry run records nothing in the ids file", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.WithConfig()
+		prj.WithDockerfile()
+		prj.Close()
+		prj.Chdir()
+
+		fls := NewFlags("name")
+		fls.ImgName = prj.ImgName()
+		fls.ImgTag = prj.ImgTag()
+		fls.DryRun = true
+		fls.IDsFile = filepath.Join(t.TempDir(), "ids")
+		dc := NewDockerCmd(fls)
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
+
+		// --- When ---
+		err := dc.Build(ctx, rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.NoFileExist(t, fls.IDsFile)
+		assert.NotEmpty(t, tst.Stderr())
+	})
+
 	t.Run("env-labels when no SCM", func(t *testing.T) {
 		// --- Given ---
 		ctx := t.Context()
@@ -1085,6 +1145,36 @@ func Test_DockerCmd_Push(t *testing.T) {
 			"my.nexus.dev/repo/dki-project:latest\n" +
 			"#gomake INFO# docker push my.nexus.dev/repo/dki-project:latest\n"
 		assert.Equal(t, want, tst.Stderr())
+	})
+
+	t.Run("dry run leaves the ids file", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.WithConfig()
+		prj.CfgRegRepoDef()
+		prj.WithDockerfile()
+		prj.GitInitAddAll("v1.1.1")
+		prj.Close()
+		prj.Chdir()
+
+		ids := "sha256:1 my.nexus.dev/repo/dki-project:v1.1.1\n"
+		fls := NewFlags("name")
+		fls.DryRun = true
+		fls.IDsFile = oskit.Write(t, ids, t.TempDir(), "ids")
+		dc := NewDockerCmd(fls)
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
+
+		// --- When ---
+		err := dc.Push(ctx, rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, ids, oskit.ReadFileStr(t, fls.IDsFile))
+		assert.NotEmpty(t, tst.Stderr())
 	})
 
 	t.Run("dry run pre-release tag withholds latest", func(t *testing.T) {

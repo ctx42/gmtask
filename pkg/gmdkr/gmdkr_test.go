@@ -232,6 +232,8 @@ func Test_Image_Build(t *testing.T) {
 			"--cache-to spec; {image} is the image name\n" +
 			"  -d, --dry-run       dry run\n" +
 			"  -h, --help          show help\n" +
+			"      --ids-file      file of the images built and not " +
+			"pushed, for :docker:run:clean\n" +
 			"  -l, --latest        add latest image tag\n" +
 			"  -n, --name          docker image name\n" +
 			"  -p, --push          push image(s) to the registry " +
@@ -261,6 +263,8 @@ func Test_Image_Build(t *testing.T) {
 			"--cache-to spec; {image} is the image name\n" +
 			"  -d, --dry-run       dry run\n" +
 			"  -h, --help          show help\n" +
+			"      --ids-file      file of the images built and not " +
+			"pushed, for :docker:run:clean\n" +
 			"  -l, --latest        add latest image tag\n" +
 			"  -n, --name          docker image name\n" +
 			"  -p, --push          push image(s) to the registry " +
@@ -363,12 +367,14 @@ func Test_Image_Push(t *testing.T) {
 		assert.NoError(t, err)
 		want := "" +
 			"Usage of :docker:image:push:\n" +
-			"  -d, --dry-run    dry run\n" +
-			"  -h, --help       show help\n" +
-			"  -l, --latest     add latest image tag\n" +
-			"  -n, --name       docker image name\n" +
-			"  -t, --tag        docker image tag\n" +
-			"  -T, --targets    comma separated docker targets\n"
+			"  -d, --dry-run     dry run\n" +
+			"  -h, --help        show help\n" +
+			"      --ids-file    file of the images built and not " +
+			"pushed, for :docker:run:clean\n" +
+			"  -l, --latest      add latest image tag\n" +
+			"  -n, --name        docker image name\n" +
+			"  -t, --tag         docker image tag\n" +
+			"  -T, --targets     comma separated docker targets\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
 
@@ -385,12 +391,14 @@ func Test_Image_Push(t *testing.T) {
 		want := "" +
 			"flag provided but not defined: -unknown\n" +
 			"Usage of :docker:image:push:\n" +
-			"  -d, --dry-run    dry run\n" +
-			"  -h, --help       show help\n" +
-			"  -l, --latest     add latest image tag\n" +
-			"  -n, --name       docker image name\n" +
-			"  -t, --tag        docker image tag\n" +
-			"  -T, --targets    comma separated docker targets\n"
+			"  -d, --dry-run     dry run\n" +
+			"  -h, --help        show help\n" +
+			"      --ids-file    file of the images built and not " +
+			"pushed, for :docker:run:clean\n" +
+			"  -l, --latest      add latest image tag\n" +
+			"  -n, --name        docker image name\n" +
+			"  -t, --tag         docker image tag\n" +
+			"  -T, --targets     comma separated docker targets\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
 
