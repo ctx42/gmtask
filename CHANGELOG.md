@@ -1,3 +1,6 @@
+## v0.19.1 (Sat, 17 Oct 2026 11:15:28 UTC)
+- fix(gmdkr): mount at the container layout the project configures.
+
 ## v0.19.0 (Fri, 16 Oct 2026 22:14:19 UTC)
 - refactor(gmprj): move layered config reading to internal/prjcfg.
 - feat(gmgo): read the lint config key from the layered project config.
