@@ -618,6 +618,35 @@ func Test_DockerCmd_Build(t *testing.T) {
 		assert.NotEmpty(t, tst.Stderr())
 	})
 
+	t.Run("release checkout records nothing in the ids file", func(t *testing.T) {
+		// --- Given ---
+		ctx := t.Context()
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.WithConfig()
+		prj.WithDockerfile()
+		prj.GitInitAddAll("v1.2.3")
+		prj.Close()
+		prj.Chdir()
+
+		fls := NewFlags("name")
+		fls.ImgName = prj.ImgName()
+		fls.ImgTag = prj.ImgTag()
+		fls.IDsFile = filepath.Join(t.TempDir(), "ids")
+		dc := NewDockerCmd(fls)
+		must.Nil(dc.Init(ctx, rng.EnvAll(), prj.Root()))
+
+		// --- When ---
+		err := dc.Build(ctx, rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.NoFileExist(t, fls.IDsFile)
+		assert.NotEmpty(t, tst.Stderr())
+	})
+
 	t.Run("dry run records nothing in the ids file", func(t *testing.T) {
 		// --- Given ---
 		ctx := t.Context()

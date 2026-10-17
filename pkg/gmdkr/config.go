@@ -24,6 +24,10 @@ type Config struct {
 	// Tag the docker image with "latest" when building (default: false).
 	latest bool
 
+	// The project is checked out clean at a version tag, a pre-release
+	// included, so the image tag names a version the registry keeps.
+	release bool
+
 	// Dockerfile target to build. When empty it means default target.
 	target string
 
@@ -104,6 +108,7 @@ func ConfigFrom(inf *gmprj.Info, fls *Flags) *Config {
 	if inf.Config != nil {
 		cfg.args = maps.Clone(inf.Config)
 	}
+	cfg.release = inf.Version.Release
 	cfg.fromInfo(inf, xdef.EnvPrjName)
 	cfg.fromInfo(inf, xdef.EnvScmRepo)
 	cfg.fromInfo(inf, xdef.EnvScmHash)
@@ -124,8 +129,7 @@ func ConfigFrom(inf *gmprj.Info, fls *Flags) *Config {
 		// Only a release may move "latest". A dirty tree or a commit past the
 		// tag is not the version the tag names, whatever the flag asks for,
 		// and a pre-release tag names a release that has not been cut yet.
-		rel := inf.Version.Release && isFinal(inf.Version.Tag)
-		cfg.latest = fls.ImgLatest && rel
+		cfg.latest = fls.ImgLatest && cfg.release && isFinal(inf.Version.Tag)
 		cfg.noCache = fls.Rebuild
 		cfg.push = fls.Push
 		cfg.cacheFrom = fls.CacheFrom

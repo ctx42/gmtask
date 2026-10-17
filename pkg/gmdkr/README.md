@@ -234,7 +234,11 @@ removes unlabeled resources. It removes, in this order:
 5. the images whose IDs the `--ids-file` still lists, by ID, then the file.
 
 `:docker:image:build --ids-file` appends an `<image ID> <reference>` line for
-each image it builds, unless it pushes while building (`-p`).
+each image it builds, unless it pushes while building (`-p`) or builds a clean
+checkout at a version tag, a pre-release included. Such an image is the
+version the registry gets or already has, and another run on the same daemon,
+say the branch build of the tagged commit, may build the same image ID:
+removing it would pull it from under that run's push.
 `:docker:image:push --ids-file` deletes the lines of the references it pushed:
 a pushed image stays on the machine as a cache for later pulls. Removing by ID
 leaves another run's image under the same tag alone. Pulled images, unlabeled

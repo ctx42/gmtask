@@ -127,9 +127,13 @@ func (dc *DockerCmd) Build(ctx context.Context, rng *ring.Ring) error {
 			if _, _, err := runDockerCmd(ctx, rngDC); err != nil {
 				return err
 			}
-			// An image pushed while building is the registry's; the run
-			// keeps it, so it is not recorded for removal.
-			if dc.Flags.IDsFile != "" && !dc.Config.push {
+			// An image pushed while building is the registry's, and one
+			// built at a version tag is the version the registry gets or
+			// already has. The run keeps both, so neither is recorded for
+			// removal: another run on the same daemon may build the same
+			// image ID at the same tag, and removing it would pull it from
+			// under that run's push.
+			if dc.Flags.IDsFile != "" && !dc.Config.push && !dc.Config.release {
 				pth, ref := dc.Flags.IDsFile, bld.ImgRef()
 				if err := recordImageID(ctx, rng, pth, ref); err != nil {
 					return err

@@ -27,6 +27,7 @@ func Test_NewConfig(t *testing.T) {
 	assert.Equal(t, "project", cfg.name)
 	assert.Equal(t, "tag", cfg.tag)
 	assert.False(t, cfg.latest)
+	assert.False(t, cfg.release)
 	assert.Equal(t, "", cfg.target)
 	assert.Equal(t, "", cfg.ssh)
 	assert.Equal(t, "", cfg.repo)
@@ -41,7 +42,7 @@ func Test_NewConfig(t *testing.T) {
 	assert.Empty(t, cfg.cacheTo)
 	assert.Empty(t, cfg.dkfDir)
 	assert.Empty(t, cfg.prjDir)
-	assert.Fields(t, 16, Config{})
+	assert.Fields(t, 17, Config{})
 }
 
 func Test_ConfigFrom(t *testing.T) {
@@ -67,6 +68,7 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Equal(t, "", cfg.name)
 		assert.Equal(t, "", cfg.tag)
 		assert.False(t, cfg.latest)
+		assert.False(t, cfg.release)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "", cfg.ssh)
 		assert.Equal(t, "", cfg.repo)
@@ -79,7 +81,7 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheTo)
 		assert.Empty(t, cfg.dkfDir)
 		assert.Empty(t, cfg.prjDir)
-		assert.Fields(t, 16, Config{})
+		assert.Fields(t, 17, Config{})
 		bldDate := must.Value(time.Parse(
 			time.RFC3339Nano,
 			cfg.args[xdef.EnvBldDate],
@@ -109,6 +111,7 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, "", cfg.tag)
 		assert.False(t, cfg.latest)
+		assert.False(t, cfg.release)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "", cfg.ssh)
 		assert.Equal(t, "", cfg.repo)
@@ -121,7 +124,7 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheTo)
 		assert.Empty(t, cfg.dkfDir)
 		assert.Empty(t, cfg.prjDir)
-		assert.Fields(t, 16, Config{})
+		assert.Fields(t, 17, Config{})
 		wDate := "2000-01-02T03:04:05.600Z"
 		assert.HasKeyValue(t, xdef.EnvBldDate, wDate, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
@@ -150,6 +153,7 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, "v0.0.1-dev.1_g"+cm.Hash, cfg.tag)
 		assert.False(t, cfg.latest)
+		assert.False(t, cfg.release)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "", cfg.ssh)
 		assert.Equal(t, "", cfg.repo)
@@ -162,7 +166,7 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheTo)
 		assert.Empty(t, cfg.dkfDir)
 		assert.Empty(t, cfg.prjDir)
-		assert.Fields(t, 16, Config{})
+		assert.Fields(t, 17, Config{})
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev,
 			"v0.0.1-dev.1+g"+cm.Hash, cfg.args)
@@ -195,6 +199,7 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, "v0.0.1-dev.1_g"+cm.Hash, cfg.tag)
 		assert.False(t, cfg.latest)
+		assert.False(t, cfg.release)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "", cfg.ssh)
 		assert.Equal(t, "", cfg.repo)
@@ -207,7 +212,7 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheTo)
 		assert.Empty(t, cfg.dkfDir)
 		assert.Empty(t, cfg.prjDir)
-		assert.Fields(t, 16, Config{})
+		assert.Fields(t, 17, Config{})
 		assert.HasKeyValue(t, xdef.EnvScmRepo, prjkit.GitOrigin, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev,
@@ -240,6 +245,7 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, cm.Rev, cfg.tag)
 		assert.False(t, cfg.latest)
+		assert.True(t, cfg.release)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "", cfg.ssh)
 		assert.Equal(t, "", cfg.repo)
@@ -252,7 +258,7 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheTo)
 		assert.Empty(t, cfg.dkfDir)
 		assert.Empty(t, cfg.prjDir)
-		assert.Fields(t, 16, Config{})
+		assert.Fields(t, 17, Config{})
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, cm.Rev, cfg.args)
 		wDate := "2000-01-02T03:04:05.600Z"
@@ -289,6 +295,7 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, imgTag, cfg.tag)
 		assert.False(t, cfg.latest)
+		assert.False(t, cfg.release)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "", cfg.ssh)
 		assert.Equal(t, "", cfg.repo)
@@ -301,7 +308,7 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheTo)
 		assert.Empty(t, cfg.dkfDir)
 		assert.Empty(t, cfg.prjDir)
-		assert.Fields(t, 16, Config{})
+		assert.Fields(t, 17, Config{})
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, rev, cfg.args)
 		wDate := "2000-01-02T03:04:05.600Z"
@@ -332,6 +339,7 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, "v1.2.3", cfg.tag)
 		assert.False(t, cfg.latest)
+		assert.True(t, cfg.release)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "", cfg.ssh)
 		assert.Equal(t, "my.nexus.dev/repo", cfg.repo)
@@ -344,7 +352,7 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheTo)
 		assert.Empty(t, cfg.dkfDir)
 		assert.Empty(t, cfg.prjDir)
-		assert.Fields(t, 16, Config{})
+		assert.Fields(t, 17, Config{})
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, "v1.2.3", cfg.args)
 		wDate := "2000-01-02T03:04:05.600Z"
@@ -377,6 +385,7 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Equal(t, "dki-project", cfg.name)
 		assert.Equal(t, "v1.2.3", cfg.tag)
 		assert.False(t, cfg.latest)
+		assert.True(t, cfg.release)
 		assert.Equal(t, "", cfg.target)
 		assert.Equal(t, "ssh-sock", cfg.ssh)
 		assert.Equal(t, "my.nexus.dev/repo", cfg.repo)
@@ -389,7 +398,7 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.cacheTo)
 		assert.Empty(t, cfg.dkfDir)
 		assert.Empty(t, cfg.prjDir)
-		assert.Fields(t, 16, Config{})
+		assert.Fields(t, 17, Config{})
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, "v1.2.3", cfg.args)
 		assert.HasKeyValue(t, EnvSSHSock, "ssh-sock", cfg.args)
@@ -499,6 +508,7 @@ func Test_ConfigFrom(t *testing.T) {
 
 		// --- Then ---
 		assert.True(t, cfg.latest)
+		assert.True(t, cfg.release)
 	})
 
 	t.Run("flag latest on a pre-release tag is ignored", func(t *testing.T) {
@@ -522,6 +532,7 @@ func Test_ConfigFrom(t *testing.T) {
 		// --- Then ---
 		assert.Equal(t, "v1.0.0-rc.1", cfg.tag)
 		assert.False(t, cfg.latest)
+		assert.True(t, cfg.release)
 	})
 
 	t.Run("flags push and cache set", func(t *testing.T) {
@@ -582,6 +593,7 @@ func Test_Config_ForTarget(t *testing.T) {
 		name:      "project",
 		tag:       "cfg-tag",
 		latest:    true,
+		release:   true,
 		target:    "other",
 		ssh:       "ssh",
 		repo:      "repo",
@@ -604,6 +616,7 @@ func Test_Config_ForTarget(t *testing.T) {
 	assert.Equal(t, "project", have.name)
 	assert.Equal(t, "cfg-tag", have.tag)
 	assert.True(t, have.latest)
+	assert.True(t, have.release)
 	assert.Equal(t, "target", have.target)
 	assert.Equal(t, "ssh", have.ssh)
 	assert.Equal(t, "repo", have.repo)
@@ -618,7 +631,7 @@ func Test_Config_ForTarget(t *testing.T) {
 	assert.Equal(t, "to", have.cacheTo)
 	assert.Equal(t, "dkf", have.dkfDir)
 	assert.Equal(t, "prj", have.prjDir)
-	assert.Fields(t, 16, Config{})
+	assert.Fields(t, 17, Config{})
 
 	// Test it's independent.
 	cfg.target = "changed"
