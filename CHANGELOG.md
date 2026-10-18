@@ -1,3 +1,7 @@
+## v0.20.2 (Sun, 18 Oct 2026 08:25:36 UTC)
+- ci: set C42_CC_RUN_ID in the workflow environment.
+- chore(deps): update dependencies.
+
 ## v0.20.1 (Sat, 17 Oct 2026 20:11:59 UTC)
 - fix(gmdkr): keep release images out of the ids file.
 
