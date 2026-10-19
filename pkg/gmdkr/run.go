@@ -34,8 +34,8 @@ type Run Docker
 // [ErrNoRunID], so it can never remove unlabeled resources. It prints one line
 // for each resource it removes; a dry run only prints them.
 //
-// A resource already gone counts as removed. Any other failure is returned
-// once all the remaining removals ran.
+// A resource already gone, or being removed, counts as removed. Any other
+// failure is returned once all the remaining removals ran.
 func (Run) Clean(ctx context.Context, rng *ring.Ring) error {
 	fp := NewFlagParser(":docker:run:clean", rng.Stderr())
 	fp.Add(FlagHelp, FlagDryRun, FlagIDsFile)
@@ -119,7 +119,8 @@ func cleanRun(
 }
 
 // removeResource prints and runs the docker command rm with id appended. A
-// dry run only prints it. A resource already gone counts as removed.
+// dry run only prints it. A resource already gone, or being removed, counts
+// as removed.
 func removeResource(
 	ctx context.Context,
 	rng *ring.Ring,
@@ -144,11 +145,16 @@ func removeResource(
 	return err
 }
 
-// isGone reports whether err is docker saying the resource does not exist.
-// It matches the docker CLI's English messages, which differ by kind.
+// isGone reports whether err is docker saying the resource does not exist,
+// or that it is being removed already, as for a container docker removes on
+// its own when it stops. It matches the docker CLI's English messages, which
+// differ by kind.
 func isGone(err error) bool {
 	msg := strings.ToLower(err.Error())
 	if strings.Contains(msg, "no such") {
+		return true
+	}
+	if strings.Contains(msg, "already in progress") {
 		return true
 	}
 	return strings.Contains(msg, "not found")

@@ -253,6 +253,12 @@ func Test_isGone_tabular(t *testing.T) {
 		{"image", "Error response: No such image: i1", true},
 		{"volume", "Error response: get v1: no such volume", true},
 		{"network", "Error response: network n1 not found", true},
+		{
+			"removal in progress",
+			"Error response from daemon: removal of container c1 is " +
+				"already in progress",
+			true,
+		},
 		{"other", "permission denied", false},
 	}
 

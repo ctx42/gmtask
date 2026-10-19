@@ -244,8 +244,8 @@ a pushed image stays on the machine as a cache for later pulls. Removing by ID
 leaves another run's image under the same tag alone. Pulled images, unlabeled
 volumes such as Go cache volumes, and the BuildKit cache are never touched.
 
-A resource already gone counts as removed; any other failure is reported after
-the remaining removals ran. `-d` prints the `docker` commands and removes
+A resource already gone, or being removed, counts as removed; any other failure
+is reported after the remaining removals ran. `-d` prints the `docker` commands and removes
 nothing. Listing images with `--all` can take a while on a large image store.
 
 ### Use as a library
