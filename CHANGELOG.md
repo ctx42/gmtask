@@ -1,3 +1,6 @@
+## v0.20.3 (Mon, 19 Oct 2026 19:15:11 UTC)
+- fix(gmdkr): count a container being removed as removed in :docker:run:clean.
+
 ## v0.20.2 (Sun, 18 Oct 2026 08:25:36 UTC)
 - ci: set C42_CC_RUN_ID in the workflow environment.
 - chore(deps): update dependencies.
