@@ -2,8 +2,8 @@ github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAw
 github.com/Masterminds/semver/v3 v3.5.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
 github.com/ctx42/dotenv v0.7.1 h1:QIUBLcgOycVvZ2TqhZkt0DVa4b4+1hX30/9SqMAT9IA=
 github.com/ctx42/dotenv v0.7.1/go.mod h1:mUaH7/amGolEiGDRnQssGCEHu2PPWg0NBbhoelKEDl4=
-github.com/ctx42/gitaid v0.18.1 h1:R9v3Y/Dgy8RB0bS3hY4f9qxbgG5MM1288uwHO+ybHlo=
-github.com/ctx42/gitaid v0.18.1/go.mod h1:m73MKL7QvBhbRF/MXj+/dsjn7ZG8p2InBFw3u7DiNYs=
+github.com/ctx42/gitaid v0.20.0 h1:rk5MWIsnGEx02yQu/y2sZHB8HZR2OBgeQ53aK/xGr3Q=
+github.com/ctx42/gitaid v0.20.0/go.mod h1:m73MKL7QvBhbRF/MXj+/dsjn7ZG8p2InBFw3u7DiNYs=
 github.com/ctx42/gomake v0.31.5 h1:7cmj5bDa0aNbO1Ydudf7OU6mDuqHl5oBQLPY0Kdk5j8=
 github.com/ctx42/gomake v0.31.5/go.mod h1:5OX7Oib30BiIPAgeci+TZ9fcjsUwM0oMhBSn4U/SgWE=
 github.com/ctx42/ring v0.8.2 h1:Cf2bksHABA/uZM2+Nn9TQgvpWHaOMhVlenBYZJ4hdvo=
