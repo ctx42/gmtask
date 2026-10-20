@@ -40,7 +40,8 @@ assembly, log-file naming) are also usable as a plain library.
 
 - **`:go:vet`** — runs `go vet ./...`, then vets the gomake-tagged files of
   the current directory, such as `makefile.go`, which `./...` leaves out.
-- **`:go:lint`** — runs golangci-lint, auto-installing it and the config.
+- **`:go:lint`** — runs golangci-lint, auto-installing it and the config;
+  `--new` reports only the issues added since the last commit.
 - **`:go:test`** — tests with race and coverage.
 - **`:go:test-v`** — verbose tests with race and coverage.
 - **`:go:check`** — runs `:go:vet`, `:go:lint`, and `:go:test` in order.
@@ -108,6 +109,7 @@ gomake :go:vet          # go vet ./... and makefile.go
 gomake :go:test         # tests with race detector + coverage
 gomake :go:test-v       # same, verbose
 gomake :go:lint         # golangci-lint run
+gomake :go:lint --new   # only issues added since the last commit
 gomake :go:check        # vet, then lint, then test
 gomake :go:build        # go build with version metadata
 gomake :go:doc          # serve godoc and open the browser

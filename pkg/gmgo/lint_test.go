@@ -52,6 +52,32 @@ func Test_Lint_Default(t *testing.T) {
 		assert.Contain(t, want, tst.Stderr())
 	})
 
+	t.Run("only new issues", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring("--new")
+		repo := setupConfigRepo(t)
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.ProjectFrom("testdata/vet/failure/project")
+		prj.CreateDir("tmp")
+		prj.GitInitAddAll()
+		prj.Close()
+		prj.Chdir()
+
+		rng.EnvSet(GoLintConfigRepoEnvKey, repo)
+
+		// --- When ---
+		err := Lint{}.Default(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "0 issues.", tst.Stdout())
+		want := "#gomake INFO# lint config: downloading"
+		assert.Contain(t, want, tst.Stderr())
+	})
+
 	t.Run("force config download", func(t *testing.T) {
 		// --- Given ---
 		ctx := t.Context()
@@ -279,7 +305,7 @@ func Test_Lint_lint(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		err := Lint{}.lint(t.Context(), rng, prj.Root(), "")
+		err := Lint{}.lint(t.Context(), rng, prj.Root(), "", false)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -299,12 +325,59 @@ func Test_Lint_lint(t *testing.T) {
 		prj.Chdir()
 
 		// --- When ---
-		err := Lint{}.lint(t.Context(), rng, prj.Root(), "")
+		err := Lint{}.lint(t.Context(), rng, prj.Root(), "", false)
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)
 		want := "source.go:10:22: printf: fmt.Sprintf format"
 		assert.Contain(t, want, tst.Stdout())
+	})
+
+	t.Run("only new issues", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.ProjectFrom("testdata/vet/failure/project")
+		prj.CreateFileWith("version: \"2\"\n", "tmp", ".golangci.yml")
+		prj.GitInitAddAll()
+		prj.Close()
+
+		// --- When ---
+		err := Lint{}.lint(t.Context(), rng, prj.Root(), "", true)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "0 issues.", tst.Stdout())
+	})
+
+	t.Run("error - new issue", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.ProjectFrom("testdata/vet/failure/project")
+		prj.CreateFileWith("version: \"2\"\n", "tmp", ".golangci.yml")
+		prj.GitInitAddAll()
+		src := "" +
+			"package project\n\n" +
+			"import \"fmt\"\n\n" +
+			"func Bye() string { return fmt.Sprintf(\"%d\", \"bye\") }\n"
+		prj.CreateFileWith(src, "bye.go")
+		prj.Close()
+
+		// --- When ---
+		err := Lint{}.lint(t.Context(), rng, prj.Root(), "", true)
+
+		// --- Then ---
+		assert.ExitCode(t, 1, err)
+		have := tst.Stdout()
+		assert.Contain(t, "bye.go:5:", have)
+		assert.NotContain(t, "source.go:", have)
 	})
 
 	t.Run("resolves config under dir without chdir", func(t *testing.T) {
@@ -320,7 +393,7 @@ func Test_Lint_lint(t *testing.T) {
 		prj.Close()
 
 		// --- When ---
-		err := Lint{}.lint(t.Context(), rng, prj.Root(), "")
+		err := Lint{}.lint(t.Context(), rng, prj.Root(), "", false)
 
 		// --- Then ---
 		assert.ExitCode(t, 1, err)

@@ -17,6 +17,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/ctx42/gomake/pkg/gomake"
 	"github.com/ctx42/ring/pkg/ring"
+	"github.com/ctx42/xflag/pkg/xflag"
 )
 
 // Lint collects Go linting targets.
@@ -25,15 +26,23 @@ type Lint Go
 // Default lints the current working directory and its subdirectories with
 // golangci-lint and the shared config. It fetches the config when needed and
 // ensures golangci-lint is installed at the required version. It takes the
-// arguments of [Lint.Config]. Lint output is written to the ring streams.
+// arguments of [Lint.Config], and --new, which reports only the issues the
+// changes since the last commit add, uncommitted ones included. Lint output
+// is written to the ring streams.
 //
 // Example usage:
 //
 //	gomake :go:lint
+//	gomake :go:lint --new
 func (tgt Lint) Default(ctx context.Context, rng *ring.Ring) error {
+	var onlyNew bool
+	newFlag := func(fs *xflag.FlagSet) {
+		help := "report only issues added since the last commit"
+		fs.BoolVar(&onlyNew, "new", false, help)
+	}
 	// Resolve the config first: it validates the configuration and the
 	// arguments before anything is installed, and returns on --help.
-	cfgPth, help, err := tgt.config(ctx, rng)
+	cfgPth, help, err := tgt.config(ctx, rng, newFlag)
 	if err != nil || help {
 		return err
 	}
@@ -67,7 +76,7 @@ func (tgt Lint) Default(ctx context.Context, rng *ring.Ring) error {
 			return fmt.Errorf(format, ver, bin, req)
 		}
 	}
-	return tgt.lint(ctx, rng, "", cfgPth)
+	return tgt.lint(ctx, rng, "", cfgPth, onlyNew)
 }
 
 // requiredLintVer returns the lowest golangci-lint version [Lint.Default]
@@ -149,12 +158,14 @@ func (Lint) checkVersion(
 // lint lints Go code in the given directory and its subdirectories using the
 // configuration file at cfgPth or, when cfgPth is empty, the one located in
 // "${dir}/tmp/.golangci.yml" or "${dir}/.golangci.yml" (if it exists). The
-// empty string used for dir means current working directory.
+// empty string used for dir means current working directory. With onlyNew,
+// only the issues the changes since the last commit add are reported.
 func (Lint) lint(
 	ctx context.Context,
 	rng *ring.Ring,
 	dir string,
 	cfgPth string,
+	onlyNew bool,
 ) error {
 
 	args := []string{"run"}
@@ -168,6 +179,9 @@ func (Lint) lint(
 	}
 	if gomake.FileExists(cfgPth) {
 		args = append(args, "-c", cfgPth)
+	}
+	if onlyNew {
+		args = append(args, "--new-from-rev=HEAD")
 	}
 	args = append(args, "./...")
 
@@ -239,12 +253,14 @@ func (tgt Lint) Config(ctx context.Context, rng *ring.Ring) error {
 	return err
 }
 
-// config does the work of [Lint.Config] and returns the path of the config
-// file in place. help is true when --help was requested, in which case the
-// usage was written and nothing else was done.
+// config does the work of [Lint.Config], with the flags each of extra
+// registers, and returns the path of the config file in place. help is true
+// when --help was requested, in which case the usage was written and nothing
+// else was done.
 func (Lint) config(
 	ctx context.Context,
 	rng *ring.Ring,
+	extra ...func(fs *xflag.FlagSet),
 ) (cfgPth string, help bool, err error) {
 
 	cfg, err := gomake.TargetConfig(rng)
@@ -275,7 +291,7 @@ func (Lint) config(
 	dirHelp := "" +
 		"directory to put lint config to " +
 		"(default: \".\" or \"tmp\" if exists)"
-	out, rng, usage, err := parseDirTarget(rng, tgtName, dirHelp)
+	out, rng, usage, err := parseDirTarget(rng, tgtName, dirHelp, extra...)
 	if err != nil {
 		return "", false, err
 	}
