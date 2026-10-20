@@ -24,6 +24,7 @@ import (
 	"github.com/ctx42/testkit/pkg/oskit"
 	"github.com/ctx42/testkit/pkg/prjkit"
 	"github.com/ctx42/xdef/pkg/xdef"
+	"github.com/ctx42/xflag/pkg/xflag"
 
 	"github.com/ctx42/gmtask/internal/gmtest"
 )
@@ -531,9 +532,11 @@ func Test_Go_TestV(t *testing.T) {
 		assert.NoError(t, err)
 		want := "" +
 			"Usage of :go:test-v\n" +
-			"      --dir     directory to put reports to " +
+			"      --dir      directory to put reports to " +
 			"(default: \".\" or \"tmp\" if exists)\n" +
-			"  -h, --help    show help\n"
+			"  -h, --help     show help\n" +
+			"      --stall    signal test binaries printing nothing " +
+			"for that long\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
 
@@ -554,9 +557,11 @@ func Test_Go_TestV(t *testing.T) {
 		want := "" +
 			"flag provided but not defined: -unknown\n" +
 			"Usage of :go:test-v\n" +
-			"      --dir     directory to put reports to " +
+			"      --dir      directory to put reports to " +
 			"(default: \".\" or \"tmp\" if exists)\n" +
-			"  -h, --help    show help\n"
+			"  -h, --help     show help\n" +
+			"      --stall    signal test binaries printing nothing " +
+			"for that long\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
 }
@@ -732,10 +737,62 @@ func Test_Go_Test(t *testing.T) {
 		assert.NoError(t, err)
 		want := "" +
 			"Usage of :go:test\n" +
-			"      --dir     directory to put reports to " +
+			"      --dir      directory to put reports to " +
 			"(default: \".\" or \"tmp\" if exists)\n" +
-			"  -h, --help    show help\n"
+			"  -h, --help     show help\n" +
+			"      --stall    signal test binaries printing nothing " +
+			"for that long\n"
 		assert.Equal(t, want, tst.Stderr())
+	})
+
+	t.Run("stall - nothing stalls", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("--stall", "10m")
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.ProjectFrom("testdata/vet/success/project")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Go{}.Test(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		have := tst.Stdout()
+		assert.Equal(t, prj.ReadFileStr(TestLogFilename(rng)), have)
+		assert.Contain(t, "--- PASS: Test_Hello", have)
+		assert.Contain(t, "ok  \texample.com/comp/project\t", have)
+		assert.NotContain(t, "=== STALL", have)
+	})
+
+	t.Run("stall - test binary signalled", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("--stall", "3s")
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.ProjectFrom("testdata/stall/project")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Go{}.Test(t.Context(), rng)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrStall, err)
+		assert.ErrorContain(t, "no test output for 3s", err)
+		have := tst.Stdout()
+		assert.Equal(t, prj.ReadFileStr(TestLogFilename(rng)), have)
+		want := "" +
+			"=== STALL: no test output for 3s: " +
+			"SIGQUIT to 1, SIGKILL to 0 test binaries\n"
+		assert.Contain(t, want, have)
+		assert.Contain(t, "SIGQUIT: quit", have)
+		assert.Contain(t, "project.Test_Hello", have)
 	})
 
 	t.Run("error - unknown argument", func(t *testing.T) {
@@ -755,9 +812,11 @@ func Test_Go_Test(t *testing.T) {
 		want := "" +
 			"flag provided but not defined: -unknown\n" +
 			"Usage of :go:test\n" +
-			"      --dir     directory to put reports to " +
+			"      --dir      directory to put reports to " +
 			"(default: \".\" or \"tmp\" if exists)\n" +
-			"  -h, --help    show help\n"
+			"  -h, --help     show help\n" +
+			"      --stall    signal test binaries printing nothing " +
+			"for that long\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
 }
@@ -814,6 +873,23 @@ func Test_parseDirTarget(t *testing.T) {
 		assert.Equal(t, "reports", out)
 		assert.Equal(t, []string{"./pkg/..."}, next.Args())
 		assert.Equal(t, []string{"--dir", "reports", "./pkg/..."}, rng.Args())
+	})
+
+	t.Run("extra flags", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring("--wait", "5s", "./pkg/...")
+		var wait time.Duration
+		reg := func(fs *xflag.FlagSet) {
+			fs.DurationVar(&wait, "wait", 0, "wait help")
+		}
+
+		// --- When ---
+		_, next, _, err := parseDirTarget(rng, ":go:test", "dir help", reg)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, 5*time.Second, wait)
+		assert.Equal(t, []string{"./pkg/..."}, next.Args())
 	})
 
 	t.Run("help requested returns usage", func(t *testing.T) {

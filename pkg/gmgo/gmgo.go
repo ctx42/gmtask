@@ -41,6 +41,10 @@ var (
 
 	// ErrImpPath is returned when [ImpPath] cannot resolve the module path.
 	ErrImpPath = errors.New("cannot determine Go module import path")
+
+	// ErrStall is returned when :go:test signals test binaries that printed
+	// nothing for the --stall duration.
+	ErrStall = errors.New("test run stalled")
 )
 
 // expLintVer is the minimum expected version of golangci-lint.
@@ -178,6 +182,15 @@ func (tgt Go) Test(ctx context.Context, rng *ring.Ring) error {
 //
 // When verbose is set to true, an additional flag "-v" is passed to "go test".
 //
+// With --stall set to a duration, "go test -json" runs instead, and the output
+// of its events is printed, as with "-v". Whenever running test binaries print
+// nothing for that long, each gets SIGQUIT, which makes it print its
+// goroutines and exit, or SIGKILL when it got SIGQUIT before; a line saying so
+// goes to the output, and the target returns an error wrapping [ErrStall].
+// Compiling and linking, before any test binary runs, is not a stall. Test
+// binaries are found through the /proc file system; without it nothing is
+// signalled.
+//
 // Additional arguments may be passed to "go test" with the "-- arg0 arg1"
 // construct. A -timeout among them takes precedence over the configured and
 // environment timeouts. The "./..." pattern is always appended after them, so
@@ -192,7 +205,12 @@ func (Go) test(ctx context.Context, rng *ring.Ring, verbose bool) error {
 	}
 
 	dirHelp := `directory to put reports to (default: "." or "tmp" if exists)`
-	out, rng, usage, err := parseDirTarget(rng, tgtName, dirHelp)
+	var stall time.Duration
+	stallFlag := func(fs *xflag.FlagSet) {
+		help := "signal test binaries printing nothing for that long"
+		fs.DurationVar(&stall, "stall", 0, help)
+	}
+	out, rng, usage, err := parseDirTarget(rng, tgtName, dirHelp, stallFlag)
 	if err != nil {
 		return err
 	}
@@ -210,7 +228,11 @@ func (Go) test(ctx context.Context, rng *ring.Ring, verbose bool) error {
 	repPth := filepath.Join(out, TestLogFilename(rng))
 
 	cmdArgs := []string{"test"}
-	if verbose {
+	switch {
+	case stall > 0:
+		cmdArgs = append(cmdArgs, "-json")
+
+	case verbose:
 		cmdArgs = append(cmdArgs, "-v")
 	}
 	cmdArgs = append(
@@ -260,8 +282,12 @@ func (Go) test(ctx context.Context, rng *ring.Ring, verbose bool) error {
 	mw := io.MultiWriter(rng.Stdout(), rep)
 
 	cmd := exec.CommandContext(ctx, "go", cmdArgs...)
-	cmd.Stdout, cmd.Stderr = mw, rng.Stderr()
+	cmd.Stderr = rng.Stderr()
 	cmd.Env = rng.EnvAll()
+	if stall > 0 {
+		return runWatched(cmd, mw, stall)
+	}
+	cmd.Stdout = mw
 	return cmd.Run()
 }
 
@@ -278,21 +304,26 @@ func hasFlagArg(args []string, flag string) bool {
 }
 
 // parseDirTarget parses the --dir and --help flags shared by the targets that
-// write output to a directory, using dirHelp as the --dir usage description. It
-// returns the resolved --dir value and a clone of the ring with the remaining
-// positional arguments applied; rng itself is left unchanged. usage holds the
-// help text when --help was requested, in which case the caller should print
-// it and return without further work. On a parse error the flag set prints
-// the error and the usage to the ring's stderr.
+// write output to a directory, using dirHelp as the --dir usage description,
+// and the flags each of extra registers. It returns the resolved --dir value
+// and a clone of the ring with the remaining positional arguments applied; rng
+// itself is left unchanged. usage holds the help text when --help was
+// requested, in which case the caller should print it and return without
+// further work. On a parse error the flag set prints the error and the usage
+// to the ring's stderr.
 func parseDirTarget(
 	rng *ring.Ring,
 	tgtName string,
 	dirHelp string,
+	extra ...func(fs *xflag.FlagSet),
 ) (out string, _ *ring.Ring, usage string, err error) {
 
 	fs := xflag.NewFlagSet(tgtName, flag.ContinueOnError)
 	fs.BoolSL("help", "h", false, "show help")
 	fs.StringVar(&out, "dir", "", dirHelp)
+	for _, reg := range extra {
+		reg(fs)
+	}
 	fs.SetOutput(rng.Stderr())
 	head := fmt.Sprintf("Usage of %s\n", tgtName)
 	fs.Usage = func() { _, _ = fmt.Fprint(rng.Stderr(), head+fs.HelpOptions()) }

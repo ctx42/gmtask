@@ -182,6 +182,17 @@ packages, run `go test` directly.
 Set a `go test -timeout` in `gomake.yaml` or via `GOMAKE_GO_TEST_TIMEOUT` — see
 [Configuration](#configuration).
 
+`-stall` watches for hung tests: it runs `go test -json`, prints the output as
+`-v` would, and when the running test binaries print nothing for the given
+duration, sends each `SIGQUIT`, so it dumps its goroutines into the output and
+exits (`SIGKILL` the next time). A `=== STALL` line marks it, and the target
+fails with `ErrStall`. Compiling is not a stall. Test binaries are found
+through `/proc`, so only Linux signals them.
+
+```shell
+gomake :go:test -stall 10m
+```
+
 ### Linting config
 
 `:go:lint` installs golangci-lint if it is missing or below `v2.12.2`, then
