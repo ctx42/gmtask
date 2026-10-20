@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
 // SPDX-License-Identifier: MIT
 
-// Package gmmce provides the :doc:mce gomake target, which injects Go example
-// function bodies into placeholders in Markdown files.
+// Package gmmce provides gomake targets for Markdown documentation: :doc:mce,
+// which injects Go example function bodies into placeholders in Markdown
+// files, and :doc:align, which aligns the columns of Markdown tables.
 package gmmce
 
 import (

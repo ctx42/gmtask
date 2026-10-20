@@ -1,8 +1,9 @@
 # gmmce
 
-The [gomake](https://github.com/ctx42/gomake) `:doc:mce` target — inject Go
-example function bodies into Markdown files, so documentation code blocks stay
-in sync with compilable, tested examples.
+The [gomake](https://github.com/ctx42/gomake) `:doc:*` targets for Markdown
+documentation: `:doc:mce` injects Go example function bodies into Markdown
+files, so documentation code blocks stay in sync with compilable, tested
+examples, and `:doc:align` aligns the columns of Markdown tables.
 
 <!-- TOC -->
 * [gmmce](#gmmce)
@@ -15,6 +16,7 @@ in sync with compilable, tested examples.
   * [Usage](#usage)
     * [Markers](#markers)
     * [Use as a library](#use-as-a-library)
+    * [Table alignment](#table-alignment)
 <!-- TOC -->
 
 ## Overview
@@ -183,3 +185,20 @@ rng := ring.New(
 
 err := gmmce.Doc{}.Mce(context.Background(), rng)
 ```
+
+### Table alignment
+
+`:doc:align` pads every cell of a Markdown table to the widest cell of its
+column, counted in characters, and fills the separator row with dashes flush to
+the pipes, keeping its alignment colons. It rewrites the files named as
+arguments; `--check` writes nothing, lists the files with unaligned tables, and
+fails, which suits CI:
+
+```shell
+gomake :doc:align README.md docs/*.md   # align the tables in place
+gomake :doc:align --check README.md     # fail when a table is unaligned
+```
+
+A table is a run of lines starting and ending with `|` whose second line is a
+separator row; tables inside code blocks are left alone, and pipes escaped as
+`\|` stay inside their cell.

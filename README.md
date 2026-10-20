@@ -54,6 +54,7 @@ Requires [gomake](https://github.com/ctx42/gomake) for the target packages.
 | `:docker:image:clean`     | Removes dangling and stale test images.       |
 | `:docker:login`           | Logs in to the configured private registry.   |
 | `:doc:mce`                | Injects Go example bodies into Markdown docs. |
+| `:doc:align`              | Aligns the columns of Markdown tables.        |
 | `:bump`                   | Tags next version, writes changelog, pushes.  |
 | `:project:setup`          | Scaffolds a Go project; inits module and git. |
 | `:project:env`            | Prints project info as `KEY=value` vars.      |
@@ -89,7 +90,7 @@ imports:
 go run github.com/ctx42/gomake/cmd/install@latest --targets=./targets.yaml
 ```
 
-The `:go:*`, `:docker:*`, `:bump`, `:project:*`, and `:doc:mce` targets are
+The `:go:*`, `:docker:*`, `:bump`, `:project:*`, and `:doc:*` targets are
 then available in every project the binary is used from.
 
 ### As per-project targets
@@ -117,7 +118,7 @@ import (
 )
 ```
 
-The `:go:*`, `:docker:*`, `:bump`, `:project:*`, and `:doc:mce` targets are
+The `:go:*`, `:docker:*`, `:bump`, `:project:*`, and `:doc:*` targets are
 then available in that project only.
 
 ## License
