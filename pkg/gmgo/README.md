@@ -44,6 +44,8 @@ assembly, log-file naming) are also usable as a plain library.
   `--new` reports only the issues added since the last commit.
 - **`:go:test`** — tests with race and coverage.
 - **`:go:test-v`** — verbose tests with race and coverage.
+- **`:go:fmt`** — reports changed Go files gofmt would rewrite, and changed
+  lines over the `.editorconfig` line limit.
 - **`:go:check`** — runs `:go:vet`, `:go:lint`, and `:go:test` in order.
 - **`:go:build`** — runs `go build`, injecting metadata via `-ldflags`.
 - **`:go:doc`** — serves godoc and opens the current package in your browser.
@@ -106,6 +108,7 @@ Run any target from a project's root directory:
 
 ```shell
 gomake :go:vet          # go vet ./... and makefile.go
+gomake :go:fmt          # gofmt and line length of the uncommitted changes
 gomake :go:test         # tests with race detector + coverage
 gomake :go:test-v       # same, verbose
 gomake :go:lint         # golangci-lint run

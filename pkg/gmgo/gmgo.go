@@ -46,6 +46,10 @@ var (
 	// ErrStall is returned when :go:test signals test binaries that printed
 	// nothing for the --stall duration.
 	ErrStall = errors.New("test run stalled")
+
+	// ErrFmt is returned when :go:fmt reports a Go file gofmt would rewrite
+	// or a line longer than the limit.
+	ErrFmt = errors.New("go code not formatted")
 )
 
 // expLintVer is the minimum expected version of golangci-lint.
