@@ -1,3 +1,9 @@
+## v0.21.0 (Tue, 20 Oct 2026 20:16:09 UTC)
+- feat(gmgo): add a stall watchdog to :go:test.
+- feat(gmgo): vet gomake-tagged files in :go:vet.
+- feat(gmgo): report only new lint issues with :go:lint --new.
+- feat(gmmce): add :doc:align to align Markdown tables.
+
 ## v0.20.3 (Mon, 19 Oct 2026 19:15:11 UTC)
 - fix(gmdkr): count a container being removed as removed in :docker:run:clean.
 
