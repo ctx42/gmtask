@@ -1,3 +1,8 @@
+## v0.22.0 (Tue, 20 Oct 2026 20:35:28 UTC)
+- feat(gmgo): export the stall watchdog as WatchTests.
+- build(deps): raise gitaid to v0.20.0.
+- feat(gmgo): add :go:fmt for gofmt and line length of changes.
+
 ## v0.21.0 (Tue, 20 Oct 2026 20:16:09 UTC)
 - feat(gmgo): add a stall watchdog to :go:test.
 - feat(gmgo): vet gomake-tagged files in :go:vet.
