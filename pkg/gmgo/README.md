@@ -38,7 +38,8 @@ assembly, log-file naming) are also usable as a plain library.
 
 ## Features
 
-- **`:go:vet`** — runs `go vet ./...`.
+- **`:go:vet`** — runs `go vet ./...`, then vets the gomake-tagged files of
+  the current directory, such as `makefile.go`, which `./...` leaves out.
 - **`:go:lint`** — runs golangci-lint, auto-installing it and the config.
 - **`:go:test`** — tests with race and coverage.
 - **`:go:test-v`** — verbose tests with race and coverage.
@@ -103,7 +104,7 @@ The `:go:*` targets are now available in that project only.
 Run any target from a project's root directory:
 
 ```shell
-gomake :go:vet          # go vet ./...
+gomake :go:vet          # go vet ./... and makefile.go
 gomake :go:test         # tests with race detector + coverage
 gomake :go:test-v       # same, verbose
 gomake :go:lint         # golangci-lint run

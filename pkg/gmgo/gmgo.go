@@ -10,6 +10,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"go/build/constraint"
 	"io"
 	"net/http"
 	"os"
@@ -114,16 +115,70 @@ const (
 // Go collects Go-related targets.
 type Go struct{} //gomake:ns_root
 
-// Vet vets Go code in the current directory and its subdirectories.
+// Vet vets Go code in the current directory and its subdirectories, then, as
+// one package, the Go files of the current directory built only with the
+// "gomake" build tag, such as makefile.go, which "go vet ./..." leaves out.
 //
 // Example usage:
 //
 //	gomake :go:vet
 func (Go) Vet(ctx context.Context, rng *ring.Ring) error {
-	cmd := exec.CommandContext(ctx, "go", "vet", "./...")
+	if err := goVet(ctx, rng, "./..."); err != nil {
+		return err
+	}
+	files, err := gomakeFiles(".")
+	if err != nil || len(files) == 0 {
+		return err
+	}
+	return goVet(ctx, rng, append([]string{"-tags", "gomake"}, files...)...)
+}
+
+// goVet runs "go vet" with args, writing its output to the streams of rng.
+func goVet(ctx context.Context, rng *ring.Ring, args ...string) error {
+	cmd := exec.CommandContext(ctx, "go", append([]string{"vet"}, args...)...)
 	cmd.Stdout, cmd.Stderr = rng.Stdout(), rng.Stderr()
 	cmd.Env = rng.EnvAll()
 	return cmd.Run()
+}
+
+// gomakeFiles returns, sorted, the Go files in dir built only with the
+// "gomake" build tag, as [gomakeOnly] tells.
+func gomakeFiles(dir string) ([]string, error) {
+	// The pattern is well-formed, so Glob returns no error.
+	pths, _ := filepath.Glob(filepath.Join(dir, "*.go"))
+	var files []string
+	for _, pth := range pths {
+		src, err := os.ReadFile(pth) //nolint:gosec
+		if err != nil {
+			return nil, err
+		}
+		if gomakeOnly(src) {
+			files = append(files, pth)
+		}
+	}
+	return files, nil
+}
+
+// gomakeOnly reports whether the "//go:build" line of the Go source src holds
+// with the "gomake" build tag and the current GOOS and GOARCH, and does not
+// hold without that tag.
+func gomakeOnly(src []byte) bool {
+	with := func(tag string) bool {
+		return tag == "gomake" || tag == runtime.GOOS || tag == runtime.GOARCH
+	}
+	without := func(tag string) bool { return tag != "gomake" && with(tag) }
+	for line := range strings.Lines(string(src)) {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "package ") {
+			return false
+		}
+		if !constraint.IsGoBuild(line) {
+			continue
+		}
+		expr, err := constraint.Parse(line)
+		return err == nil && expr.Eval(with) && !expr.Eval(without)
+	}
+	return false
 }
 
 // Check runs :go:vet, :go:lint, :go:test in order.

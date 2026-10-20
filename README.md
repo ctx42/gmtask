@@ -34,7 +34,7 @@ Requires [gomake](https://github.com/ctx42/gomake) for the target packages.
 
 | Target                    | Description                                   |
 |---------------------------|-----------------------------------------------|
-| `:go:vet`                 | Runs `go vet ./...`.                          |
+| `:go:vet`                 | Runs `go vet ./...` and vets `makefile.go`.   |
 | `:go:lint`                | Runs golangci-lint (auto-installs + config).  |
 | `:go:lint:install`        | Installs the latest golangci-lint.            |
 | `:go:lint:config`         | Downloads the shared `.golangci.yml`.         |

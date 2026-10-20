@@ -12,6 +12,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -67,6 +69,44 @@ func Test_Go_Vet(t *testing.T) {
 		assert.Contain(t, "source.go:10:22: fmt.Sprintf format", tst.Stderr())
 	})
 
+	t.Run("gomake files", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t)
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.ProjectFrom("testdata/vet/gomake/project")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Go{}.Vet(t.Context(), rng)
+
+		// --- Then ---
+		assert.NoError(t, err)
+	})
+
+	t.Run("error - vet detects issue in a gomake file", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.ProjectFrom("testdata/vet/gomake_failure/project")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := Go{}.Vet(t.Context(), rng)
+
+		// --- Then ---
+		assert.ExitCode(t, 1, err)
+		want := "makefile.go:7:40: fmt.Sprintf format %d has arg"
+		assert.Contain(t, want, tst.Stderr())
+	})
+
 	t.Run("tmp exists", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t)
@@ -108,6 +148,120 @@ func Test_Go_Vet(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 	})
+}
+
+func Test_goVet(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		// --- Given ---
+		rng := ringtest.New(t).Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.ProjectFrom("testdata/vet/success/project")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := goVet(t.Context(), rng, "./...")
+
+		// --- Then ---
+		assert.NoError(t, err)
+	})
+
+	t.Run("error - vet detects issue", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		prj := gmtest.NewProject(t)
+		prj.GoModInit()
+		prj.ProjectFrom("testdata/vet/failure/project")
+		prj.Close()
+		prj.Chdir()
+
+		// --- When ---
+		err := goVet(t.Context(), rng, "./...")
+
+		// --- Then ---
+		assert.ExitCode(t, 1, err)
+		assert.Contain(t, "source.go:10:22: fmt.Sprintf format", tst.Stderr())
+	})
+}
+
+func Test_gomakeFiles(t *testing.T) {
+	t.Run("files built only with the gomake tag", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		oskit.Create(t, "//go:build gomake\n\npackage main\n", dir, "b.go")
+		oskit.Create(t, "//go:build gomake\n\npackage main\n", dir, "a.go")
+		oskit.Create(t, "package lib\n", dir, "lib.go")
+		oskit.Create(t, "//go:build gomake\n", dir, "note.txt")
+
+		// --- When ---
+		have, err := gomakeFiles(dir)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := []string{
+			filepath.Join(dir, "a.go"),
+			filepath.Join(dir, "b.go"),
+		}
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("none", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		oskit.Create(t, "package lib\n", dir, "lib.go")
+
+		// --- When ---
+		have, err := gomakeFiles(dir)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Nil(t, have)
+	})
+
+	t.Run("error - unreadable file", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		oskit.MkdirAll(t, dir, "dir.go")
+
+		// --- When ---
+		have, err := gomakeFiles(dir)
+
+		// --- Then ---
+		assert.ErrorContain(t, "dir.go: is a directory", err)
+		assert.Nil(t, have)
+	})
+}
+
+func Test_gomakeOnly_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		src  string
+		want bool
+	}{
+		{"gomake tag", "//go:build gomake\n\npackage main\n", true},
+		{"gomake and GOOS", "//go:build gomake && " + runtime.GOOS, true},
+		{"header before", "// Copyright.\n\n//go:build gomake\n", true},
+		{"no constraint", "package lib\n", false},
+		{"other tag", "//go:build tools\n\npackage main\n", false},
+		{"holds without gomake", "//go:build gomake || !gomake\n", false},
+		{"after package clause", "package main\n\n//go:build gomake\n", false},
+		{"invalid", "//go:build gomake &&\n", false},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			have := gomakeOnly([]byte(tc.src))
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
+		})
+	}
 }
 
 func Test_Go_Check(t *testing.T) {
