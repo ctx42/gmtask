@@ -23,14 +23,16 @@ import (
 // through.
 const procDir = "/proc"
 
-// runWatched runs cmd, a "go test -json" command, writing the output of its
-// events to w, and signals the test binaries under it whenever they print
-// nothing for stall: SIGQUIT, which makes a binary print its goroutines and
-// exit, or SIGKILL to one that got SIGQUIT before. A line saying so is written
-// to w. Silence while no test binary runs, as when compiling, is not a stall.
-// It returns the error of the command, joined with one wrapping [ErrStall]
-// when a binary was signalled.
-func runWatched(cmd *exec.Cmd, w io.Writer, stall time.Duration) error {
+// WatchTests runs cmd, a "go test -json" command whose Stdout is not set,
+// writing the output of its events to w, and signals the test binaries under
+// it whenever they print nothing for stall: SIGQUIT, which makes a binary
+// print its goroutines and exit, or SIGKILL to one that got SIGQUIT before. A
+// line saying so is written to w. Silence while no test binary runs, as when
+// compiling, is not a stall. Test binaries are found through the /proc file
+// system; without it nothing is signalled. It returns the error of the
+// command, joined with one wrapping [ErrStall] when a binary was signalled.
+// [Go.Test] runs it for --stall; other runners of "go test" can too.
+func WatchTests(cmd *exec.Cmd, w io.Writer, stall time.Duration) error {
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("go test: %w", err)

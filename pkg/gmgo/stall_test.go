@@ -25,7 +25,7 @@ func fakeProc(t tester.T, dir string, id, ppid int, exe string) {
 	oskit.Create(t, exe+"\x00-test.v\x00", pid, "cmdline")
 }
 
-func Test_runWatched(t *testing.T) {
+func Test_WatchTests(t *testing.T) {
 	t.Run("event output", func(t *testing.T) {
 		// --- Given ---
 		script := `printf '%s\n' '{"Action":"output","Output":"ok\n"}' plain`
@@ -33,7 +33,7 @@ func Test_runWatched(t *testing.T) {
 		out := &bytes.Buffer{}
 
 		// --- When ---
-		err := runWatched(cmd, out, time.Minute)
+		err := WatchTests(cmd, out, time.Minute)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -46,7 +46,7 @@ func Test_runWatched(t *testing.T) {
 		out := &bytes.Buffer{}
 
 		// --- When ---
-		err := runWatched(cmd, out, 50*time.Millisecond)
+		err := WatchTests(cmd, out, 50*time.Millisecond)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -59,7 +59,7 @@ func Test_runWatched(t *testing.T) {
 		out := &bytes.Buffer{}
 
 		// --- When ---
-		err := runWatched(cmd, out, time.Minute)
+		err := WatchTests(cmd, out, time.Minute)
 
 		// --- Then ---
 		assert.ErrorContain(t, "exit status 3", err)
@@ -71,7 +71,7 @@ func Test_runWatched(t *testing.T) {
 		out := &bytes.Buffer{}
 
 		// --- When ---
-		err := runWatched(cmd, out, time.Minute)
+		err := WatchTests(cmd, out, time.Minute)
 
 		// --- Then ---
 		assert.ErrorContain(t, "go test: ", err)

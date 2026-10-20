@@ -340,7 +340,7 @@ func (Go) test(ctx context.Context, rng *ring.Ring, verbose bool) error {
 	cmd.Stderr = rng.Stderr()
 	cmd.Env = rng.EnvAll()
 	if stall > 0 {
-		return runWatched(cmd, mw, stall)
+		return WatchTests(cmd, mw, stall)
 	}
 	cmd.Stdout = mw
 	return cmd.Run()
