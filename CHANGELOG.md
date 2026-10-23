@@ -1,3 +1,6 @@
+## v0.22.1 (Fri, 23 Oct 2026 20:11:46 UTC)
+- chore(deps): update dependencies.
+
 ## v0.22.0 (Tue, 20 Oct 2026 20:35:28 UTC)
 - feat(gmgo): export the stall watchdog as WatchTests.
 - build(deps): raise gitaid to v0.20.0.
