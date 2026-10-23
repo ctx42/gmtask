@@ -97,7 +97,7 @@ func Test_Go_Fmt(t *testing.T) {
 		want := "" +
 			"Usage of :go:fmt\n" +
 			"  -h, --help    show help\n" +
-			"  -r, --rev     revision to compare the changes with\n"
+			"  -r, --rev     revision to compare the changes with (default \"HEAD\")\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
 

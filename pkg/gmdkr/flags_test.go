@@ -37,7 +37,7 @@ func Test_NewFlagParser(t *testing.T) {
 		// --- Then ---
 		want := "" +
 			"Usage of name:\n" +
-			"      --name    usage\n"
+			"      --name    usage (default \"def\")\n"
 		assert.Equal(t, want, buf.String())
 	})
 }

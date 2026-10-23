@@ -140,7 +140,7 @@ func Test_Doc_Mce(t *testing.T) {
 		assert.NoError(t, err)
 		want := "" +
 			"Usage of :doc:mce:\n" +
-			"      --dir     root directory to scan for Go examples\n" +
+			"      --dir     root directory to scan for Go examples (default \".\")\n" +
 			"      --file    " +
 			"Markdown file to update (default: README.md in --dir)\n" +
 			"  -h, --help    show help\n"
