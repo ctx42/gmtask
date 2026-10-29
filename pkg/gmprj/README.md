@@ -117,7 +117,7 @@ targets:
 ```
 
 A complete, copy-pasteable example is in
-[`doc/gomake.yaml`](../../doc/gomake.yaml).
+[`docs/gomake.yaml`](../../docs/gomake.yaml).
 
 ### Node fields
 

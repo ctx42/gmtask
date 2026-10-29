@@ -209,7 +209,7 @@ func Test_loadStructure(t *testing.T) {
 func Test_loadStructure_fixture(t *testing.T) {
 	// --- Given ---
 	// gomake parses the user's gomake.yaml and delivers the target's block to
-	// the target as JSON; this fixture is that JSON, mirroring doc/gomake.yaml.
+	// the target as JSON; this fixture is that JSON, mirroring docs/gomake.yaml.
 	block := oskit.ReadFile(t, "testdata", "gomake.json")
 
 	rng := ringtest.New(t).Ring()
