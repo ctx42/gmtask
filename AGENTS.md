@@ -101,9 +101,9 @@ version is built and what its parts mean; nothing here assembles one.
   `gmgo.InferBump` reads it off the Conventional Commits, and
   `gmgo.EnvBldBump` (`C42_BLD_BUMP`) overrides it. That name stays in this
   module.
-- `C42_SCM_STATE` is deliberately not a Docker build argument: the `.dirty`
-  identifier in the version already carries the tree state, and two sources
-  for one fact drift.
+- `C42_SCM_STATE` is a Docker build argument: `gmdkr.ConfigFrom` passes the
+  working tree state `gmprj.Info` reads from `gitaid.WorkTreeStatus`, or
+  `gmprj.ScmNo` outside git, so the image records it.
 - Only a release may move the `latest` image tag - `gmdkr` gates it on
   `Version.Release` and on the tag carrying no pre-release, not on the `-l`
   flag alone. A `v1.0.0-rc.1` checkout is a release to `gitaid` but not to

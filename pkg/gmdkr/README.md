@@ -414,14 +414,13 @@ Every build passes the project's metadata to the `Dockerfile` as
 | `C42_SCM_REV`   | Version derived by `gitaid`.                   |
 | `C42_SCM_HASH`  | Commit hash.                                   |
 | `C42_SCM_REPO`  | Remote repository URL.                         |
+| `C42_SCM_STATE` | `clean`, `dirty`, or `no-scm` outside git.     |
 | `C42_REG_HOST`  | Registry host, when configured.                |
 | `C42_REG_REPO`  | Private repository, when configured.           |
 | `SSH_AUTH_SOCK` | SSH agent socket, when set in the environment. |
 
 Any additional keys present in `configs/project.conf` are forwarded as
-`--build-arg`s as well. `C42_SCM_STATE` is deliberately not passed: the
-`.dirty` identifier in `C42_SCM_REV` already carries the tree state, and two
-sources for one fact drift.
+`--build-arg`s as well.
 
 ### Environment variables
 
