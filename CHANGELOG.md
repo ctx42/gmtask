@@ -1,3 +1,9 @@
+## v0.23.0 (Thu, 29 Oct 2026 13:42:54 UTC)
+- feat(gmdkr): pass C42_SCM_STATE as a docker build argument.
+- docs: rename doc/ directory to docs/.
+- docs(gmprj): create docs/ instead of doc/ in the example layout.
+- docs: document C42_SCM_STATE as a docker build argument.
+
 ## v0.22.1 (Fri, 23 Oct 2026 20:11:46 UTC)
 - chore(deps): update dependencies.
 
