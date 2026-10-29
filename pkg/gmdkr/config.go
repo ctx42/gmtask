@@ -113,6 +113,7 @@ func ConfigFrom(inf *gmprj.Info, fls *Flags) *Config {
 	cfg.fromInfo(inf, xdef.EnvScmRepo)
 	cfg.fromInfo(inf, xdef.EnvScmHash)
 	cfg.fromInfo(inf, xdef.EnvScmRev)
+	cfg.fromInfo(inf, xdef.EnvScmState)
 	cfg.fromInfo(inf, xdef.EnvRegRepo)
 	cfg.fromInfo(inf, EnvSSHSock)
 	if val, ok := cfg.args[EnvSSHSock]; ok && val != "" {

@@ -466,6 +466,7 @@ func Test_Build_Cmd(t *testing.T) {
 			"--build-arg", "C42_SCM_HASH=" + cm.Hash,
 			"--build-arg", "C42_SCM_REPO=" + prjkit.GitOrigin,
 			"--build-arg", "C42_SCM_REV=v1.2.3",
+			"--build-arg", "C42_SCM_STATE=clean",
 			"--build-arg", "SSH_AUTH_SOCK=ssh-socket",
 			"--file", "Dockerfile",
 			".",
@@ -506,6 +507,7 @@ func Test_Build_Cmd(t *testing.T) {
 			"--build-arg", "C42_SCM_HASH=" + cm.Hash,
 			"--build-arg", "C42_SCM_REPO=" + prjkit.GitOrigin,
 			"--build-arg", "C42_SCM_REV=v1.2.3",
+			"--build-arg", "C42_SCM_STATE=clean",
 			"--build-arg", "SSH_AUTH_SOCK=ssh-socket",
 			"--file", "Dockerfile",
 			".",
@@ -547,6 +549,7 @@ func Test_Build_Cmd(t *testing.T) {
 			"--build-arg", "C42_SCM_HASH=" + cm.Hash,
 			"--build-arg", "C42_SCM_REPO=" + prjkit.GitOrigin,
 			"--build-arg", "C42_SCM_REV=v1.2.3",
+			"--build-arg", "C42_SCM_STATE=clean",
 			"--build-arg", "SSH_AUTH_SOCK=ssh-socket",
 			"--file", "Dockerfile",
 			".",
@@ -587,6 +590,7 @@ func Test_Build_Cmd(t *testing.T) {
 			"--build-arg", "C42_SCM_HASH=" + cm.Hash,
 			"--build-arg", "C42_SCM_REPO=" + prjkit.GitOrigin,
 			"--build-arg", "C42_SCM_REV=v1.2.3",
+			"--build-arg", "C42_SCM_STATE=clean",
 			"--build-arg", "SSH_AUTH_SOCK=ssh-socket",
 			"--file", "Dockerfile",
 			".",
@@ -625,6 +629,7 @@ func Test_Build_Cmd(t *testing.T) {
 			"--build-arg", "C42_SCM_HASH=" + cm.Hash,
 			"--build-arg", "C42_SCM_REPO=" + prjkit.GitOrigin,
 			"--build-arg", "C42_SCM_REV=v1.2.3",
+			"--build-arg", "C42_SCM_STATE=clean",
 			"--build-arg", "KEY0=VAL0",
 			"--build-arg", "KEY1=VAL1",
 			"--file", "Dockerfile",
@@ -666,6 +671,7 @@ func Test_Build_Cmd(t *testing.T) {
 			"--build-arg", "C42_SCM_HASH=" + cm.Hash,
 			"--build-arg", "C42_SCM_REPO=" + prjkit.GitOrigin,
 			"--build-arg", "C42_SCM_REV=v1.2.3",
+			"--build-arg", "C42_SCM_STATE=clean",
 			"--file", "Dockerfile",
 			".",
 		}
@@ -765,6 +771,7 @@ func Test_Build_String(t *testing.T) {
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=" + prjkit.GitOrigin +
 			" --build-arg C42_SCM_REV=v1.2.3" +
+			" --build-arg C42_SCM_STATE=clean" +
 			" --build-arg SSH_AUTH_SOCK=ssh-socket" +
 			" --file Dockerfile ."
 		assert.Equal(t, want, have)
@@ -803,6 +810,7 @@ func Test_Build_String(t *testing.T) {
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=" + prjkit.GitOrigin +
 			" --build-arg C42_SCM_REV=v1.2.3" +
+			" --build-arg C42_SCM_STATE=clean" +
 			" --build-arg SSH_AUTH_SOCK=ssh-socket" +
 			" --file Dockerfile ."
 		assert.Equal(t, want, have)

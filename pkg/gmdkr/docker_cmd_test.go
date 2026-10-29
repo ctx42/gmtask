@@ -64,12 +64,13 @@ func Test_DockerCmd_Init(t *testing.T) {
 		assert.Equal(t, "ssh-sock", dc.Config.ssh)
 		assert.Equal(t, "linux/amd64", dc.Config.platform)
 		wArgs := map[string]string{
-			EnvSSHSock:      "ssh-sock",
-			xdef.EnvBldDate: "2000-01-02T03:04:05.600Z",
-			xdef.EnvPrjName: "project",
-			xdef.EnvScmRepo: prjkit.GitOrigin,
-			xdef.EnvScmHash: cm.Hash,
-			xdef.EnvScmRev:  "v1.1.1",
+			EnvSSHSock:       "ssh-sock",
+			xdef.EnvBldDate:  "2000-01-02T03:04:05.600Z",
+			xdef.EnvPrjName:  "project",
+			xdef.EnvScmRepo:  prjkit.GitOrigin,
+			xdef.EnvScmHash:  cm.Hash,
+			xdef.EnvScmRev:   "v1.1.1",
+			xdef.EnvScmState: "clean",
 		}
 		assert.Equal(t, wArgs, dc.Config.args)
 		assert.True(t, dc.Config.kit)
@@ -92,6 +93,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 			" --build-arg C42_SCM_HASH=%s" +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
 			" --build-arg C42_SCM_REV=v1.1.1" +
+			" --build-arg C42_SCM_STATE=clean" +
 			" --build-arg SSH_AUTH_SOCK=ssh-sock" +
 			" --file Dockerfile ."
 		want = fmt.Sprintf(want, cm.Hash)
@@ -136,6 +138,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 			xdef.EnvScmRepo:       prjkit.GitOrigin,
 			xdef.EnvScmHash:       cm.Hash,
 			xdef.EnvScmRev:        "v1.1.1",
+			xdef.EnvScmState:      "clean",
 		}
 		assert.Equal(t, wArgs, dc.Config.args)
 		assert.True(t, dc.Config.kit)
@@ -166,6 +169,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
 			" --build-arg C42_SCM_REV=v1.1.1" +
+			" --build-arg C42_SCM_STATE=clean" +
 			" --build-arg SSH_AUTH_SOCK=ssh-sock" +
 			" --file Dockerfile ."
 		assert.Equal(t, want, dc.Builds[0].String())
@@ -183,6 +187,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
 			" --build-arg C42_SCM_REV=v1.1.1" +
+			" --build-arg C42_SCM_STATE=clean" +
 			" --build-arg SSH_AUTH_SOCK=ssh-sock" +
 			" --file Dockerfile ."
 		assert.Equal(t, want, dc.Builds[1].String())
@@ -200,6 +205,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
 			" --build-arg C42_SCM_REV=v1.1.1" +
+			" --build-arg C42_SCM_STATE=clean" +
 			" --build-arg SSH_AUTH_SOCK=ssh-sock" +
 			" --file Dockerfile ."
 		assert.Equal(t, want, dc.Builds[2].String())
@@ -244,6 +250,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 			xdef.EnvScmRepo:       prjkit.GitOrigin,
 			xdef.EnvScmHash:       cm.Hash,
 			xdef.EnvScmRev:        "v1.1.1",
+			xdef.EnvScmState:      "clean",
 		}
 		assert.Equal(t, wArgs, dc.Config.args)
 		assert.True(t, dc.Config.kit)
@@ -271,6 +278,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
 			" --build-arg C42_SCM_REV=v1.1.1" +
+			" --build-arg C42_SCM_STATE=clean" +
 			" --build-arg SSH_AUTH_SOCK=ssh-sock" +
 			" --file Dockerfile ."
 		assert.Equal(t, want, dc.Builds[0].String())
@@ -288,6 +296,7 @@ func Test_DockerCmd_Init(t *testing.T) {
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
 			" --build-arg C42_SCM_REV=v1.1.1" +
+			" --build-arg C42_SCM_STATE=clean" +
 			" --build-arg SSH_AUTH_SOCK=ssh-sock" +
 			" --file Dockerfile ."
 		assert.Equal(t, want, dc.Builds[1].String())
@@ -710,7 +719,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 			xdef.EnvPrjName:      "project",
 			xdef.EnvScmHash:      xdef.PhHash,
 			xdef.EnvScmRev:       xdef.PhTag,
-			xdef.EnvScmState:     xdef.PhUnknown,
+			xdef.EnvScmState:     gmprj.ScmNo,
 			xdef.EnvBldImgTarget: "third",
 		}
 		assert.MapSubset(t, wEnv, dkrkit.NewT(t).Envs(ref))
@@ -761,7 +770,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 			xdef.EnvPrjName:      "project",
 			xdef.EnvScmHash:      cm.Hash,
 			xdef.EnvScmRev:       "v1.2.3",
-			xdef.EnvScmState:     xdef.PhUnknown,
+			xdef.EnvScmState:     "clean",
 			xdef.EnvBldImgTarget: "third",
 		}
 		assert.MapSubset(t, wEnv, dkrkit.NewT(t).Envs(ref))
@@ -814,6 +823,7 @@ func Test_DockerCmd_Build(t *testing.T) {
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
 			" --build-arg C42_SCM_REV=v1.1.1" +
+			" --build-arg C42_SCM_STATE=clean" +
 			" --build-arg SSH_AUTH_SOCK=ssh-sock" +
 			" --file Dockerfile .\n"
 		assert.Equal(t, want, tst.Stderr())
@@ -1430,6 +1440,7 @@ func Test_DockerCmd_Run(t *testing.T) {
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
 			" --build-arg C42_SCM_REV=v0.0.1-dev.1+g" + cm.Hash +
+			" --build-arg C42_SCM_STATE=clean" +
 			" --build-arg SSH_AUTH_SOCK=ssh-sock" +
 			" --file Dockerfile .\n" +
 			"#gomake INFO# docker run --rm" +
@@ -1777,6 +1788,7 @@ func Test_DockerCmd_Sh(t *testing.T) {
 			" --build-arg C42_SCM_HASH=" + cm.Hash +
 			" --build-arg C42_SCM_REPO=git@example.com:comp/project.git" +
 			" --build-arg C42_SCM_REV=v0.0.1-dev.1+g" + cm.Hash +
+			" --build-arg C42_SCM_STATE=clean" +
 			" --build-arg SSH_AUTH_SOCK=ssh-sock" +
 			" --file Dockerfile .\n" +
 			"#gomake INFO# docker run --rm -it" +

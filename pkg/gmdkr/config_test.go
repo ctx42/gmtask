@@ -125,10 +125,11 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Empty(t, cfg.dkfDir)
 		assert.Empty(t, cfg.prjDir)
 		assert.Fields(t, 17, Config{})
+		assert.HasKeyValue(t, xdef.EnvScmState, gmprj.ScmNo, cfg.args)
 		wDate := "2000-01-02T03:04:05.600Z"
 		assert.HasKeyValue(t, xdef.EnvBldDate, wDate, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
-		assert.Len(t, 2, cfg.args)
+		assert.Len(t, 3, cfg.args)
 	})
 
 	t.Run("project with local git no tags", func(t *testing.T) {
@@ -170,10 +171,11 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev,
 			"v0.0.1-dev.1+g"+cm.Hash, cfg.args)
+		assert.HasKeyValue(t, xdef.EnvScmState, "clean", cfg.args)
 		wDate := "2000-01-02T03:04:05.600Z"
 		assert.HasKeyValue(t, xdef.EnvBldDate, wDate, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
-		assert.Len(t, 4, cfg.args)
+		assert.Len(t, 5, cfg.args)
 	})
 
 	t.Run("project with remote git no tags", func(t *testing.T) {
@@ -217,10 +219,11 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev,
 			"v0.0.1-dev.1+g"+cm.Hash, cfg.args)
+		assert.HasKeyValue(t, xdef.EnvScmState, "clean", cfg.args)
 		wDate := "2000-01-02T03:04:05.600Z"
 		assert.HasKeyValue(t, xdef.EnvBldDate, wDate, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
-		assert.Len(t, 5, cfg.args)
+		assert.Len(t, 6, cfg.args)
 	})
 
 	t.Run("project with git and tagged HEAD", func(t *testing.T) {
@@ -261,10 +264,11 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Fields(t, 17, Config{})
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, cm.Rev, cfg.args)
+		assert.HasKeyValue(t, xdef.EnvScmState, "clean", cfg.args)
 		wDate := "2000-01-02T03:04:05.600Z"
 		assert.HasKeyValue(t, xdef.EnvBldDate, wDate, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
-		assert.Len(t, 4, cfg.args)
+		assert.Len(t, 5, cfg.args)
 	})
 
 	t.Run("project with git and tag and commit", func(t *testing.T) {
@@ -311,10 +315,11 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Fields(t, 17, Config{})
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, rev, cfg.args)
+		assert.HasKeyValue(t, xdef.EnvScmState, "clean", cfg.args)
 		wDate := "2000-01-02T03:04:05.600Z"
 		assert.HasKeyValue(t, xdef.EnvBldDate, wDate, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
-		assert.Len(t, 4, cfg.args)
+		assert.Len(t, 5, cfg.args)
 	})
 
 	t.Run("docker repo in project config", func(t *testing.T) {
@@ -355,12 +360,13 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.Fields(t, 17, Config{})
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, "v1.2.3", cfg.args)
+		assert.HasKeyValue(t, xdef.EnvScmState, "clean", cfg.args)
 		wDate := "2000-01-02T03:04:05.600Z"
 		assert.HasKeyValue(t, xdef.EnvBldDate, wDate, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvRegHost, "my.nexus.dev", cfg.args)
 		assert.HasKeyValue(t, xdef.EnvRegRepo, "my.nexus.dev/repo", cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
-		assert.Len(t, 6, cfg.args)
+		assert.Len(t, 7, cfg.args)
 	})
 
 	t.Run("with SSH socket set", func(t *testing.T) {
@@ -402,12 +408,13 @@ func Test_ConfigFrom(t *testing.T) {
 		assert.HasKeyValue(t, xdef.EnvScmHash, cm.Hash, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvScmRev, "v1.2.3", cfg.args)
 		assert.HasKeyValue(t, EnvSSHSock, "ssh-sock", cfg.args)
+		assert.HasKeyValue(t, xdef.EnvScmState, "clean", cfg.args)
 		wDate := "2000-01-02T03:04:05.600Z"
 		assert.HasKeyValue(t, xdef.EnvBldDate, wDate, cfg.args)
 		assert.HasKeyValue(t, xdef.EnvRegHost, "my.nexus.dev", cfg.args)
 		assert.HasKeyValue(t, xdef.EnvRegRepo, "my.nexus.dev/repo", cfg.args)
 		assert.HasKeyValue(t, xdef.EnvPrjName, "project", cfg.args)
-		assert.Len(t, 7, cfg.args)
+		assert.Len(t, 8, cfg.args)
 	})
 
 	t.Run("project info zero build date", func(t *testing.T) {
