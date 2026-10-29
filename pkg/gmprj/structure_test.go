@@ -232,6 +232,7 @@ func Test_loadStructure_fixture(t *testing.T) {
 	))
 	assert.DirExist(t, filepath.Join(root, "dev", "idea"))
 	assert.DirExist(t, filepath.Join(root, "build"))
+	assert.DirExist(t, filepath.Join(root, "docs"))
 	assert.False(t, oskit.PathExists(t, filepath.Join(root, "build", "idea")))
 	xml := oskit.ReadFileStr(t, root, "dev", "idea", "go-test-all.run.xml")
 	assert.Contain(t, `name="acme"`, xml)

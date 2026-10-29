@@ -39,7 +39,7 @@
     "dist": {
       "type": "dir"
     },
-    "doc": {
+    "docs": {
       "type": "dir"
     },
     "pkg": {
